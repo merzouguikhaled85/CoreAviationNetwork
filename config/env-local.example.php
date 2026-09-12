@@ -13,4 +13,12 @@ return [
     'dbDsn' => 'mysql:host=localhost;dbname=your_database',
     'dbUsername' => 'your_local_username',
     'dbPassword' => 'your_local_password',
+
+    /*
+     * Clés factices officielles réservées au développement local. En production,
+     * les remplacer dans env-local.php par les vraies clés du widget Cloudflare.
+     */
+    'turnstileSiteKey' => '1x00000000000000000000AA',
+    'turnstileSecretKey' => '1x0000000000000000000000000000000AA',
+    'turnstileExpectedHostname' => 'localhost',
 ];

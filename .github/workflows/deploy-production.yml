@@ -1,0 +1,125 @@
+name: Déploiement de la production
+
+# Ce workflow déploie uniquement les commits intégrés dans la branche main.
+# Le déclenchement manuel permet aussi de relancer un déploiement sans créer
+# artificiellement un nouveau commit.
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+# Un seul déploiement de production peut s'exécuter à la fois. Un déploiement
+# déjà commencé n'est jamais interrompu par l'arrivée d'un nouveau commit.
+concurrency:
+  group: core-aviation-network-production
+  cancel-in-progress: false
+
+# Le workflow n'a besoin d'aucun droit d'écriture sur le dépôt GitHub.
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    name: Déployer sur GoDaddy
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    environment: production
+
+    env:
+      # Ces valeurs sont lues dans l'environnement GitHub « production ».
+      # Aucune valeur réelle ne doit être écrite dans ce fichier versionné.
+      SSH_HOST: ${{ secrets.PROD_SSH_HOST }}
+      SSH_PORT: ${{ secrets.PROD_SSH_PORT }}
+      SSH_USER: ${{ secrets.PROD_SSH_USER }}
+      SSH_PRIVATE_KEY: ${{ secrets.PROD_SSH_PRIVATE_KEY }}
+      SSH_KNOWN_HOSTS: ${{ secrets.PROD_SSH_KNOWN_HOSTS }}
+
+    steps:
+      - name: Vérifier la présence des secrets de déploiement
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+
+          # L'arrêt immédiat donne un diagnostic clair lorsqu'un secret GitHub
+          # a été oublié, au lieu d'obtenir une erreur SSH difficile à analyser.
+          for variable in SSH_HOST SSH_PORT SSH_USER SSH_PRIVATE_KEY SSH_KNOWN_HOSTS; do
+            if [[ -z "${!variable:-}" ]]; then
+              echo "Le secret correspondant à ${variable} est absent."
+              exit 1
+            fi
+          done
+
+      - name: Préparer la connexion SSH sécurisée
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          umask 077
+          mkdir -p "$HOME/.ssh"
+
+          # La clé privée est reconstruite uniquement dans le runner temporaire.
+          # La suppression des retours chariot assure la compatibilité lorsque
+          # le secret a été copié depuis un poste Windows.
+          printf '%s\n' "$SSH_PRIVATE_KEY" | tr -d '\r' > "$HOME/.ssh/deployment_key"
+          chmod 600 "$HOME/.ssh/deployment_key"
+
+          # La clé d'hôte connue est fournie explicitement par GitHub afin
+          # d'empêcher une connexion silencieuse à un faux serveur SSH.
+          printf '%s\n' "$SSH_KNOWN_HOSTS" | tr -d '\r' > "$HOME/.ssh/known_hosts"
+          chmod 600 "$HOME/.ssh/known_hosts"
+
+      - name: Mettre à jour l'application et la base de données
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+
+          # La première avance rapide récupère aussi le script de déploiement
+          # lors de sa toute première installation. Le script effectue ensuite
+          # ses propres contrôles, Composer, les migrations et le cache Yii.
+          # env-local.php demeure sur GoDaddy parce qu'il est ignoré par Git.
+          ssh \
+            -i "$HOME/.ssh/deployment_key" \
+            -p "$SSH_PORT" \
+            -o BatchMode=yes \
+            -o IdentitiesOnly=yes \
+            -o StrictHostKeyChecking=yes \
+            "$SSH_USER@$SSH_HOST" \
+            'bash -se' <<'REMOTE_COMMANDS'
+          APP_DIR="$HOME/public_html/can"
+
+          # Le premier contrôle empêche toute mise à jour dans un dossier qui
+          # ne serait pas la copie Git de production attendue.
+          test -d "$APP_DIR/.git"
+          test -f "$APP_DIR/config/env-local.php"
+          cd "$APP_DIR"
+
+          # Une modification suivie faite manuellement sur GoDaddy doit être
+          # examinée par un humain ; elle ne doit jamais être écrasée en silence.
+          git diff --quiet
+          git diff --cached --quiet
+
+          git fetch --prune origin main
+          git checkout main
+          git merge --ff-only origin/main
+          bash scripts/deploy-production.sh
+          REMOTE_COMMANDS
+
+      - name: Vérifier que le sous-domaine répond après le déploiement
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+
+          # Ce test HTTP final confirme que le serveur, PHP et le routage du
+          # sous-domaine restent disponibles après le code et les migrations.
+          # Les tentatives supplémentaires absorbent un très court délai de
+          # redémarrage ou de régénération du cache sur l'hébergement partagé.
+          curl \
+            --fail \
+            --silent \
+            --show-error \
+            --location \
+            --retry 3 \
+            --retry-delay 5 \
+            --max-time 30 \
+            https://can.coreaviationnetwork.com/ \
+            > /dev/null
