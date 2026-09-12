@@ -114,9 +114,12 @@ if (!$isGuest && Yii::$app->user->identity !== null) {
               <i class="ri-layout-grid-line"></i> Dashboard
             </a>
             -->
-            <a href="<?= Url::to(['/site/logout']) ?>" data-method="post">
-              <i class="ri-logout-box-line"></i> Logout
-            </a>
+            <?= Html::beginForm(['/site/logout'], 'post', ['class' => 'can-navbar-logout-form']) ?>
+              <?= Html::submitButton(
+                  '<i class="ri-logout-box-line"></i> Logout',
+                  ['class' => 'can-navbar-logout-button']
+              ) ?>
+            <?= Html::endForm() ?>
           </div>
         </div>
       <?php endif; ?>
@@ -175,9 +178,12 @@ if (!$isGuest && Yii::$app->user->identity !== null) {
         <i class="ri-login-box-line"></i> Login
       </a>
     <?php else: ?>
-      <a href="<?= Url::to(['/site/logout']) ?>" data-method="post">
-        <i class="ri-logout-box-line"></i> Logout
-      </a>
+      <?= Html::beginForm(['/site/logout'], 'post', ['class' => 'can-navbar-logout-form']) ?>
+        <?= Html::submitButton(
+            '<i class="ri-logout-box-line"></i> Logout',
+            ['class' => 'can-navbar-logout-button']
+        ) ?>
+      <?= Html::endForm() ?>
 
     <?php endif; ?>
 
