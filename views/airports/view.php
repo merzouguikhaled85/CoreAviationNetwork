@@ -1,0 +1,594 @@
+<?php
+
+use yii\helpers\Html;
+use yii\web\View;
+
+/** @var yii\web\View $this */
+/** @var app\models\Airport $airport */
+
+/**
+ * Prepare airport data safely.
+ */
+$airportId = $airport->airport_id ?? 'N/A';
+$airportName = $airport->airport_name ?? 'N/A';
+$cityName = $airport->city ? ($airport->city->city_name ?? 'N/A') : 'N/A';
+$countryName = $airport->country_name ?? 'N/A';
+$icao = $airport->icao ?? 'N/A';
+
+/**
+ * Page title and breadcrumbs.
+ */
+$this->title = $airportName;
+$this->params['breadcrumbs'][] = ['label' => 'Airports', 'url' => ['index']];
+$this->params['breadcrumbs'][] = $this->title;
+
+/**
+ * Register Yii asset.
+ */
+\yii\web\YiiAsset::register($this);
+
+/**
+ * Prepare back URL.
+ */
+$backUrl = Yii::$app->request->referrer ?: ['index'];
+
+/**
+ * Register Bootstrap Icons.
+ */
+$this->registerCssFile(
+    'https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css',
+    ['position' => View::POS_HEAD]
+);
+
+/**
+ * Register page CSS.
+ */
+$this->registerCss(<<<CSS
+html,
+body {
+    max-width: 100%;
+    overflow-x: hidden;
+}
+
+.requests-page {
+    padding: 24px;
+    background: #f5f7fb;
+    min-height: 100vh;
+    max-width: 100%;
+    overflow-x: hidden;
+}
+
+.requests-page .container-fluid {
+    max-width: 100%;
+    overflow-x: hidden;
+    padding-left: 0;
+    padding-right: 0;
+}
+
+.page-header-card {
+    background: linear-gradient(135deg, #ffffff, #eef4ff);
+    border-radius: 18px;
+    padding: 22px 26px;
+    margin-bottom: 22px;
+    box-shadow: 0 8px 24px rgba(15, 23, 42, 0.08);
+    border: 1px solid #e5eaf3;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 15px;
+    flex-wrap: wrap;
+}
+
+.dash-title {
+    margin: 0;
+    font-size: 28px;
+    font-weight: 800;
+    color: #1f2937;
+}
+
+.subtitle-text {
+    color: #6b7280;
+    margin-top: 6px;
+    font-size: 14px;
+}
+
+.header-actions {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+.btn-page-action {
+    border-radius: 9px;
+    padding: 10px 18px;
+    font-weight: 800;
+    font-size: 13px;
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    white-space: nowrap;
+    text-decoration: none;
+    transition: all .2s ease;
+}
+
+.btn-back {
+    background: #ffffff;
+    color: #334155 !important;
+    border: 1px solid #cbd5e1;
+}
+
+.btn-back:hover {
+    background: #f1f5f9;
+    color: #0f172a !important;
+    transform: translateY(-1px);
+    text-decoration: none;
+}
+
+.view-grid {
+    display: grid;
+    grid-template-columns: 1.3fr 0.7fr;
+    gap: 18px;
+}
+
+.content-card {
+    background: #ffffff;
+    border-radius: 18px;
+    padding: 18px;
+    box-shadow: 0 8px 24px rgba(15, 23, 42, 0.08);
+    border: 1px solid #e5eaf3;
+    max-width: 100%;
+}
+
+.section-title {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin: 0 0 16px;
+    font-size: 17px;
+    font-weight: 900;
+    color: #0f172a;
+}
+
+.detail-list {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+}
+
+.detail-item {
+    background: #f8fafc;
+    border: 1px solid #e5eaf3;
+    border-radius: 14px;
+    padding: 14px;
+    min-width: 0;
+}
+
+.detail-label {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    color: #64748b;
+    font-size: 11px;
+    font-weight: 900;
+    text-transform: uppercase;
+    letter-spacing: .04em;
+    margin-bottom: 7px;
+}
+
+.detail-value {
+    color: #1f2937;
+    font-size: 14px;
+    font-weight: 800;
+    overflow-wrap: anywhere;
+}
+
+.airport-id-badge,
+.airport-name-badge,
+.city-badge,
+.country-badge,
+.icao-badge,
+.empty-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    padding: 8px 12px;
+    border-radius: 999px;
+    font-size: 12px;
+    font-weight: 900;
+    white-space: nowrap;
+    text-decoration: none;
+}
+
+.airport-id-badge {
+    background: #eef2ff;
+    color: #4338ca;
+}
+
+.airport-name-badge {
+    background: #e0f2fe;
+    color: #0369a1;
+}
+
+.city-badge {
+    background: #ecfdf5;
+    color: #047857;
+}
+
+.country-badge {
+    background: #fff7ed;
+    color: #c2410c;
+}
+
+.icao-badge {
+    background: #f8fafc;
+    color: #475569;
+    border: 1px solid #e5e7eb;
+}
+
+.empty-badge {
+    background: #f8fafc;
+    color: #94a3b8;
+    border: 1px solid #e5e7eb;
+}
+
+.quick-actions {
+    display: grid;
+    gap: 10px;
+}
+
+.quick-action-btn {
+    width: 100%;
+    min-height: 44px;
+    border-radius: 12px;
+    padding: 11px 14px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    font-size: 13px;
+    font-weight: 900;
+    color: #ffffff !important;
+    text-decoration: none;
+    border: 1px solid rgba(15, 23, 42, .12);
+    box-shadow: 0 8px 18px rgba(15, 23, 42, .12);
+    transition: all .2s ease;
+}
+
+.quick-action-btn:hover {
+    color: #ffffff !important;
+    text-decoration: none;
+    transform: translateY(-1px);
+    box-shadow: 0 12px 24px rgba(15, 23, 42, .16);
+}
+
+.qa-back {
+    background: #64748b;
+}
+
+.summary-box {
+    display: grid;
+    gap: 10px;
+}
+
+.summary-item {
+    background: #f8fafc;
+    border: 1px solid #e5eaf3;
+    border-radius: 14px;
+    padding: 13px 14px;
+}
+
+.summary-label {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    color: #64748b;
+    font-size: 11px;
+    font-weight: 900;
+    text-transform: uppercase;
+    letter-spacing: .04em;
+    margin-bottom: 6px;
+}
+
+.summary-value {
+    color: #0f172a;
+    font-size: 14px;
+    font-weight: 900;
+    overflow-wrap: anywhere;
+}
+
+@media (max-width: 992px) {
+    .requests-page {
+        padding: 14px;
+    }
+
+    .page-header-card {
+        padding: 18px;
+    }
+
+    .dash-title {
+        font-size: 23px;
+    }
+
+    .view-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .detail-list {
+        grid-template-columns: 1fr;
+    }
+}
+
+@media (max-width: 576px) {
+    .requests-page {
+        padding: 10px;
+    }
+
+    .page-header-card,
+    .content-card {
+        border-radius: 14px;
+        padding: 16px;
+    }
+
+    .header-actions {
+        width: 100%;
+    }
+
+    .btn-page-action,
+    .quick-action-btn {
+        width: 100%;
+        justify-content: center;
+    }
+
+    .airport-id-badge,
+    .airport-name-badge,
+    .city-badge,
+    .country-badge,
+    .icao-badge,
+    .empty-badge {
+        white-space: normal;
+    }
+}
+CSS);
+?>
+
+<main class="dash-content requests-page">
+    <div class="container-fluid">
+
+        <!-- Page header -->
+        <div class="page-header-card">
+            <div>
+                <h1 class="dash-title fw-bold">
+                    <span style="color: var(--bs-info);">
+                        <i class="bi bi-airplane-engines"></i>
+                    </span>
+                    <?= Html::encode($this->title) ?>
+                </h1>
+
+                <div class="subtitle-text">
+                    Detailed information about this airport, including city, country and ICAO code.
+                </div>
+            </div>
+
+            <div class="header-actions">
+                <?= Html::a(
+                    '<i class="bi bi-arrow-left-circle"></i> Back to Airports',
+                    $backUrl,
+                    ['class' => 'btn-page-action btn-back']
+                ) ?>
+            </div>
+        </div>
+
+        <div class="view-grid">
+
+            <!-- Main airport details -->
+            <div class="content-card">
+                <h2 class="section-title">
+                    <i class="bi bi-info-circle text-primary"></i>
+                    Airport Details
+                </h2>
+
+                <div class="detail-list">
+
+                    <!-- Airport ID -->
+                    <div class="detail-item">
+                        <div class="detail-label">
+                            <i class="bi bi-hash"></i>
+                            Airport ID
+                        </div>
+
+                        <div class="detail-value">
+                            <?php if (!empty($airportId) && $airportId !== 'N/A'): ?>
+                                <span class="airport-id-badge">
+                                    <i class="bi bi-hash"></i>
+                                    <?= Html::encode($airportId) ?>
+                                </span>
+                            <?php else: ?>
+                                <span class="empty-badge">
+                                    <i class="bi bi-dash-circle"></i>
+                                    N/A
+                                </span>
+                            <?php endif; ?>
+                        </div>
+                    </div>
+
+                    <!-- Airport name -->
+                    <div class="detail-item">
+                        <div class="detail-label">
+                            <i class="bi bi-airplane"></i>
+                            Airport Name
+                        </div>
+
+                        <div class="detail-value">
+                            <?php if (!empty($airportName) && $airportName !== 'N/A'): ?>
+                                <span class="airport-name-badge">
+                                    <i class="bi bi-airplane-engines"></i>
+                                    <?= Html::encode($airportName) ?>
+                                </span>
+                            <?php else: ?>
+                                <span class="empty-badge">
+                                    <i class="bi bi-dash-circle"></i>
+                                    N/A
+                                </span>
+                            <?php endif; ?>
+                        </div>
+                    </div>
+
+                    <!-- City -->
+                    <div class="detail-item">
+                        <div class="detail-label">
+                            <i class="bi bi-buildings"></i>
+                            City
+                        </div>
+
+                        <div class="detail-value">
+                            <?php if (!empty($cityName) && $cityName !== 'N/A'): ?>
+                                <span class="city-badge">
+                                    <i class="bi bi-geo-alt"></i>
+                                    <?= Html::encode($cityName) ?>
+                                </span>
+                            <?php else: ?>
+                                <span class="empty-badge">
+                                    <i class="bi bi-dash-circle"></i>
+                                    N/A
+                                </span>
+                            <?php endif; ?>
+                        </div>
+                    </div>
+
+                    <!-- Country -->
+                    <div class="detail-item">
+                        <div class="detail-label">
+                            <i class="bi bi-globe2"></i>
+                            Country
+                        </div>
+
+                        <div class="detail-value">
+                            <?php if (!empty($countryName) && $countryName !== 'N/A'): ?>
+                                <span class="country-badge">
+                                    <i class="bi bi-flag"></i>
+                                    <?= Html::encode($countryName) ?>
+                                </span>
+                            <?php else: ?>
+                                <span class="empty-badge">
+                                    <i class="bi bi-dash-circle"></i>
+                                    N/A
+                                </span>
+                            <?php endif; ?>
+                        </div>
+                    </div>
+
+                    <!-- ICAO -->
+                    <div class="detail-item">
+                        <div class="detail-label">
+                            <i class="bi bi-upc-scan"></i>
+                            ICAO
+                        </div>
+
+                        <div class="detail-value">
+                            <?php if (!empty($icao) && $icao !== 'N/A'): ?>
+                                <span class="icao-badge">
+                                    <i class="bi bi-code-square"></i>
+                                    <?= Html::encode($icao) ?>
+                                </span>
+                            <?php else: ?>
+                                <span class="empty-badge">
+                                    <i class="bi bi-dash-circle"></i>
+                                    N/A
+                                </span>
+                            <?php endif; ?>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+
+            <!-- Quick actions and summary -->
+            <div class="content-card">
+                <h2 class="section-title">
+                    <i class="bi bi-lightning-charge text-warning"></i>
+                    Quick Actions
+                </h2>
+
+                <div class="quick-actions">
+                    <?= Html::a(
+                        '<i class="bi bi-arrow-left-circle"></i> Back to Airports',
+                        $backUrl,
+                        ['class' => 'quick-action-btn qa-back']
+                    ) ?>
+                </div>
+
+                <h2 class="section-title" style="margin-top: 22px;">
+                    <i class="bi bi-card-checklist text-primary"></i>
+                    Summary
+                </h2>
+
+                <div class="summary-box">
+
+                    <!-- Summary airport ID -->
+                    <div class="summary-item">
+                        <div class="summary-label">
+                            <i class="bi bi-hash"></i>
+                            Airport ID
+                        </div>
+
+                        <div class="summary-value">
+                            <?= Html::encode($airportId) ?>
+                        </div>
+                    </div>
+
+                    <!-- Summary airport name -->
+                    <div class="summary-item">
+                        <div class="summary-label">
+                            <i class="bi bi-airplane"></i>
+                            Airport
+                        </div>
+
+                        <div class="summary-value">
+                            <?= Html::encode($airportName) ?>
+                        </div>
+                    </div>
+
+                    <!-- Summary city -->
+                    <div class="summary-item">
+                        <div class="summary-label">
+                            <i class="bi bi-buildings"></i>
+                            City
+                        </div>
+
+                        <div class="summary-value">
+                            <?= Html::encode($cityName) ?>
+                        </div>
+                    </div>
+
+                    <!-- Summary country -->
+                    <div class="summary-item">
+                        <div class="summary-label">
+                            <i class="bi bi-globe2"></i>
+                            Country
+                        </div>
+
+                        <div class="summary-value">
+                            <?= Html::encode($countryName) ?>
+                        </div>
+                    </div>
+
+                    <!-- Summary ICAO -->
+                    <div class="summary-item">
+                        <div class="summary-label">
+                            <i class="bi bi-upc-scan"></i>
+                            ICAO
+                        </div>
+
+                        <div class="summary-value">
+                            <?= Html::encode($icao) ?>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+
+        </div>
+
+    </div>
+</main>

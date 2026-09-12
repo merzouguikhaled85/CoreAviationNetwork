@@ -1,0 +1,1586 @@
+/*
+ * SHARED DETAIL SYSTEM
+ * Presentation contract for read-only operational pages. Business rules,
+ * permissions, routes and form submission remain owned by each Yii view.
+ */
+.can-detail-page {
+    --detail-primary: #1769e0;
+    --detail-cyan: #0b8fc7;
+    --detail-navy: #10233f;
+    --detail-muted: #687c98;
+    --detail-surface: #ffffff;
+    --detail-soft: #f6f9fd;
+    --detail-border: #d9e4f1;
+    --detail-radius: 18px;
+    --detail-shadow: 0 12px 30px rgba(18, 52, 92, .07);
+    min-height: 100vh;
+    overflow-x: clip;
+    color: var(--detail-navy);
+    background: #f4f7fb;
+}
+
+/* SHARED RESPONSIVE SAFETY: long operational values must never widen the page. */
+.can-detail-page :is(
+    .view-grid,
+    .application-grid,
+    .details-grid,
+    .detail-list,
+    .request-detail-grid,
+    .request-summary-strip,
+    .content-card,
+    .detail-item,
+    .reports-record-panel
+) {
+    min-width: 0;
+}
+
+.can-detail-page :is(
+    .detail-value,
+    .summary-value,
+    .request-info-box,
+    .reports-report-textarea,
+    .po-document-name,
+    .application-subtitle,
+    .subtitle-text
+) {
+    max-width: 100%;
+    overflow-wrap: anywhere;
+    word-break: break-word;
+}
+
+.can-detail-page textarea,
+.can-detail-page img,
+.can-detail-page video {
+    max-width: 100%;
+}
+
+/* SHARED DETAIL WIDTH: keep long operational records readable on wide screens. */
+.can-detail-page > .container-fluid,
+.can-detail-page > .container,
+.can-detail-page > .notification-pref-card,
+.can-detail-page > .dispute-container,
+.can-detail-page > .application-container {
+    width: 100%;
+    max-width: 1680px;
+    margin-inline: auto;
+}
+
+/* SHARED DETAIL HEADER: align title, context and actions across page families. */
+.can-detail-page .page-header-card,
+.can-detail-page .application-header,
+.can-detail-page .dispute-header,
+.can-detail-page .reports-header-card,
+.can-detail-page .notification-header {
+    border: 1px solid var(--detail-border) !important;
+    border-radius: var(--detail-radius) !important;
+    background: linear-gradient(135deg, #fff 0%, #eef5ff 100%) !important;
+    box-shadow: var(--detail-shadow) !important;
+}
+
+.can-detail-page .header-actions,
+.can-detail-page .application-actions,
+.can-detail-page .dispute-header-actions,
+.can-detail-page .reports-actions,
+.can-detail-page .navigation-actions,
+.can-detail-page .workflow-actions,
+.can-detail-page .header-action-group {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    flex-wrap: wrap;
+    gap: 9px !important;
+}
+
+/* SHARED DETAIL TITLES: consistent hierarchy without excessive bold typography. */
+.can-detail-page .dash-title,
+.can-detail-page .application-header h1,
+.can-detail-page .dispute-header h1,
+.can-detail-page .reports-title,
+.can-detail-page .notification-title {
+    margin: 0 !important;
+    color: var(--detail-navy) !important;
+    font-size: clamp(22px, 2vw, 28px) !important;
+    font-weight: 620 !important;
+    line-height: 1.2;
+}
+
+.can-detail-page .subtitle-text,
+.can-detail-page .application-subtitle,
+.can-detail-page .dispute-subtitle,
+.can-detail-page .reports-subtitle,
+.can-detail-page .notification-subtitle {
+    margin-top: 5px;
+    color: var(--detail-muted) !important;
+    font-size: 13px !important;
+    line-height: 1.45;
+}
+
+/* SHARED HEADER BUTTONS: sizing and states only; Yii still owns every route and method. */
+.can-detail-page .btn-page-action,
+.can-detail-page .application-action,
+.can-detail-page .detail-action-button,
+.can-detail-page .back-button,
+.can-detail-page .btn-back-requests {
+    min-height: 39px !important;
+    display: inline-flex !important;
+    align-items: center;
+    justify-content: center;
+    gap: 7px !important;
+    padding: 8px 13px !important;
+    border: 1px solid transparent !important;
+    border-radius: 10px !important;
+    color: #fff !important;
+    font-size: 12px !important;
+    font-weight: 600 !important;
+    line-height: 1.2;
+    text-decoration: none !important;
+    white-space: nowrap;
+    transition: transform .16s ease, box-shadow .16s ease, filter .16s ease !important;
+}
+
+.can-detail-page .header-actions .action-btn,
+.can-detail-page .mro-header-actions .action-btn {
+    width: 39px !important;
+    height: 39px !important;
+    min-width: 39px !important;
+    display: inline-grid !important;
+    place-items: center;
+    padding: 0 !important;
+    border: 1px solid transparent !important;
+    border-radius: 10px !important;
+    color: #fff !important;
+    text-decoration: none !important;
+}
+
+.can-detail-page .btn-page-action:hover,
+.can-detail-page .application-action:hover,
+.can-detail-page .detail-action-button:hover,
+.can-detail-page .back-button:hover,
+.can-detail-page .btn-back-requests:hover,
+.can-detail-page .header-actions .action-btn:hover,
+.can-detail-page .mro-header-actions .action-btn:hover {
+    color: #fff !important;
+    transform: translateY(-2px);
+    filter: brightness(1.04);
+    box-shadow: 0 7px 16px rgba(15, 48, 88, .17) !important;
+}
+
+/* SHARED DETAIL ACTION PALETTE: semantic appearance, with no business-rule changes. */
+.can-detail-page .btn-edit,
+.can-detail-page .btn-header-update,
+.can-detail-page .btn-request,
+.can-detail-page .btn-view-request,
+.can-detail-page .btn-view-answer,
+.can-detail-page .mro-action-view {
+    border-color: #0b8fc7 !important;
+    background: #0b8fc7 !important;
+}
+
+.can-detail-page .action-accept,
+.can-detail-page .btn-accept-po,
+.can-detail-page .btn-start-work,
+.can-detail-page .mro-action-work {
+    border-color: #16834a !important;
+    background: #16834a !important;
+}
+
+.can-detail-page .qa-reports,
+.can-detail-page .qa-feedback,
+.can-detail-page .btn-report,
+.can-detail-page .mro-action-report,
+.can-detail-page .mro-action-feedback {
+    border-color: #6554c0 !important;
+    background: #6554c0 !important;
+}
+
+.can-detail-page .action-contact,
+.can-detail-page .btn-contact-mro,
+.can-detail-page .mro-action-contact {
+    border-color: #53657d !important;
+    background: #53657d !important;
+}
+
+.can-detail-page .action-profile,
+.can-detail-page .qa-profile,
+.can-detail-page .btn-appointment {
+    border-color: #2563eb !important;
+    background: #2563eb !important;
+}
+
+.can-detail-page .btn-header-download {
+    border-color: #0f766e !important;
+    background: #0f766e !important;
+}
+
+.can-detail-page .action-deny,
+.can-detail-page .btn-delete-main,
+.can-detail-page .btn-header-delete,
+.can-detail-page .btn-cancel-application,
+.can-detail-page .mro-action-danger,
+.can-detail-page .detail-action-delete,
+.can-detail-page .detail-action-ban {
+    border-color: #dc3545 !important;
+    background: #dc3545 !important;
+}
+
+.can-detail-page .detail-action-reply,
+.can-detail-page .detail-action-unban {
+    border-color: #16834a !important;
+    background: #16834a !important;
+}
+
+.can-detail-page .btn-back,
+.can-detail-page .action-back,
+.can-detail-page .back-button,
+.can-detail-page .btn-back-requests {
+    color: #263c57 !important;
+    border-color: #cbd8e7 !important;
+    background: #fff !important;
+}
+
+.can-detail-page .btn-back:hover,
+.can-detail-page .action-back:hover,
+.can-detail-page .back-button:hover,
+.can-detail-page .btn-back-requests:hover {
+    color: #10233f !important;
+    border-color: #9eb5cf !important;
+    background: #f3f7fc !important;
+}
+
+/* SHARED DETAIL CARDS: common border, radius and elevation without changing content. */
+.can-detail-page .content-card,
+.can-detail-page .application-card,
+.can-detail-page .dispute-card,
+.can-detail-page .reports-details-card,
+.can-detail-page .reports-table-card,
+.can-detail-page .reports-record-panel,
+.can-detail-page .notification-body {
+    border-color: var(--detail-border) !important;
+    border-radius: var(--detail-radius) !important;
+    background-color: var(--detail-surface) !important;
+    box-shadow: 0 9px 25px rgba(18, 52, 92, .055) !important;
+}
+
+.can-detail-page .section-title,
+.can-detail-page .reports-details-title,
+.can-detail-page .reports-record-panel-title {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: var(--detail-navy) !important;
+    line-height: 1.35;
+}
+
+.can-detail-page .section-title i,
+.can-detail-page .reports-details-title i,
+.can-detail-page .reports-record-panel-title i {
+    color: var(--detail-cyan);
+}
+
+/* SHARED DETAIL FIELDS: neutral typography and semantic color accents. */
+.can-detail-page .detail-list,
+.can-detail-page .detail-grid,
+.can-detail-page .request-detail-grid,
+.can-detail-page .reports-details-grid,
+.can-detail-page .summary-grid,
+.can-detail-page .request-grid,
+.can-detail-page .party-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 11px !important;
+}
+
+.can-detail-page .request-date-grid,
+.can-detail-page .reports-details-dates {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 11px !important;
+}
+
+.can-detail-page .detail-item,
+.can-detail-page .detail-box,
+.can-detail-page .request-detail-item,
+.can-detail-page .reports-detail-item,
+.can-detail-page .info-box,
+.can-detail-page .party-card,
+.can-detail-page .text-panel,
+.can-detail-page .po-panel {
+    min-width: 0;
+    padding: 13px !important;
+    border-color: #dce6f1 !important;
+    border-radius: 12px !important;
+    background: var(--detail-soft) !important;
+}
+
+.can-detail-page .detail-item.full-width,
+.can-detail-page .detail-box.full-width,
+.can-detail-page .request-detail-item.wide,
+.can-detail-page .request-wide {
+    grid-column: 1 / -1 !important;
+}
+
+.can-detail-page .detail-label,
+.can-detail-page .request-detail-label,
+.can-detail-page .reports-detail-label,
+.can-detail-page .info-label {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-bottom: 6px;
+    color: #657b96 !important;
+    font-size: 10px !important;
+    font-weight: 550 !important;
+    letter-spacing: .035em;
+    line-height: 1.35;
+    text-transform: uppercase;
+}
+
+.can-detail-page .detail-label i,
+.can-detail-page .request-detail-label i,
+.can-detail-page .reports-detail-label i,
+.can-detail-page .info-label i {
+    color: var(--detail-cyan) !important;
+}
+
+.can-detail-page .detail-value,
+.can-detail-page .request-detail-value,
+.can-detail-page .reports-detail-value,
+.can-detail-page .info-value {
+    color: var(--detail-navy) !important;
+    font-size: 13px !important;
+    font-weight: 450 !important;
+    line-height: 1.45;
+    overflow-wrap: anywhere;
+}
+
+/* SHARED OPERATIONAL DATES: ETA and ETD use one balanced maintenance-window row. */
+.can-detail-page .request-date-grid > *,
+.can-detail-page .reports-details-dates > * {
+    min-width: 0;
+    border: 1px solid #dce6f1 !important;
+    border-radius: 12px !important;
+    background: linear-gradient(90deg, #eef6ff, #f4fbf8) !important;
+}
+
+/* SHARED READ-ONLY TEXT: long notes remain visible without appearing editable. */
+.can-detail-page textarea[readonly],
+.can-detail-page .request-info-box,
+.can-detail-page .text-panel {
+    width: 100%;
+    color: #334e6c !important;
+    border: 1px dashed #bfd0e3 !important;
+    border-radius: 11px !important;
+    background: #fbfdff !important;
+    font-weight: 400 !important;
+    line-height: 1.55;
+    overflow-wrap: anywhere;
+}
+
+.can-detail-page textarea[readonly] {
+    min-height: 96px;
+    resize: vertical;
+}
+
+/* SHARED DETAIL STATUS: one compact visual language for operational states. */
+.can-detail-page .status-badge,
+.can-detail-page .status-pill,
+.can-detail-page .request-status-pill,
+.can-detail-page .reports-request-status {
+    min-height: 28px;
+    display: inline-flex !important;
+    align-items: center;
+    gap: 6px;
+    padding: 5px 10px !important;
+    border: 1px solid #bae6fd !important;
+    border-radius: 999px !important;
+    color: #075985 !important;
+    background: #e0f2fe !important;
+    font-size: 11px !important;
+    font-weight: 600 !important;
+    line-height: 1.2;
+    white-space: nowrap;
+}
+
+.can-detail-page .status-badge i,
+.can-detail-page .status-pill i,
+.can-detail-page .request-status-pill i,
+.can-detail-page .reports-request-status i {
+    font-size: 8px;
+}
+
+.can-detail-page .status-badge.status-answered,
+.can-detail-page .status-badge.status-confirmed,
+.can-detail-page .status-badge.status-work_accepted,
+.can-detail-page .status-pill.resolved {
+    color: #166534 !important;
+    border-color: #bbf7d0 !important;
+    background: #dcfce7 !important;
+}
+
+.can-detail-page .status-badge.status-po_loaded,
+.can-detail-page .status-badge.status-waiting_response,
+.can-detail-page .status-badge.status-pending {
+    color: #92400e !important;
+    border-color: #fde68a !important;
+    background: #fef3c7 !important;
+}
+
+.can-detail-page .status-badge.status-update_request,
+.can-detail-page .status-badge.status-update_request_accepted {
+    color: #5b21b6 !important;
+    border-color: #ddd6fe !important;
+    background: #ede9fe !important;
+}
+
+.can-detail-page .status-badge.status-work_started,
+.can-detail-page .status-badge.status-report_submitted {
+    color: #1e40af !important;
+    border-color: #bfdbfe !important;
+    background: #dbeafe !important;
+}
+
+.can-detail-page .status-badge.status-canceled,
+.can-detail-page .status-badge.status-cancelled {
+    color: #991b1b !important;
+    border-color: #fecaca !important;
+    background: #fee2e2 !important;
+}
+
+.can-detail-page .status-badge.status-closed {
+    color: #475569 !important;
+    border-color: #cbd5e1 !important;
+    background: #f1f5f9 !important;
+}
+
+/* SHARED DETAIL ALERTS: flash feedback is clear without overpowering the page. */
+.can-detail-page .alert {
+    padding: 11px 13px !important;
+    border-width: 1px !important;
+    border-radius: 11px !important;
+    font-size: 12px;
+    font-weight: 450;
+    line-height: 1.45;
+    box-shadow: 0 5px 14px rgba(18, 52, 92, .05);
+}
+
+/* SHARED DOCUMENT ACTIONS: keep view and download controls grouped and scannable. */
+.can-detail-page .attachment-card,
+.can-detail-page .attachment-badge,
+.can-detail-page .po-document,
+.can-detail-page .crs-document-box,
+.can-detail-page .reports-attachment-card,
+.can-detail-page .reports-attachment-missing {
+    min-width: 0;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 12px !important;
+    border: 1px solid #d8e5f2 !important;
+    border-radius: 12px !important;
+    background: #f8fbff !important;
+}
+
+.can-detail-page .attachment-resource-copy,
+.can-detail-page .attachment-name,
+.can-detail-page .po-document-name,
+.can-detail-page .crs-document-name,
+.can-detail-page .reports-attachment-copy {
+    min-width: 0;
+    overflow-wrap: anywhere;
+}
+
+.can-detail-page .attachment-resource-title,
+.can-detail-page .attachment-name,
+.can-detail-page .po-document-name,
+.can-detail-page .crs-document-name,
+.can-detail-page .reports-attachment-copy strong {
+    color: #173d69 !important;
+    font-weight: 600 !important;
+}
+
+.can-detail-page .attachment-resource-meta,
+.can-detail-page .reports-attachment-copy span,
+.can-detail-page .reports-attachment-copy small {
+    color: var(--detail-muted) !important;
+    font-weight: 400 !important;
+}
+
+.can-detail-page .document-actions,
+.can-detail-page .po-actions,
+.can-detail-page .po-document-actions,
+.can-detail-page .reports-attachment-actions,
+.can-detail-page .crs-modal-actions {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 9px !important;
+}
+
+.can-detail-page .attachment-link,
+.can-detail-page .po-link,
+.can-detail-page .po-document-action,
+.can-detail-page .document-view-badge,
+.can-detail-page .document-badge,
+.can-detail-page .request-attachment,
+.can-detail-page .po-button,
+.can-detail-page .reports-attachment-actions .reports-btn {
+    min-height: 36px;
+    display: inline-flex !important;
+    align-items: center;
+    justify-content: center;
+    gap: 7px;
+    padding: 7px 11px !important;
+    border: 1px solid transparent !important;
+    border-radius: 9px !important;
+    color: #fff !important;
+    font-size: 11px !important;
+    font-weight: 600 !important;
+    line-height: 1.2;
+    text-decoration: none !important;
+    white-space: nowrap;
+    transition: transform .16s ease, box-shadow .16s ease, filter .16s ease !important;
+}
+
+.can-detail-page .attachment-link,
+.can-detail-page .po-view,
+.can-detail-page .po-document-action:not(.download),
+.can-detail-page .document-view-badge,
+.can-detail-page .request-attachment,
+.can-detail-page .po-button,
+.can-detail-page .reports-btn-open {
+    border-color: #0b8fc7 !important;
+    background: #0b8fc7 !important;
+}
+
+.can-detail-page .po-download,
+.can-detail-page .po-document-action.download,
+.can-detail-page .document-badge,
+.can-detail-page .reports-btn-download {
+    border-color: #0f766e !important;
+    background: #0f766e !important;
+}
+
+.can-detail-page .attachment-link:hover,
+.can-detail-page .po-link:hover,
+.can-detail-page .po-document-action:hover,
+.can-detail-page .document-view-badge:hover,
+.can-detail-page .document-badge:hover,
+.can-detail-page .request-attachment:hover,
+.can-detail-page .po-button:hover,
+.can-detail-page .reports-attachment-actions .reports-btn:hover {
+    color: #fff !important;
+    transform: translateY(-1px);
+    filter: brightness(1.04);
+    box-shadow: 0 6px 14px rgba(15, 48, 88, .15) !important;
+}
+
+/* SHARED DOCUMENT EMPTY STATE: unavailable files remain informative, never actionable. */
+.can-detail-page .attachment-badge.is-disabled,
+.can-detail-page .empty-badge,
+.can-detail-page .reports-attachment-missing,
+.can-detail-page .request-missing {
+    color: #6f8095 !important;
+    border: 1px dashed #cbd7e4 !important;
+    background: #f5f7fa !important;
+    box-shadow: none !important;
+}
+
+.can-detail-page .attachment-badge.is-disabled,
+.can-detail-page .empty-badge {
+    cursor: default !important;
+}
+
+/* SHARED DETAIL TABLES: PO, CRS and ratings follow the same density and hierarchy. */
+.can-detail-page .table-responsive-custom,
+.can-detail-page .table-responsive-pro {
+    width: 100%;
+    overflow-x: auto;
+    border: 1px solid #dce6f1 !important;
+    border-radius: 13px !important;
+    background: #fff;
+    scrollbar-width: thin;
+    scrollbar-color: #9bb4d2 transparent;
+}
+
+.can-detail-page .requests-table,
+.can-detail-page .req-table,
+.can-detail-page .rating-table,
+.can-detail-page .po-document-table {
+    width: 100% !important;
+    margin: 0 !important;
+    border-collapse: separate !important;
+    border-spacing: 0 !important;
+}
+
+.can-detail-page .requests-table thead th,
+.can-detail-page .req-table thead th,
+.can-detail-page .rating-table thead th,
+.can-detail-page .po-document-table thead th {
+    padding: 12px !important;
+    color: #425872 !important;
+    border: 0 !important;
+    border-bottom: 1px solid #d5e0ec !important;
+    background: #edf3f9 !important;
+    font-size: 10.5px !important;
+    font-weight: 650 !important;
+    letter-spacing: .045em;
+    text-transform: uppercase;
+    white-space: nowrap;
+}
+
+.can-detail-page .requests-table tbody td,
+.can-detail-page .req-table tbody td,
+.can-detail-page .rating-table tbody td,
+.can-detail-page .po-document-table tbody td {
+    padding: 12px !important;
+    color: var(--detail-navy) !important;
+    border: 0 !important;
+    border-bottom: 1px solid #e3eaf2 !important;
+    font-size: 12px;
+    font-weight: 450;
+    vertical-align: middle !important;
+}
+
+.can-detail-page .requests-table tbody tr:last-child td,
+.can-detail-page .req-table tbody tr:last-child td,
+.can-detail-page .rating-table tbody tr:last-child td,
+.can-detail-page .po-document-table tbody tr:last-child td {
+    border-bottom: 0 !important;
+}
+
+.can-detail-page .requests-table tbody tr,
+.can-detail-page .req-table tbody tr,
+.can-detail-page .rating-table tbody tr,
+.can-detail-page .po-document-table tbody tr {
+    transition: background-color .16s ease;
+}
+
+.can-detail-page .requests-table tbody tr:hover td,
+.can-detail-page .req-table tbody tr:hover td,
+.can-detail-page .rating-table tbody tr:hover td,
+.can-detail-page .po-document-table tbody tr:hover td {
+    background: #f7fbff !important;
+}
+
+.can-detail-page .req-table .report-column {
+    max-width: 360px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.can-detail-page .req-table .actions,
+.can-detail-page .po-document-table .po-document-actions {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 8px !important;
+}
+
+.can-detail-page .table-wrap .btn-action,
+.can-detail-page .req-table .btn-action {
+    min-height: 36px;
+    display: inline-flex !important;
+    align-items: center;
+    justify-content: center;
+    gap: 7px;
+    padding: 7px 11px !important;
+    border-radius: 9px !important;
+    font-size: 11px !important;
+    font-weight: 600 !important;
+    white-space: nowrap;
+}
+
+/* SHARED REPORT HISTORY: cards retain clear separation between report, document and action. */
+.can-detail-page .reports-record {
+    overflow: hidden;
+    border: 1px solid #d9e4f1 !important;
+    border-radius: 14px !important;
+    background: #fff !important;
+    box-shadow: 0 7px 20px rgba(18, 52, 92, .05) !important;
+}
+
+.can-detail-page .reports-record-head {
+    padding: 12px 14px !important;
+    border-bottom: 1px solid #e1e9f2 !important;
+    background: #f6f9fd !important;
+}
+
+.can-detail-page .reports-record-body {
+    gap: 12px !important;
+    padding: 14px !important;
+}
+
+/* SHARED OPERATIONAL SUMMARY: compact context remains separate from detailed content. */
+.can-detail-page .request-summary-strip,
+.can-detail-page .request-summary-card {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 10px !important;
+    padding: 12px !important;
+    border: 1px solid #d9e4f1 !important;
+    border-radius: 14px !important;
+    background: linear-gradient(135deg, #fff, #f2f7fd) !important;
+    box-shadow: 0 7px 20px rgba(18, 52, 92, .05) !important;
+}
+
+.can-detail-page .request-summary-strip .detail-item,
+.can-detail-page .request-summary-card {
+    min-width: 0;
+}
+
+.can-detail-page .meta-pill,
+.can-detail-page .reports-request-pill,
+.crs-request-pill,
+.feedback-stepper-note,
+.reports-stepper-note,
+.crs-stepper-note {
+    min-height: 28px;
+    display: inline-flex !important;
+    align-items: center;
+    gap: 6px;
+    padding: 5px 10px !important;
+    border: 1px solid #cbdcf0 !important;
+    border-radius: 999px !important;
+    color: #36546f !important;
+    background: #f5f9fe !important;
+    font-size: 10.5px !important;
+    font-weight: 550 !important;
+    line-height: 1.2;
+    white-space: nowrap;
+}
+
+/* SHARED WORKFLOW STEPPER: state classes remain calculated by each existing view. */
+.reports-stepper-card,
+.crs-stepper-card,
+.feedback-stepper-card {
+    --shared-step-circle: 38px;
+    --shared-step-width: 118px;
+    /* SHARED STEPPER GEOMETRY: reuse the variables expected by existing connectors. */
+    --step-circle: var(--shared-step-circle) !important;
+    --step-width: var(--shared-step-width) !important;
+    --step-icon: 14px !important;
+    padding: 14px !important;
+    border: 1px solid #d9e4f1 !important;
+    border-radius: 15px !important;
+    background: #fff !important;
+    box-shadow: 0 8px 22px rgba(18, 52, 92, .055) !important;
+}
+
+.reports-stepper-head,
+.crs-stepper-head,
+.feedback-stepper-head {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    gap: 12px !important;
+    margin-bottom: 13px !important;
+}
+
+.reports-stepper-title,
+.crs-stepper-title,
+.feedback-stepper-title {
+    display: inline-flex !important;
+    align-items: center;
+    gap: 7px;
+    margin: 0 !important;
+    color: #173d69 !important;
+    font-size: 13px !important;
+    font-weight: 600 !important;
+}
+
+.reports-stepper-title i,
+.crs-stepper-title i,
+.feedback-stepper-title i {
+    color: #2563eb !important;
+}
+
+.reports-stepper-scroll,
+.crs-stepper-scroll,
+.feedback-stepper-scroll {
+    overflow-x: auto !important;
+    padding: 5px 2px 9px !important;
+    scrollbar-width: thin;
+    scrollbar-color: #9bb4d2 transparent;
+    overscroll-behavior-inline: contain;
+}
+
+.reports-stepper,
+.crs-stepper,
+.feedback-stepper {
+    display: grid !important;
+    grid-template-columns: repeat(8, minmax(var(--shared-step-width), 1fr)) !important;
+    min-width: calc(var(--shared-step-width) * 8) !important;
+}
+
+.reports-step,
+.crs-step,
+.feedback-step {
+    position: relative;
+    min-width: var(--shared-step-width) !important;
+    display: grid !important;
+    justify-items: center;
+    gap: 7px;
+    text-align: center;
+}
+
+.reports-step-circle,
+.crs-step-circle,
+.feedback-step-circle {
+    position: relative;
+    z-index: 2;
+    width: var(--shared-step-circle) !important;
+    height: var(--shared-step-circle) !important;
+    display: grid !important;
+    place-items: center;
+    border: 2px solid #d5e0ec !important;
+    border-radius: 50% !important;
+    color: #8092aa !important;
+    background: #f4f7fb !important;
+    font-size: 14px !important;
+    box-shadow: none !important;
+}
+
+.reports-step-label,
+.crs-step-label,
+.feedback-step-label {
+    max-width: 108px;
+    color: #73849a !important;
+    font-size: 9.5px !important;
+    font-weight: 500 !important;
+    line-height: 1.3;
+}
+
+.reports-step.reports-step-done .reports-step-circle,
+.crs-step.crs-step-done .crs-step-circle,
+.feedback-step.is-done .feedback-step-circle {
+    color: #fff !important;
+    border-color: #20b968 !important;
+    background: #20b968 !important;
+}
+
+.reports-step.reports-step-done .reports-step-label,
+.crs-step.crs-step-done .crs-step-label,
+.feedback-step.is-done .feedback-step-label {
+    color: #16834a !important;
+}
+
+.reports-step.reports-step-active .reports-step-circle,
+.crs-step.crs-step-active .crs-step-circle,
+.feedback-step.is-active .feedback-step-circle {
+    color: #fff !important;
+    border-color: #2563eb !important;
+    background: #2563eb !important;
+    box-shadow: 0 0 0 6px rgba(37, 99, 235, .12) !important;
+}
+
+.reports-step.reports-step-active .reports-step-label,
+.crs-step.crs-step-active .crs-step-label,
+.feedback-step.is-active .feedback-step-label {
+    color: #1d4ed8 !important;
+    font-weight: 600 !important;
+}
+
+/* SHARED STEPPER CONNECTORS: completed paths are green; remaining paths stay neutral. */
+.reports-step::before,
+.crs-step::before,
+.feedback-step::before {
+    height: 2px !important;
+    background: #dbe4ee !important;
+}
+
+.reports-step.reports-step-done::before,
+.reports-step.reports-step-active::before,
+.crs-step.crs-step-done::before,
+.crs-step.crs-step-active::before,
+.feedback-step.is-done::before,
+.feedback-step.is-active::before {
+    background: #20b968 !important;
+}
+
+/* SHARED ADVERTISING PANEL: one responsive frame for every detail page carousel. */
+.can-detail-page .can-detail-ad {
+    position: relative !important;
+    isolation: isolate;
+    align-self: start !important;
+    width: 100% !important;
+    min-width: 0;
+    max-width: 100%;
+    aspect-ratio: 16 / 9 !important;
+    max-height: 460px !important;
+    overflow: hidden !important;
+    border: 1px solid rgba(148, 180, 214, .48) !important;
+    border-radius: 16px !important;
+    background:
+        radial-gradient(circle at 50% 45%, rgba(19, 117, 190, .24), transparent 62%),
+        #061a31 !important;
+    box-shadow: 0 12px 30px rgba(15, 23, 42, .12) !important;
+}
+
+.can-detail-page .can-detail-ad :is(
+    .answer-ad-slider,
+    .feedback-ad-slider,
+    .po-ad-slider,
+    .answer-ad-slide,
+    .feedback-ad-slide,
+    .po-ad-slide
+) {
+    height: 100% !important;
+}
+
+.can-detail-page .can-detail-ad :is(
+    .answer-ad-slide,
+    .feedback-ad-slide,
+    .po-ad-slide
+) {
+    isolation: isolate;
+    background: #061a31 !important;
+}
+
+/* ADAPTIVE MEDIA BACKDROP: fills unused space while the complete advert remains visible. */
+.can-detail-page .can-detail-ad .can-detail-ad-backdrop {
+    position: absolute;
+    inset: -24px;
+    z-index: 0;
+    background-position: center;
+    background-size: cover;
+    filter: blur(18px) brightness(.46) saturate(1.12);
+    opacity: .78;
+    transform: scale(1.1);
+}
+
+.can-detail-page .can-detail-ad :is(
+    .answer-ad-media,
+    .feedback-ad-media,
+    .po-ad-media
+) {
+    z-index: 1 !important;
+    object-fit: contain !important;
+    object-position: center !important;
+    background: transparent !important;
+}
+
+.can-detail-page .can-detail-ad :is(
+    .answer-ad-sponsored,
+    .answer-ad-counter,
+    .feedback-ad-sponsored,
+    .feedback-ad-counter,
+    .po-ad-sponsored,
+    .po-ad-counter
+) {
+    top: 14px !important;
+    min-height: 28px !important;
+    padding: 0 10px !important;
+    border: 1px solid rgba(255, 255, 255, .34) !important;
+    border-radius: 999px !important;
+    background: rgba(5, 23, 43, .68) !important;
+    font-size: 9px !important;
+    font-weight: 600 !important;
+    letter-spacing: .045em;
+    backdrop-filter: blur(8px);
+}
+
+.can-detail-page .can-detail-ad :is(
+    .answer-ad-nav,
+    .feedback-ad-nav,
+    .po-ad-nav
+) {
+    width: 38px !important;
+    height: 38px !important;
+    border: 1px solid rgba(255, 255, 255, .62) !important;
+    color: #0b3768 !important;
+    background: rgba(255, 255, 255, .92) !important;
+    box-shadow: 0 6px 16px rgba(3, 13, 28, .18);
+    transition: transform .18s ease, background .18s ease, box-shadow .18s ease;
+}
+
+.can-detail-page .can-detail-ad :is(
+    .answer-ad-nav,
+    .feedback-ad-nav,
+    .po-ad-nav
+):hover {
+    background: #fff !important;
+    box-shadow: 0 9px 20px rgba(3, 13, 28, .25);
+    transform: translateY(-50%) scale(1.05) !important;
+}
+
+.can-detail-page .can-detail-ad :is(
+    .answer-ad-dots,
+    .feedback-ad-dots,
+    .po-ad-dots
+) {
+    bottom: 14px !important;
+    gap: 6px !important;
+}
+
+.can-detail-page .can-detail-ad :is(
+    .answer-ad-dot,
+    .feedback-ad-dot,
+    .po-ad-dot
+) {
+    width: 7px !important;
+    height: 7px !important;
+    border-radius: 999px !important;
+    background: rgba(255, 255, 255, .50) !important;
+    transition: width .2s ease, background .2s ease;
+}
+
+.can-detail-page .can-detail-ad :is(
+    .answer-ad-dot,
+    .feedback-ad-dot,
+    .po-ad-dot
+).is-active {
+    width: 24px !important;
+    background: #fff !important;
+}
+
+.can-detail-page .can-detail-ad :is(
+    .answer-ad-empty,
+    .answer-ad-error,
+    .feedback-ad-empty,
+    .feedback-ad-error,
+    .po-ad-empty,
+    .po-ad-error
+) {
+    min-height: 100% !important;
+    padding: 24px !important;
+}
+
+.can-detail-page a:focus-visible,
+.can-detail-page button:focus-visible,
+.can-detail-page [tabindex]:focus-visible {
+    outline: 3px solid rgba(37, 125, 236, .24);
+    outline-offset: 2px;
+}
+
+/* SHARED DETAIL RESPONSIVE: stack only presentation groups, never business actions. */
+@media (max-width: 991.98px) {
+    .can-detail-page .can-detail-ad {
+        justify-self: center;
+        max-width: 760px !important;
+        max-height: none !important;
+    }
+
+    .can-detail-page .view-grid,
+    .can-detail-page .application-grid,
+    .can-detail-page .details-grid,
+    .can-detail-page .summary-grid,
+    .can-detail-page .reports-details-grid,
+    .can-detail-page .request-detail-grid {
+        grid-template-columns: 1fr !important;
+    }
+
+    .can-detail-page .request-date-grid,
+    .can-detail-page .reports-details-dates {
+        grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    }
+
+    .can-detail-page .request-summary-strip {
+        grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    }
+
+    .can-detail-page .page-header-card,
+    .can-detail-page .application-header,
+    .can-detail-page .dispute-header,
+    .can-detail-page .reports-header-card {
+        align-items: flex-start !important;
+    }
+}
+
+@media (max-width: 575.98px) {
+    .can-detail-page .can-detail-ad {
+        width: 100% !important;
+        border-radius: 13px !important;
+    }
+
+    .can-detail-page .can-detail-ad :is(
+        .answer-ad-nav,
+        .feedback-ad-nav,
+        .po-ad-nav
+    ) {
+        width: 34px !important;
+        height: 34px !important;
+    }
+
+    .can-detail-page .page-header-card,
+    .can-detail-page .application-header,
+    .can-detail-page .dispute-header,
+    .can-detail-page .reports-header-card,
+    .can-detail-page .notification-header {
+        padding: 16px !important;
+        border-radius: 14px !important;
+    }
+
+    .can-detail-page .header-actions,
+    .can-detail-page .application-actions,
+    .can-detail-page .dispute-header-actions,
+    .can-detail-page .reports-actions,
+    .can-detail-page .navigation-actions,
+    .can-detail-page .workflow-actions,
+    .can-detail-page .header-action-group {
+        width: 100%;
+        justify-content: flex-start;
+    }
+
+    .can-detail-page .header-actions > *,
+    .can-detail-page .application-actions > *,
+    .can-detail-page .dispute-header-actions > *,
+    .can-detail-page .reports-actions > *,
+    .can-detail-page .navigation-actions > *,
+    .can-detail-page .workflow-actions > *,
+    .can-detail-page .header-action-group > * {
+        flex: 1 1 132px;
+        justify-content: center;
+    }
+
+    .can-detail-page .content-card,
+    .can-detail-page .application-card,
+    .can-detail-page .dispute-card,
+    .can-detail-page .reports-details-card,
+    .can-detail-page .reports-table-card,
+    .can-detail-page .notification-body {
+        border-radius: 14px !important;
+    }
+
+    .can-detail-page .detail-list,
+    .can-detail-page .detail-grid,
+    .can-detail-page .summary-grid,
+    .can-detail-page .request-grid,
+    .can-detail-page .party-grid {
+        grid-template-columns: 1fr !important;
+    }
+
+    .can-detail-page .request-date-grid,
+    .can-detail-page .reports-details-dates {
+        grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+        gap: 7px !important;
+    }
+
+    .can-detail-page .request-date-grid > *,
+    .can-detail-page .reports-details-dates > * {
+        padding: 10px !important;
+    }
+
+    .can-detail-page .request-summary-strip {
+        grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+        gap: 7px !important;
+        padding: 9px !important;
+    }
+
+    .reports-stepper-card,
+    .crs-stepper-card,
+    .feedback-stepper-card {
+        --shared-step-circle: 34px;
+        --shared-step-width: 106px;
+        padding: 11px !important;
+    }
+
+    .reports-stepper-head,
+    .crs-stepper-head,
+    .feedback-stepper-head {
+        align-items: flex-start !important;
+        flex-direction: column !important;
+        gap: 8px !important;
+    }
+
+    .can-detail-page .attachment-card,
+    .can-detail-page .po-document,
+    .can-detail-page .crs-document-box,
+    .can-detail-page .reports-attachment-card,
+    .can-detail-page .reports-attachment-missing {
+        align-items: stretch;
+        flex-direction: column;
+    }
+
+    .can-detail-page .document-actions,
+    .can-detail-page .po-actions,
+    .can-detail-page .po-document-actions,
+    .can-detail-page .reports-attachment-actions {
+        width: 100%;
+    }
+
+    .can-detail-page .document-actions > *,
+    .can-detail-page .po-actions > *,
+    .can-detail-page .po-document-actions > *,
+    .can-detail-page .reports-attachment-actions > * {
+        flex: 1 1 auto;
+    }
+}
+
+/* SHARED INTERNAL TABLE MOBILE: columns become labelled cards, not compressed cells. */
+@media (max-width: 767.98px) {
+    .can-detail-page .table-responsive-custom,
+    .can-detail-page .table-responsive-pro {
+        overflow: visible !important;
+        border: 0 !important;
+        background: transparent !important;
+    }
+
+    .can-detail-page .requests-table,
+    .can-detail-page .requests-table tbody,
+    .can-detail-page .req-table,
+    .can-detail-page .req-table tbody,
+    .can-detail-page .rating-table,
+    .can-detail-page .rating-table tbody,
+    .can-detail-page .po-document-table,
+    .can-detail-page .po-document-table tbody {
+        display: block !important;
+        width: 100% !important;
+        min-width: 0 !important;
+    }
+
+    .can-detail-page .requests-table thead,
+    .can-detail-page .req-table thead,
+    .can-detail-page .rating-table thead,
+    .can-detail-page .po-document-table thead {
+        display: none !important;
+    }
+
+    .can-detail-page .requests-table tbody tr,
+    .can-detail-page .req-table tbody tr,
+    .can-detail-page .rating-table tbody tr,
+    .can-detail-page .po-document-table tbody tr {
+        display: block !important;
+        overflow: hidden;
+        margin-bottom: 13px;
+        border: 1px solid #d9e4f1 !important;
+        border-radius: 13px !important;
+        background: #fff !important;
+    }
+
+    .can-detail-page .requests-table tbody td,
+    .can-detail-page .req-table tbody td,
+    .can-detail-page .rating-table tbody td,
+    .can-detail-page .po-document-table tbody td {
+        width: 100% !important;
+        max-width: none !important;
+        display: grid !important;
+        grid-template-columns: minmax(108px, 34%) minmax(0, 1fr);
+        align-items: center !important;
+        gap: 10px;
+        white-space: normal !important;
+    }
+
+    .can-detail-page .requests-table tbody td::before,
+    .can-detail-page .req-table tbody td::before,
+    .can-detail-page .rating-table tbody td::before,
+    .can-detail-page .po-document-table tbody td::before {
+        align-self: start;
+        color: #657b96;
+        content: attr(data-label);
+        font-size: 9.5px;
+        font-weight: 650;
+        letter-spacing: .04em;
+        text-transform: uppercase;
+    }
+
+    .can-detail-page .requests-table tbody td[colspan],
+    .can-detail-page .req-table tbody td[colspan],
+    .can-detail-page .rating-table tbody td[colspan],
+    .can-detail-page .po-document-table tbody td[colspan] {
+        display: block !important;
+    }
+
+    .can-detail-page .requests-table tbody td[colspan]::before,
+    .can-detail-page .req-table tbody td[colspan]::before,
+    .can-detail-page .rating-table tbody td[colspan]::before,
+    .can-detail-page .po-document-table tbody td[colspan]::before {
+        display: none;
+    }
+
+    .can-detail-page .req-table .report-column {
+        overflow: visible;
+        text-overflow: clip;
+        white-space: normal;
+    }
+
+    .can-detail-page .reports-record-head,
+    .can-detail-page .reports-record-body {
+        align-items: stretch !important;
+        flex-direction: column !important;
+        grid-template-columns: 1fr !important;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .can-detail-page *,
+    .can-detail-page *::before,
+    .can-detail-page *::after {
+        scroll-behavior: auto !important;
+        transition-duration: .01ms !important;
+        animation-duration: .01ms !important;
+        animation-iteration-count: 1 !important;
+    }
+}
+
+/* SHARED DETAIL CONFIRMATION: SweetAlert is rendered outside the page root. */
+.swal2-popup.can-detail-swal {
+    width: min(360px, calc(100vw - 24px)) !important;
+    padding: 20px !important;
+    border: 1px solid #d7e3ef !important;
+    border-radius: 15px !important;
+    box-shadow: 0 22px 60px rgba(7, 31, 61, .22) !important;
+}
+
+.can-detail-swal .swal2-icon {
+    width: 58px !important;
+    height: 58px !important;
+    margin: 4px auto 12px !important;
+}
+
+.can-detail-swal .swal2-title {
+    padding: 0 !important;
+    color: #10233f !important;
+    font-size: 20px !important;
+    font-weight: 650 !important;
+    line-height: 1.25;
+}
+
+.can-detail-swal .swal2-html-container {
+    margin: 9px 0 0 !important;
+    color: #4c6079 !important;
+    font-size: 12.5px !important;
+    font-weight: 500 !important;
+    line-height: 1.45;
+}
+
+/*
+ * HISTORIQUE DE PRIORITÉ : panneau repliable commun à la fiche Request. La
+ * chronologie reste secondaire par rapport aux informations opérationnelles et
+ * les couleurs reprennent la priorité, jamais le statut du workflow.
+ */
+.can-detail-page .priority-history-panel {
+    margin-top: 16px;
+    border: 1px solid #d9e5f1;
+    border-radius: 13px;
+    background: #fbfdff;
+    overflow: hidden;
+}
+
+.can-detail-page .priority-history-summary {
+    min-height: 64px;
+    display: flex;
+    align-items: center;
+    gap: 11px;
+    padding: 12px 14px;
+    color: #183452;
+    cursor: pointer;
+    list-style: none;
+}
+
+.can-detail-page .priority-history-summary::-webkit-details-marker {
+    display: none;
+}
+
+.can-detail-page .priority-history-summary-icon {
+    width: 36px;
+    height: 36px;
+    flex: 0 0 36px;
+    display: grid;
+    place-items: center;
+    border-radius: 10px;
+    color: #0b82bd;
+    background: #e8f6fd;
+}
+
+.can-detail-page .priority-history-summary-copy {
+    min-width: 0;
+    display: grid;
+    gap: 2px;
+    font-size: 13px;
+    font-weight: 600;
+}
+
+.can-detail-page .priority-history-summary-copy small {
+    color: #718399;
+    font-size: 11px;
+    font-weight: 400;
+}
+
+.can-detail-page .priority-history-chevron {
+    margin-left: auto;
+    color: #6d8198;
+    transition: transform .18s ease;
+}
+
+.can-detail-page .priority-history-panel[open] .priority-history-chevron {
+    transform: rotate(180deg);
+}
+
+.can-detail-page .priority-history-content {
+    padding: 2px 14px 14px;
+    border-top: 1px solid #e4ebf3;
+}
+
+.can-detail-page .priority-history-timeline {
+    display: grid;
+}
+
+.can-detail-page .priority-history-entry {
+    position: relative;
+    display: grid;
+    grid-template-columns: 34px minmax(0, 1fr);
+    gap: 11px;
+    padding: 14px 0;
+}
+
+.can-detail-page .priority-history-entry:not(:last-child) {
+    border-bottom: 1px solid #e7edf4;
+}
+
+.can-detail-page .priority-history-marker {
+    width: 31px;
+    height: 31px;
+    display: grid;
+    place-items: center;
+    border-radius: 9px;
+    color: #0878ae;
+    background: #e6f6fe;
+}
+
+.can-detail-page .priority-history-marker.priority-aog {
+    color: #b42318;
+    background: #fee2e2;
+}
+
+.can-detail-page .priority-history-marker.priority-urgent {
+    color: #a65708;
+    background: #fef3c7;
+}
+
+.can-detail-page .priority-history-entry-body {
+    min-width: 0;
+    display: grid;
+    gap: 7px;
+}
+
+.can-detail-page .priority-history-entry-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 14px;
+}
+
+.can-detail-page .priority-history-transition {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    color: #263f5d;
+    font-size: 12px;
+}
+
+.can-detail-page .priority-history-transition strong {
+    font-weight: 650;
+}
+
+.can-detail-page .priority-history-entry-head time {
+    flex: 0 0 auto;
+    color: #718399;
+    font-size: 10.5px;
+}
+
+.can-detail-page .priority-history-meta {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 6px 14px;
+    color: #62768e;
+    font-size: 10.5px;
+}
+
+.can-detail-page .priority-history-meta span {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+}
+
+.can-detail-page .priority-history-empty {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 14px 0 0;
+    color: #687c94;
+    font-size: 12px;
+}
+
+@media (max-width: 620px) {
+    .can-detail-page .priority-history-entry-head {
+        align-items: flex-start;
+        flex-direction: column;
+        gap: 5px;
+    }
+}
+
+.can-detail-swal .swal2-actions {
+    width: 100%;
+    display: flex !important;
+    justify-content: center;
+    gap: 10px !important;
+    margin: 18px 0 0 !important;
+}
+
+/*
+ * SWEETALERT VISIBLE ACTIONS:
+ * Preserve SweetAlert's hidden internal buttons while styling real actions.
+ */
+.can-detail-swal .swal2-confirm,
+.can-detail-swal .swal2-cancel {
+    min-height: 39px;
+    display: inline-flex !important;
+    align-items: center;
+    justify-content: center;
+    gap: 7px;
+    margin: 0 !important;
+    padding: 8px 13px !important;
+    border: 0 !important;
+    border-radius: 9px !important;
+    font-size: 12px !important;
+    font-weight: 600 !important;
+}
+
+.can-detail-swal .swal2-confirm {
+    color: #fff !important;
+    background: #2563eb !important;
+}
+
+.can-detail-swal .swal2-cancel {
+    color: #263c57 !important;
+    background: #e8eef5 !important;
+}
+
+.can-detail-swal .compact-swal-danger,
+.can-detail-swal .deny-confirm,
+.can-detail-swal .view-po-swal-confirm.is-danger,
+.can-detail-swal .certificate-swal-confirm.delete {
+    background: #dc3545 !important;
+}
+
+.can-detail-swal .accept-confirm,
+.can-detail-swal .crs-swal-confirm.accept {
+    background: #16834a !important;
+}
+
+.can-detail-swal .crs-swal-confirm.change {
+    background: #d97706 !important;
+}
+
+@media (max-width: 420px) {
+    .can-detail-page .requests-table tbody td,
+    .can-detail-page .req-table tbody td,
+    .can-detail-page .rating-table tbody td,
+    .can-detail-page .po-document-table tbody td {
+        grid-template-columns: 1fr;
+        gap: 5px;
+    }
+
+    .can-detail-swal .swal2-actions {
+        align-items: stretch;
+        flex-direction: column-reverse;
+    }
+
+    .can-detail-swal .swal2-confirm,
+    .can-detail-swal .swal2-cancel {
+        width: 100%;
+    }
+}

@@ -1,0 +1,1142 @@
+<?php
+
+/** @var yii\web\View $this */
+/** @var array $documents */
+/** @var string|null $title */
+/** @var yii\data\Pagination|null $pagination */
+/** @var string|null $search */
+
+use yii\helpers\Html;
+use yii\helpers\Url;
+use yii\web\YiiAsset;
+use yii\widgets\LinkPager;
+
+$title = isset($title) && trim((string) $title) !== ''
+    ? (string) $title
+    : 'MRO Insurance Documents';
+
+$this->title = $title;
+$this->params['breadcrumbs'][] = $this->title;
+
+// Keep variables safe if the controller does not send them.
+$documents = $documents ?? [];
+$pagination = $pagination ?? null;
+
+// Register YiiAsset to keep Yii2 data-confirm and data-method working correctly.
+YiiAsset::register($this);
+
+// Current search keyword from GET or controller variable.
+$searchQuery = trim((string) ($search ?? Yii::$app->request->get('search', '')));
+
+// Resolve the real primary key used by MroInsuranceDocuments.
+$getDocumentRouteId = static function ($document): ?string {
+    if (is_object($document) && method_exists($document, 'getPrimaryKey')) {
+        $primaryKey = $document->getPrimaryKey();
+
+        if (is_array($primaryKey)) {
+            foreach ($primaryKey as $value) {
+                if ($value !== null && $value !== '') {
+                    return (string) $value;
+                }
+            }
+        } elseif ($primaryKey !== null && $primaryKey !== '') {
+            return (string) $primaryKey;
+        }
+    }
+
+    foreach (['id', 'document_id', 'insurance_document_id'] as $attribute) {
+        if (is_object($document) && isset($document->{$attribute}) && $document->{$attribute} !== '') {
+            return (string) $document->{$attribute};
+        }
+    }
+
+    return null;
+};
+
+// Format file size in readable units.
+$formatFileSize = static function ($bytes): string {
+    $bytes = (float) $bytes;
+
+    if ($bytes >= 1073741824) {
+        return round($bytes / 1073741824, 2) . ' GB';
+    }
+
+    if ($bytes >= 1048576) {
+        return round($bytes / 1048576, 2) . ' MB';
+    }
+
+    if ($bytes >= 1024) {
+        return round($bytes / 1024, 2) . ' KB';
+    }
+
+    return round($bytes, 2) . ' B';
+};
+
+// Choose a Bootstrap Icon according to MIME type or file extension.
+$getDocumentIcon = static function ($fileType, $fileName): string {
+    $type = strtolower((string) $fileType);
+    $name = strtolower((string) $fileName);
+
+    if (strpos($type, 'image') !== false || preg_match('/\.(jpg|jpeg|png|gif|webp|bmp|svg)$/', $name)) {
+        return 'bi bi-file-earmark-image';
+    }
+
+    if (strpos($type, 'pdf') !== false || preg_match('/\.pdf$/', $name)) {
+        return 'bi bi-file-earmark-pdf';
+    }
+
+    if (strpos($type, 'word') !== false || strpos($type, 'msword') !== false || preg_match('/\.(doc|docx)$/', $name)) {
+        return 'bi bi-file-earmark-word';
+    }
+
+    if (strpos($type, 'excel') !== false || strpos($type, 'spreadsheet') !== false || preg_match('/\.(xls|xlsx|csv)$/', $name)) {
+        return 'bi bi-file-earmark-spreadsheet';
+    }
+
+    return 'bi bi-file-earmark-text';
+};
+
+// Bootstrap Icons: same icon family used by mro-aircraft-certificates.
+$this->registerCssFile('https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css');
+
+// SweetAlert2 for delete confirmation.
+$this->registerJsFile('https://cdn.jsdelivr.net/npm/sweetalert2@11', [
+    'position' => \yii\web\View::POS_HEAD,
+]);
+
+// Custom page design: same CSS/HTML structure used by mro-aircraft-certificates.
+$this->registerCss(<<<CSS
+    /* Prevent horizontal page scroll */
+    html,
+    body {
+        max-width: 100%;
+        overflow-x: hidden;
+    }
+
+    .requests-page {
+        padding: 24px;
+        background: #f5f7fb;
+        min-height: 100vh;
+        max-width: 100%;
+        overflow-x: hidden;
+    }
+
+    .requests-page .container-fluid {
+        max-width: 100%;
+        overflow-x: hidden;
+        padding-left: 0;
+        padding-right: 0;
+    }
+
+    .page-header-card {
+        background: linear-gradient(135deg, #ffffff, #eef4ff);
+        border-radius: 18px;
+        padding: 22px 26px;
+        margin-bottom: 22px;
+        box-shadow: 0 8px 24px rgba(15, 23, 42, 0.08);
+        border: 1px solid #e5eaf3;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 15px;
+        flex-wrap: wrap;
+        max-width: 100%;
+    }
+
+    .header-title-group {
+        display: flex;
+        align-items: center;
+        gap: 14px;
+    }
+
+    .header-icon {
+        width: 52px;
+        height: 52px;
+        border-radius: 15px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        background: #e0f2fe;
+        color: #0369a1;
+        font-size: 25px;
+        box-shadow: 0 8px 18px rgba(14, 165, 233, 0.18);
+        flex: 0 0 auto;
+    }
+
+    .dash-title {
+        margin: 0;
+        font-size: 28px;
+        font-weight: 800;
+        color: #1f2937;
+    }
+
+    .subtitle-text {
+        color: #6b7280;
+        margin-top: 6px;
+        font-size: 14px;
+        line-height: 1.5;
+    }
+
+    .btn-add-request {
+        border-radius: 11px;
+        padding: 11px 20px;
+        font-weight: 800;
+        box-shadow: 0 8px 18px rgba(22, 163, 74, 0.16);
+        white-space: nowrap;
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .content-card {
+        background: #ffffff;
+        border-radius: 18px;
+        padding: 18px;
+        box-shadow: 0 8px 24px rgba(15, 23, 42, 0.08);
+        border: 1px solid #e5eaf3;
+        max-width: 100%;
+        overflow-x: hidden;
+    }
+
+    .table-responsive-custom {
+        width: 100%;
+        max-width: 100%;
+        overflow-x: hidden;
+        border-radius: 14px;
+    }
+
+    .requests-table {
+        width: 100%;
+        margin-bottom: 0;
+        border-collapse: separate;
+        border-spacing: 0;
+        table-layout: auto;
+    }
+
+    .requests-table thead th {
+        background: #f1f5f9;
+        color: #334155;
+        font-size: 11px;
+        text-transform: uppercase;
+        letter-spacing: .04em;
+        font-weight: 800;
+        padding: 13px 8px;
+        border: none;
+        white-space: nowrap;
+        vertical-align: middle;
+    }
+
+    .requests-table thead th:first-child {
+        border-top-left-radius: 12px;
+    }
+
+    .requests-table thead th:last-child {
+        border-top-right-radius: 12px;
+    }
+
+    .requests-table tbody td {
+        padding: 13px 8px;
+        vertical-align: middle;
+        border-top: 1px solid #eef2f7;
+        color: #374151;
+        font-size: 13px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        max-width: 180px;
+        background: #ffffff;
+    }
+
+    .requests-table tbody tr {
+        transition: background .2s ease;
+    }
+
+    .requests-table tbody tr:hover td {
+        background: #f8fbff;
+    }
+
+    .cert-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 7px 12px;
+        border-radius: 999px;
+        font-size: 12px;
+        font-weight: 800;
+        text-decoration: none;
+        white-space: nowrap;
+        text-transform: uppercase;
+        background: #dcfce7;
+        color: #166534;
+    }
+
+    .download-btn {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 7px;
+        height: 34px;
+        padding: 0 13px;
+        border-radius: 9px;
+        background: #64748b;
+        color: #ffffff !important;
+        text-decoration: none;
+        font-size: 12px;
+        font-weight: 800;
+        box-shadow: 0 4px 12px rgba(100, 116, 139, 0.20);
+    }
+
+    .download-btn:hover {
+        background: #475569;
+        color: #ffffff !important;
+        text-decoration: none;
+        transform: translateY(-1px);
+    }
+
+    .action-buttons {
+        display: flex;
+        align-items: center;
+        gap: 5px;
+        flex-wrap: nowrap;
+        justify-content: center;
+    }
+
+    .action-btn {
+        width: 32px;
+        height: 32px;
+        min-width: 32px;
+        border-radius: 8px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        border: solid 1px #8a8b8dff;
+        color: #ffffff !important;
+        text-decoration: none;
+        transition: all .2s ease;
+        box-shadow: 0 4px 12px rgba(15, 23, 42, .12);
+        font-size: 13px;
+    }
+
+    .action-btn:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 8px 18px rgba(15, 23, 42, .18);
+        color: #ffffff !important;
+        text-decoration: none;
+    }
+
+    .btn-view {
+        background: #0ea5e9;
+    }
+
+    .btn-update {
+        background: #f59e0b;
+    }
+
+    .btn-delete {
+        background: #ef4444;
+    }
+
+    .empty-row td {
+        max-width: none;
+        white-space: normal;
+    }
+
+    .empty-state {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 10px;
+        padding: 46px 20px;
+        color: #6b7280;
+        text-align: center;
+    }
+
+    .empty-state i {
+        font-size: 44px;
+        color: #94a3b8;
+    }
+
+    .empty-state-title {
+        font-size: 18px;
+        font-weight: 800;
+        color: #334155;
+    }
+
+    .empty-state-text {
+        font-size: 14px;
+        color: #64748b;
+    }
+
+    .pagination-container {
+        margin-top: 22px;
+        display: flex;
+        justify-content: center;
+    }
+
+    .pagination {
+        display: flex;
+        justify-content: center;
+        gap: 6px;
+        margin: 0;
+        padding: 0;
+        flex-wrap: wrap;
+    }
+
+    .pagination li {
+        list-style: none;
+    }
+
+    .pagination li a,
+    .pagination li span {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-width: 36px;
+        height: 36px;
+        padding: 0 12px;
+        border-radius: 9px;
+        border: 1px solid #e5e7eb;
+        color: #334155;
+        background: #ffffff;
+        text-decoration: none;
+        font-weight: 700;
+    }
+
+    .pagination .active a,
+    .pagination .active span {
+        background: #2563eb;
+        color: #ffffff;
+        border-color: #2563eb;
+    }
+
+    .pagination li a:hover {
+        background: #eff6ff;
+        color: #2563eb;
+    }
+
+    /* Search and reset filter */
+    .search-filter-card {
+        background: linear-gradient(135deg, #ffffff, #f8fbff);
+        border-radius: 18px;
+        padding: 16px 18px;
+        margin-bottom: 18px;
+        box-shadow: 0 8px 24px rgba(15, 23, 42, 0.08);
+        border: 1px solid #e5eaf3;
+        max-width: 100%;
+    }
+
+    .search-filter-form {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        flex-wrap: wrap;
+        width: 100%;
+    }
+
+    .search-input-wrap {
+        position: relative;
+        flex: 1 1 360px;
+        min-width: 240px;
+    }
+
+    .search-input-wrap > i {
+        position: absolute;
+        left: 14px;
+        top: 50%;
+        transform: translateY(-50%);
+        color: #64748b;
+        font-size: 15px;
+        z-index: 2;
+    }
+
+    .search-input {
+        height: 44px;
+        border-radius: 12px;
+        border: 1px solid #dbeafe;
+        background: #ffffff;
+        padding: 10px 14px 10px 42px;
+        color: #334155;
+        font-size: 13px;
+        font-weight: 600;
+        box-shadow: 0 4px 12px rgba(15, 23, 42, 0.04);
+        transition: all .2s ease;
+    }
+
+    .search-input::placeholder {
+        color: #94a3b8;
+        font-weight: 500;
+    }
+
+    .search-input:focus {
+        border-color: #2563eb;
+        box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.12);
+        outline: none;
+    }
+
+    .btn-search,
+    .btn-reset {
+        height: 44px;
+        border-radius: 11px;
+        padding: 10px 18px;
+        font-size: 13px;
+        font-weight: 800;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 7px;
+        white-space: nowrap;
+        transition: all .2s ease;
+    }
+
+    .btn-search {
+        background: #2563eb;
+        border-color: #2563eb;
+        color: #ffffff !important;
+        box-shadow: 0 8px 18px rgba(37, 99, 235, 0.22);
+    }
+
+    .btn-search:hover {
+        background: #1d4ed8;
+        border-color: #1d4ed8;
+        transform: translateY(-1px);
+    }
+
+    .btn-reset {
+        background: #080808ff;
+        color: #ebeff5ff !important;
+        border: 1px solid #0a0a0aff;
+        box-shadow: 0 4px 12px rgba(15, 23, 42, 0.06);
+        text-decoration: none;
+    }
+
+    .btn-reset:hover {
+        background: #f1f5f9;
+        color: #334155 !important;
+        transform: translateY(-1px);
+        border: 1px solid #0a0a0aff;
+    }
+
+    .search-result-text {
+        margin-top: 10px;
+        color: #64748b;
+        font-size: 13px;
+        font-weight: 600;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+    }
+
+    .alert {
+        border-radius: 14px;
+        border: none;
+        padding: 14px 18px;
+        font-weight: 600;
+        box-shadow: 0 5px 16px rgba(15, 23, 42, .08);
+    }
+
+    /* SweetAlert2 compact design */
+    .swal2-popup.custom-delete-popup {
+        width: 380px !important;
+        max-width: 92vw !important;
+        border-radius: 18px !important;
+        padding: 18px 20px 18px !important;
+        box-shadow: 0 18px 45px rgba(15, 23, 42, 0.24) !important;
+    }
+
+    .swal2-popup.custom-delete-popup .swal2-icon {
+        width: 52px !important;
+        height: 52px !important;
+        margin: 8px auto 12px !important;
+    }
+
+    .swal2-popup.custom-delete-popup .swal2-icon .swal2-icon-content {
+        font-size: 32px !important;
+    }
+
+    .swal2-title.custom-delete-title {
+        color: #0f172a !important;
+        font-size: 20px !important;
+        font-weight: 800 !important;
+        padding: 0 !important;
+        margin: 0 0 8px !important;
+    }
+
+    .swal2-html-container.custom-delete-message {
+        color: #64748b !important;
+        font-size: 13px !important;
+        line-height: 1.45 !important;
+        margin: 0 8px 14px !important;
+    }
+
+    .swal2-actions {
+        margin-top: 10px !important;
+        gap: 8px !important;
+    }
+
+    .swal-delete-confirm,
+    .swal-delete-cancel {
+        display: inline-flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        gap: 7px !important;
+        border-radius: 9px !important;
+        padding: 9px 14px !important;
+        font-size: 13px !important;
+        font-weight: 800 !important;
+        border: none !important;
+        min-width: 115px !important;
+        height: 39px !important;
+        transition: 0.2s ease !important;
+    }
+
+    .swal-delete-confirm {
+        background: #ef4444 !important;
+        color: #ffffff !important;
+        box-shadow: 0 8px 18px rgba(239, 68, 68, 0.25) !important;
+    }
+
+    .swal-delete-confirm:hover {
+        background: #dc2626 !important;
+        transform: translateY(-1px);
+    }
+
+    .swal-delete-cancel {
+        background: #e2e8f0 !important;
+        color: #334155 !important;
+    }
+
+    .swal-delete-cancel:hover {
+        background: #cbd5e1 !important;
+        transform: translateY(-1px);
+    }
+
+    @media (max-width: 1400px) {
+        .requests-table thead th {
+            font-size: 10px;
+            padding: 12px 5px;
+        }
+
+        .requests-table tbody td {
+            font-size: 12px;
+            padding: 12px 5px;
+            max-width: 145px;
+        }
+
+        .action-btn {
+            width: 30px;
+            height: 30px;
+            min-width: 30px;
+            font-size: 12px;
+        }
+    }
+
+    @media (max-width: 1200px) {
+        .requests-page {
+            padding: 18px;
+        }
+
+        .content-card {
+            padding: 12px;
+        }
+
+        .requests-table thead th {
+            font-size: 9.5px;
+            padding: 11px 4px;
+            letter-spacing: .02em;
+        }
+
+        .requests-table tbody td {
+            font-size: 12.5px;
+            padding: 11px 4px;
+            max-width: 125px;
+        }
+    }
+
+    /* Tablet and mobile: convert table rows to cards to keep the same MRO Airports structure */
+    @media (max-width: 992px) {
+        .requests-page {
+            padding: 14px;
+        }
+
+        .page-header-card {
+            padding: 18px;
+        }
+
+        .header-title-group {
+            align-items: flex-start;
+        }
+
+        .header-icon {
+            width: 46px;
+            height: 46px;
+            font-size: 22px;
+        }
+
+        .dash-title {
+            font-size: 23px;
+        }
+
+        .content-card {
+            padding: 12px;
+        }
+
+        .table-responsive-custom {
+            overflow-x: hidden;
+        }
+
+        .requests-table,
+        .requests-table thead,
+        .requests-table tbody,
+        .requests-table th,
+        .requests-table td,
+        .requests-table tr {
+            display: block;
+            width: 100%;
+        }
+
+        .requests-table thead {
+            display: none;
+        }
+
+        .requests-table tbody tr {
+            background: #ffffff;
+            border: 1px solid #e5eaf3;
+            border-radius: 16px;
+            margin-bottom: 14px;
+            padding: 12px;
+            box-shadow: 0 6px 18px rgba(15, 23, 42, 0.06);
+        }
+
+        .requests-table tbody td {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 12px;
+            border-top: none;
+            border-bottom: 1px solid #eef2f7;
+            padding: 10px 4px;
+            white-space: normal;
+            max-width: 100%;
+            overflow: visible;
+            text-overflow: unset;
+            font-size: 13px;
+            text-align: right;
+        }
+
+        .requests-table tbody td:last-child {
+            border-bottom: none;
+        }
+
+        .requests-table tbody td::before {
+            content: attr(data-label);
+            font-weight: 800;
+            color: #334155;
+            text-transform: uppercase;
+            font-size: 11px;
+            letter-spacing: .04em;
+            text-align: left;
+            flex: 0 0 44%;
+        }
+
+        .action-buttons {
+            justify-content: flex-end;
+            flex-wrap: wrap;
+        }
+
+        .empty-row td::before {
+            display: none;
+        }
+
+        .search-filter-card {
+            padding: 14px;
+        }
+
+        .search-filter-form {
+            align-items: stretch;
+        }
+
+        .search-input-wrap {
+            flex: 1 1 100%;
+        }
+
+        .btn-search,
+        .btn-reset,
+        .btn-add-request {
+            width: 100%;
+        }
+
+        .swal2-popup.custom-delete-popup {
+            width: 330px !important;
+            padding: 16px !important;
+        }
+
+        .swal-delete-confirm,
+        .swal-delete-cancel {
+            min-width: 105px !important;
+            height: 38px !important;
+            font-size: 12px !important;
+        }
+    }
+
+    @media (max-width: 576px) {
+        .requests-page {
+            padding: 10px;
+        }
+
+        .page-header-card {
+            border-radius: 14px;
+            padding: 16px;
+        }
+
+        .header-title-group {
+            gap: 10px;
+        }
+
+        .header-icon {
+            display: none;
+        }
+
+        .content-card,
+        .search-filter-card {
+            border-radius: 14px;
+            padding: 10px;
+        }
+
+        .requests-table tbody td {
+            flex-direction: column;
+            align-items: flex-start;
+            text-align: left;
+            gap: 4px;
+        }
+
+        .requests-table tbody td::before {
+            flex: none;
+        }
+
+        .action-buttons {
+            justify-content: flex-start;
+        }
+    }
+CSS);
+
+/*
+ * SweetAlert2 confirmation for Yii2 data-confirm.
+ * Yii2 keeps data-method='post', so delete request is sent as POST.
+ */
+$this->registerJs(<<<JS
+// Initialize Bootstrap tooltips safely.
+if (typeof bootstrap !== 'undefined') {
+    var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"], [data-toggle="tooltip"]'));
+
+    tooltipTriggerList.map(function (el) {
+        return new bootstrap.Tooltip(el);
+    });
+}
+
+function escapeHtmlForSwal(value) {
+    return String(value)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+}
+
+// Replace Yii2 native confirm with SweetAlert2.
+if (typeof yii !== 'undefined') {
+    yii.confirm = function (message, okCallback, cancelCallback) {
+
+        if (typeof Swal === 'undefined') {
+            if (confirm(message)) {
+                okCallback();
+            } else if (cancelCallback) {
+                cancelCallback();
+            }
+
+            return;
+        }
+
+        Swal.fire({
+            width: 380,
+            title: 'Delete this insurance document?',
+            html:
+                '<div style="text-align:center;">' +
+                    '<div style="font-weight:700;color:#0F172A;margin-bottom:4px;font-size:13px;">This action cannot be undone.</div>' +
+                    '<div style="font-size:13px;">' + escapeHtmlForSwal(message) + '</div>' +
+                '</div>',
+            icon: 'warning',
+            showCancelButton: true,
+            reverseButtons: true,
+            focusCancel: true,
+            allowOutsideClick: false,
+            allowEscapeKey: true,
+            confirmButtonText: '<i class="bi bi-trash3-fill"></i> Delete',
+            cancelButtonText: '<i class="bi bi-box-arrow-left"></i> Keep document',
+            buttonsStyling: false,
+            customClass: {
+                popup: 'custom-delete-popup',
+                title: 'custom-delete-title',
+                htmlContainer: 'custom-delete-message',
+                confirmButton: 'swal-delete-confirm',
+                cancelButton: 'swal-delete-cancel'
+            }
+        }).then(function (result) {
+            if (result.isConfirmed) {
+                okCallback();
+            } else if (cancelCallback) {
+                cancelCallback();
+            }
+        });
+    };
+}
+JS, \yii\web\View::POS_READY);
+?>
+
+<!-- PHASE 6: shared list presentation; insurance document rules remain unchanged. -->
+<main class="dash-content requests-page can-list-page">
+    <div class="container-fluid">
+
+        <!-- Page header: same structure as mro-aircraft-certificates -->
+        <div class="page-header-card">
+            <div class="header-title-group">
+                <span class="header-icon">
+                    <i class="bi bi-shield-check"></i>
+                </span>
+
+                <div>
+                    <h1 class="dash-title"><?= Html::encode($this->title) ?></h1>
+                    <div class="subtitle-text">
+                        Manage your insurance files and quickly open or download each document.
+                    </div>
+                </div>
+            </div>
+
+            <?= Html::a(
+                '<i class="bi bi-upload"></i> Upload Insurance Document(s)',
+                ['create'],
+                ['class' => 'btn btn-outline-success btn-add-request']
+            ) ?>
+        </div>
+
+        <!-- Search card: same structure as mro-aircraft-certificates -->
+        <div class="search-filter-card">
+            <?php $filterUrl = Url::current(['search' => null, 'page' => null]); ?>
+
+            <?= Html::beginForm($filterUrl, 'get', [
+                'class' => 'search-filter-form',
+                'role' => 'search',
+            ]) ?>
+                <div class="search-input-wrap">
+                    <i class="bi bi-search"></i>
+                    <?= Html::textInput('search', $searchQuery, [
+                        'class' => 'form-control search-input',
+                        'placeholder' => 'Search by document ID, file name, file type or upload date...',
+                        'aria-label' => 'Search insurance documents',
+                    ]) ?>
+                </div>
+
+                <?= Html::submitButton(
+                    '<i class="bi bi-search"></i> Search',
+                    ['class' => 'btn btn-search']
+                ) ?>
+
+                <?= Html::a(
+                    '<i class="bi bi-arrow-counterclockwise"></i> Reset',
+                    $filterUrl,
+                    [
+                        'class' => 'btn btn-reset',
+                        'title' => 'Reset search and show all insurance documents',
+                    ]
+                ) ?>
+            <?= Html::endForm() ?>
+
+            <?php if ($searchQuery !== ''): ?>
+                <div class="search-result-text">
+                    <i class="bi bi-funnel"></i>
+                    Active search: <strong><?= Html::encode($searchQuery) ?></strong>
+                </div>
+            <?php endif; ?>
+        </div>
+
+        <!-- Flash messages -->
+        <?php if (Yii::$app->session->hasFlash('message')): ?>
+            <div class="alert alert-success">
+                <i class="bi bi-check-circle"></i>
+                <?= Html::encode(Yii::$app->session->getFlash('message')) ?>
+            </div>
+        <?php endif; ?>
+
+        <?php if (Yii::$app->session->hasFlash('success')): ?>
+            <div class="alert alert-success">
+                <i class="bi bi-check-circle"></i>
+                <?= Html::encode(Yii::$app->session->getFlash('success')) ?>
+            </div>
+        <?php endif; ?>
+
+        <?php if (Yii::$app->session->hasFlash('error')): ?>
+            <div class="alert alert-danger">
+                <i class="bi bi-exclamation-triangle"></i>
+                <?= Yii::$app->session->getFlash('error') ?>
+            </div>
+        <?php endif; ?>
+
+        <?php if (Yii::$app->session->hasFlash('info')): ?>
+            <div class="alert alert-info">
+                <i class="bi bi-info-circle"></i>
+                <?= Html::encode(Yii::$app->session->getFlash('info')) ?>
+            </div>
+        <?php endif; ?>
+
+        <!-- Content card: same table structure as mro-aircraft-certificates -->
+        <div class="content-card">
+            <div class="table-responsive-custom">
+                <table class="table requests-table">
+                    <thead>
+                        <tr>
+                            <th>Document ID</th>
+                            <th>File Name</th>
+                            <th>Type</th>
+                            <th>Size</th>
+                            <th>Uploaded At</th>
+                            <th>Document</th>
+                            <th class="text-center">Actions</th>
+                        </tr>
+                    </thead>
+
+                    <tbody>
+                        <?php if (!empty($documents)): ?>
+                            <?php foreach ($documents as $document): ?>
+                                <?php
+                                    $documentId = $getDocumentRouteId($document);
+                                    $fileName = (string) ($document->file_name ?? 'N/A');
+                                    $fileType = (string) ($document->file_type ?? 'N/A');
+                                    $fileSize = (int) ($document->file_size ?? 0);
+                                    $createdAt = (string) ($document->created_at ?? '');
+                                    $filePath = (string) ($document->file_path ?? '');
+                                    $fileUrl = $filePath !== ''
+                                        ? Url::to('@web/' . ltrim($filePath, '/'), true)
+                                        : null;
+                                    $iconClass = $getDocumentIcon($fileType, $fileName);
+                                ?>
+                                <tr>
+                                    <td data-label="Document ID">
+                                        <span class="cert-badge">
+                                            <i class="bi bi-hash"></i>
+                                            <?= Html::encode($documentId ?? 'N/A') ?>
+                                        </span>
+                                    </td>
+
+                                    <td data-label="File Name" title="<?= Html::encode($fileName) ?>">
+                                        <span class="cert-badge">
+                                            <i class="<?= Html::encode($iconClass) ?>"></i>
+                                            <?= Html::encode($fileName) ?>
+                                        </span>
+                                    </td>
+
+                                    <td data-label="Type" title="<?= Html::encode($fileType) ?>">
+                                        <span class="cert-badge">
+                                            <i class="bi bi-tag"></i>
+                                            <?= Html::encode($fileType) ?>
+                                        </span>
+                                    </td>
+
+                                    <td data-label="Size">
+                                        <?= Html::encode($formatFileSize($fileSize)) ?>
+                                    </td>
+
+                                    <td data-label="Uploaded At">
+                                        <?= Html::encode($createdAt !== '' ? $createdAt : 'N/A') ?>
+                                    </td>
+
+                                    <td data-label="Document">
+                                        <?php if (!empty($fileUrl)): ?>
+                                            <?= Html::a(
+                                                '<i class="bi bi-download"></i> Download',
+                                                $fileUrl,
+                                                [
+                                                    'target' => '_blank',
+                                                    'class' => 'download-btn',
+                                                    'title' => 'Download insurance document',
+                                                    'aria-label' => 'Download insurance document',
+                                                    'data-bs-toggle' => 'tooltip',
+                                                ]
+                                            ) ?>
+                                        <?php else: ?>
+                                            <span class="text-muted">N/A</span>
+                                        <?php endif; ?>
+                                    </td>
+
+                                    <td data-label="Actions">
+                                        <div class="action-buttons">
+                                            <?php if ($documentId !== null && $documentId !== ''): ?>
+                                                <?= Html::a(
+                                                    '<i class="bi bi-eye"></i>',
+                                                    ['view', 'id' => $documentId],
+                                                    [
+                                                        'class' => 'action-btn btn-view',
+                                                        'title' => 'View insurance document #' . $documentId,
+                                                        'aria-label' => 'View insurance document #' . $documentId,
+                                                        'data-bs-toggle' => 'tooltip',
+                                                    ]
+                                                ) ?>
+
+                                                <?= Html::a(
+                                                    '<i class="bi bi-trash"></i>',
+                                                    ['delete', 'id' => $documentId],
+                                                    [
+                                                        'class' => 'action-btn btn-delete',
+                                                        'title' => 'Delete insurance document #' . $documentId,
+                                                        'aria-label' => 'Delete insurance document #' . $documentId,
+                                                        'data-bs-toggle' => 'tooltip',
+                                                        'data' => [
+                                                            'confirm' => 'Insurance Document ID #' . $documentId . ' - ' . $fileName . ' will be permanently deleted.',
+                                                            'method' => 'post',
+                                                        ],
+                                                    ]
+                                                ) ?>
+                                            <?php else: ?>
+                                                <span class="text-muted" title="Missing document route id">N/A</span>
+                                            <?php endif; ?>
+                                        </div>
+                                    </td>
+                                </tr>
+                            <?php endforeach; ?>
+                        <?php else: ?>
+                            <tr class="empty-row">
+                                <td colspan="7">
+                                    <div class="empty-state">
+                                        <i class="bi bi-inbox"></i>
+                                        <div class="empty-state-title">
+                                            <?php if ($searchQuery !== ''): ?>
+                                                No insurance documents found for your current search.
+                                            <?php else: ?>
+                                                No insurance documents uploaded for now.
+                                            <?php endif; ?>
+                                        </div>
+                                        <div class="empty-state-text">
+                                            <?php if ($searchQuery !== ''): ?>
+                                                Try another file name, type, ID or upload date.
+                                            <?php else: ?>
+                                                Upload your insurance documents to complete your MRO compliance profile.
+                                            <?php endif; ?>
+                                        </div>
+                                    </div>
+                                </td>
+                            </tr>
+                        <?php endif; ?>
+                    </tbody>
+                </table>
+            </div>
+
+            <?php if (isset($pagination) && $pagination !== null): ?>
+                <div class="pagination-container">
+                    <?= LinkPager::widget([
+                        'pagination' => $pagination,
+                    ]) ?>
+                </div>
+            <?php endif; ?>
+        </div>
+
+    </div>
+</main>

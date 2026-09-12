@@ -1,0 +1,16 @@
+[08-Feb-2026 21:34:31 UTC] PHP Fatal error:  Uncaught Error: Undefined constant "YII_DEBUG" in /home/gav7w8zzh8vm/public_html/config/web.php:70
+Stack trace:
+#0 {main}
+  thrown in /home/gav7w8zzh8vm/public_html/config/web.php on line 70
+[08-Feb-2026 21:34:31 UTC] PHP Fatal error:  Uncaught Error: Undefined constant "YII_DEBUG" in /home/gav7w8zzh8vm/public_html/config/web.php:70
+Stack trace:
+#0 {main}
+  thrown in /home/gav7w8zzh8vm/public_html/config/web.php on line 70
+[08-Feb-2026 21:34:31 UTC] PHP Fatal error:  Uncaught Error: Undefined constant "YII_DEBUG" in /home/gav7w8zzh8vm/public_html/config/web.php:70
+Stack trace:
+#0 {main}
+  thrown in /home/gav7w8zzh8vm/public_html/config/web.php on line 70
+[08-Feb-2026 21:34:31 UTC] PHP Fatal error:  Uncaught Error: Undefined constant "YII_DEBUG" in /home/gav7w8zzh8vm/public_html/config/web.php:70
+Stack trace:
+#0 {main}
+  thrown in /home/gav7w8zzh8vm/public_html/config/web.php on line 70
