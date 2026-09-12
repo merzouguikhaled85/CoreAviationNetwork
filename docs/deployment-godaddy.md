@@ -67,3 +67,8 @@ php yii cache/flush-schema db
 
 Après cette validation, chaque push sur `main` déclenchera automatiquement la
 mise à jour Git, Composer, les migrations et le nettoyage du cache de schéma.
+
+
+
+
+///
