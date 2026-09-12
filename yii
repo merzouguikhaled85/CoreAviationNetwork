@@ -8,8 +8,30 @@
  * @license https://www.yiiframework.com/license/
  */
 
-defined('YII_DEBUG') or define('YII_DEBUG', true);
-defined('YII_ENV') or define('YII_ENV', 'dev');
+/*
+ * La console suit la même politique que le point d'entrée Web : production
+ * par défaut, et développement uniquement lorsqu'il est demandé explicitement.
+ * Cela évite que les migrations chargent Gii/Debug après un install --no-dev.
+ */
+$localEnvironmentFile = __DIR__ . '/config/env-local.php';
+$localEnvironmentValues = is_file($localEnvironmentFile)
+    ? require $localEnvironmentFile
+    : [];
+
+$applicationEnvironment = getenv('CAN_APP_ENV')
+    ?: ($localEnvironmentValues['appEnv'] ?? 'prod');
+$debugEnvironmentValue = getenv('CAN_APP_DEBUG');
+$debugEnvironmentValue = $debugEnvironmentValue !== false
+    ? $debugEnvironmentValue
+    : ($localEnvironmentValues['appDebug'] ?? false);
+$debugEnabled = $debugEnvironmentValue !== false
+    && filter_var($debugEnvironmentValue, FILTER_VALIDATE_BOOLEAN);
+
+defined('YII_ENV') or define('YII_ENV', $applicationEnvironment);
+defined('YII_DEBUG') or define(
+    'YII_DEBUG',
+    $applicationEnvironment === 'dev' && $debugEnabled
+);
 error_reporting(E_ALL & ~E_DEPRECATED & ~E_USER_DEPRECATED);
 
 require __DIR__ . '/vendor/autoload.php';

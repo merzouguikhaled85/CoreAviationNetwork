@@ -8,6 +8,9 @@
  * `.gitignore` et ne doit jamais être joint à un ticket ou envoyé par e-mail.
  */
 return [
+    // Activer ces valeurs uniquement sur un poste de développement local.
+    'appEnv' => 'dev',
+    'appDebug' => true,
     'cookieValidationKey' => 'replace-with-a-long-random-local-key',
     'mailerDsn' => 'smtp://user:encoded-password@smtp.example.com:465',
     'dbDsn' => 'mysql:host=localhost;dbname=your_database',
