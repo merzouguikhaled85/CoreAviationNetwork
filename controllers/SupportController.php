@@ -387,7 +387,10 @@ class SupportController extends Controller
 
         $secret = trim((string) (Yii::$app->params['turnstileSecretKey'] ?? ''));
         $siteKey = trim((string) (Yii::$app->params['turnstileSiteKey'] ?? ''));
-        if ($secret === '' || $siteKey === '') {
+        $expectedHostname = strtolower(rtrim(trim((string) (
+            Yii::$app->params['turnstileExpectedHostname'] ?? ''
+        )), '.'));
+        if ($secret === '' || $siteKey === '' || $expectedHostname === '') {
             Yii::error('Turnstile is not configured for guest support requests.', __METHOD__);
             return [
                 'valid' => false,
@@ -455,6 +458,9 @@ class SupportController extends Controller
 
         $result = json_decode((string) $rawResponse, true);
         $verifiedAction = is_array($result) ? ($result['action'] ?? 'support_ticket') : null;
+        $verifiedHostname = is_array($result)
+            ? strtolower(rtrim(trim((string) ($result['hostname'] ?? '')), '.'))
+            : '';
 
         /*
          * ACTION ATTENDUE :
@@ -464,14 +470,24 @@ class SupportController extends Controller
          */
         $actionIsValid = $verifiedAction === 'support_ticket'
             || (YII_ENV_DEV && $verifiedAction === 'test');
+
+        /*
+         * HOSTNAME ATTENDU : même avec une validation Siteverify réussie, le
+         * jeton doit provenir du domaine prévu pour empêcher l'usage du widget
+         * depuis un autre site. La comparaison reste insensible à la casse.
+         */
+        $hostnameIsValid = $verifiedHostname !== ''
+            && hash_equals($expectedHostname, $verifiedHostname);
         $valid = is_array($result)
             && !empty($result['success'])
-            && $actionIsValid;
+            && $actionIsValid
+            && $hostnameIsValid;
 
         if (!$valid) {
             Yii::warning([
                 'message' => 'Turnstile rejected a guest support request.',
                 'errorCodes' => is_array($result) ? ($result['error-codes'] ?? []) : ['invalid-json'],
+                'hostnameMatches' => $hostnameIsValid,
             ], __METHOD__);
             return [
                 'valid' => false,

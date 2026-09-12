@@ -43,6 +43,24 @@ $readEnvironmentValue = static function (
     return $value;
 };
 
+/**
+ * Lit une configuration optionnelle sans empêcher le démarrage du site.
+ * Turnstile reste ainsi désactivé proprement tant que ses clés de production
+ * n'ont pas encore été installées sur le serveur.
+ */
+$readOptionalEnvironmentValue = static function (
+    string $environmentName,
+    string $localKey,
+    string $defaultValue = ''
+) use ($localValues): string {
+    $systemValue = getenv($environmentName);
+    $value = $systemValue !== false
+        ? $systemValue
+        : ($localValues[$localKey] ?? $defaultValue);
+
+    return is_string($value) ? trim($value) : $defaultValue;
+};
+
 return [
     'cookieValidationKey' => $readEnvironmentValue(
         'CAN_COOKIE_VALIDATION_KEY',
@@ -58,5 +76,23 @@ return [
         'CAN_DB_PASSWORD',
         'dbPassword',
         true
+    ),
+
+    /*
+     * TURNSTILE : les variables système restent prioritaires. Sur GoDaddy,
+     * env-local.php constitue le stockage persistant hors Git des deux clés.
+     */
+    'turnstileSiteKey' => $readOptionalEnvironmentValue(
+        'CAN_TURNSTILE_SITE_KEY',
+        'turnstileSiteKey'
+    ),
+    'turnstileSecretKey' => $readOptionalEnvironmentValue(
+        'CAN_TURNSTILE_SECRET_KEY',
+        'turnstileSecretKey'
+    ),
+    'turnstileExpectedHostname' => $readOptionalEnvironmentValue(
+        'CAN_TURNSTILE_EXPECTED_HOSTNAME',
+        'turnstileExpectedHostname',
+        YII_ENV_DEV ? 'localhost' : 'can.coreaviationnetwork.com'
     ),
 ];

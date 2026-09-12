@@ -1,5 +1,12 @@
 <?php
 
+/*
+ * CONFIGURATION EXTERNE : params.php peut être chargé par l'application Web
+ * comme par la console. Le chargeur central garantit que les secrets Turnstile
+ * proviennent des variables serveur ou du fichier env-local.php ignoré par Git.
+ */
+$environment = require __DIR__ . '/env.php';
+
 return [
     'adminEmail' => 'admin@example.com',
     'senderEmail' => 'noreply@example.com',
@@ -20,10 +27,11 @@ return [
      * les cles de test officielles Cloudflare permettent de valider le parcours sur
      * localhost sans introduire un secret de production dans le depot.
      */
-    'turnstileSiteKey' => getenv('CAN_TURNSTILE_SITE_KEY')
+    'turnstileSiteKey' => $environment['turnstileSiteKey']
         ?: (YII_ENV_DEV ? '1x00000000000000000000AA' : ''),
-    'turnstileSecretKey' => getenv('CAN_TURNSTILE_SECRET_KEY')
+    'turnstileSecretKey' => $environment['turnstileSecretKey']
         ?: (YII_ENV_DEV ? '1x0000000000000000000000000000000AA' : ''),
+    'turnstileExpectedHostname' => $environment['turnstileExpectedHostname'],
 
 
 
