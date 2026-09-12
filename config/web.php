@@ -2,6 +2,7 @@
 
 $params = require __DIR__ . '/params.php';
 $db = require __DIR__ . '/db.php';
+$environment = require __DIR__ . '/env.php';
 $config = [
     'id' => 'basic',
     'name' => 'Core Aviation Network',
@@ -22,8 +23,12 @@ $config = [
             'appendTimestamp' => true,
         ],
         'request' => [
-            // !!! insert a secret key in the following (if it is empty) - this is required by cookie validation
-            'cookieValidationKey' => 'qdsfqsdf52qsdx421',
+            /*
+             * La clé n'est plus écrite dans ce fichier versionné. En local, elle
+             * vient de config/env-local.php ; en production, la variable système
+             * CAN_COOKIE_VALIDATION_KEY est prioritaire.
+             */
+            'cookieValidationKey' => $environment['cookieValidationKey'],
            'enableCsrfValidation' => false, // Disable CSRF (Not recommended for production)
 
         ],
@@ -42,22 +47,10 @@ $config = [
         'errorHandler' => [
             'errorAction' => 'site/error',
         ],
-/*
-        'mailer' => [
-            'class' => \yii\symfonymailer\Mailer::class,   
-            'viewPath' => '@app/mail',
-            'useFileTransport' => false, // Set this to false to send real emails    
-            'messageConfig' => [
-                'from' => 'mtir7721@gmail.com', // Default "From" address
-            ],     
-            'transport' => [
-                'dsn' => 'smtp://mtir7721@gmail.com:ouqeajmgdasyhrnv@smtp.gmail.com:587', // Use your app-specific password here
-
-            ],
-
-        ],
-        */
-        // Configuration for Yii2
+        /*
+         * L'ancien exemple SMTP commenté a été supprimé, car un commentaire Git
+         * contenant un mot de passe reste un secret exposé dans le dépôt.
+         */
   'mailer' => [
         /*
          * MAILER RÉSILIENT : limite les attentes SMTP et empêche une panne du
@@ -76,7 +69,8 @@ $config = [
             'from' => 'donotreply@coreaviationnetwork.com', // Default "From" address
         ],
         'transport' => [
-            'dsn' => 'smtp://donotreply@coreaviationnetwork.com:Mtirisac100%@sxb1plzcpnl490679.prod.sxb1.secureserver.net:465', // For SSL
+            /* Le DSN réel est chargé depuis la configuration externe. */
+            'dsn' => $environment['mailerDsn'],
         ],
     ],
     

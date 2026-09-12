@@ -4,3 +4,9 @@ protected/runtime/*
 !protected/runtime/.gitignore
 protected/data/*.db
 themes/classic/views/
+config/env-local.php
+
+# Les variantes dotenv restent locales ; seul l'exemple sans secret est suivi.
+.env
+.env.*
+!.env.example
