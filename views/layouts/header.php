@@ -957,7 +957,12 @@ if (!Yii::$app->user->isGuest && $userType === 'admin') {
                 <div class="sidebar-section-label">Operations</div>
                 <div class="dash-nav-dropdown <?= $mroRequestsOpen ? 'show' : '' ?>">
                     <a href="#!" class="dash-nav-item dash-nav-dropdown-toggle <?= $mroRequestsOpen ? 'active' : '' ?>" aria-expanded="<?= $mroRequestsOpen ? 'true' : 'false' ?>" title="Requests">
-                        <i class="fas fa-tools"></i><span>Requests</span>
+                        <!--
+                            ICÔNE REQUESTS MRO : clipboard-list appartient au même jeu
+                            Font Awesome déjà chargé pour le menu AO. Elle remplace
+                            fa-tools, absent de la version actuelle et donc invisible.
+                        -->
+                        <i class="fas fa-clipboard-list" aria-hidden="true"></i><span>Requests</span>
                     </a>
                     <div class="dash-nav-dropdown-menu">
                         <a href="<?= Url::to(['mro-requests/index']) ?>" class="dash-nav-dropdown-item <?= $routeMatches(['mro-requests']) ? 'active' : '' ?>">New Requests</a>
