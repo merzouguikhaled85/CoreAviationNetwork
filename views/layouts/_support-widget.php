@@ -40,9 +40,9 @@ $supportCsrfToken = Yii::$app->request->csrfToken;
 $supportIsGuest = Yii::$app->user->isGuest;
 $supportTurnstileSiteKey = trim((string) (Yii::$app->params['turnstileSiteKey'] ?? ''));
 $supportTurnstileSecretConfigured = trim((string) (Yii::$app->params['turnstileSecretKey'] ?? '')) !== '';
-$supportTurnstileEnabled = $supportIsGuest
-    && $supportTurnstileSiteKey !== ''
+$supportTurnstileConfigured = $supportTurnstileSiteKey !== ''
     && $supportTurnstileSecretConfigured;
+$supportTurnstileEnabled = $supportIsGuest && $supportTurnstileConfigured;
 
 /*
  * ICONES AUTONOMES :
@@ -54,19 +54,6 @@ $this->registerCssFile(
     ['position' => View::POS_HEAD],
     'can-remixicon'
 );
-
-/*
- * SCRIPT TURNSTILE CONDITIONNEL :
- * la ressource Cloudflare n'est chargee que pour un visiteur devant relever le
- * challenge. Les utilisateurs authentifies ne paient donc aucun cout reseau inutile.
- */
-if ($supportTurnstileEnabled) {
-    $this->registerJsFile(
-        'https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit',
-        ['position' => View::POS_HEAD, 'defer' => true],
-        'can-turnstile-api'
-    );
-}
 
 /*
  * DESIGN ISOLE :
@@ -374,6 +361,22 @@ $this->registerCss(<<<'CSS'
     background:#f8fbff;
 }
 
+.can-support-turnstile-state{
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    gap:7px;
+    min-height:18px;
+    margin-top:5px;
+    color:var(--support-muted);
+    font-size:11px;
+    line-height:1.4;
+    text-align:center;
+}
+
+.can-support-turnstile-state.is-success{color:#15803d;}
+.can-support-turnstile-state.is-error{color:#dc2626;}
+
 .can-support-help{
     margin:5px 0 0;
     color:var(--support-muted);
@@ -672,6 +675,7 @@ $supportWidgetJs = <<<'JS'
     const exitButton = widget.querySelector('[data-support-exit]');
     const requestReference = form.querySelector('[name="SupportTicket[request_reference]"]');
     const turnstileContainer = widget.querySelector('[data-support-turnstile]');
+    const turnstileState = widget.querySelector('[data-support-turnstile-state]');
     const dragHandle = widget.querySelector('[data-support-drag-handle]');
     const fileInput = widget.querySelector('[data-support-file-input]');
     const dropzone = widget.querySelector('[data-support-dropzone]');
@@ -682,6 +686,7 @@ $supportWidgetJs = <<<'JS'
     const fileRemove = widget.querySelector('[data-support-file-remove]');
     const attachmentError = widget.querySelector('[data-error-for="attachment"]');
     let turnstileWidgetId = null;
+    let turnstileScriptPromise = null;
     let attachmentIsValid = true;
     let previouslyFocused = null;
 
@@ -716,31 +721,99 @@ $supportWidgetJs = <<<'JS'
     });
     syncSupportWithLoaders();
 
+    function setTurnstileState(message, state){
+        if(!turnstileState) return;
+        turnstileState.textContent = message;
+        turnstileState.className = 'can-support-turnstile-state' + (state ? ' is-' + state : '');
+    }
+
     /*
-     * CHARGEMENT A LA DEMANDE :
-     * le challenge est rendu lorsque le visiteur ouvre le panneau. Ce choix evite
-     * une iframe active en permanence sur les pages publiques et preserve le mobile.
+     * CHARGEMENT FIABLE A LA DEMANDE :
+     * le script est injecte lorsque le visiteur ouvre le panneau. Les callbacks
+     * remplacent l'ancien polling limite a cinq secondes et rendent tout blocage
+     * reseau visible. Le bouton reste indisponible sans jeton valide.
      */
-    function ensureTurnstile(attempt){
-        if(!turnstileContainer || widget.dataset.turnstileEnabled !== 'true') return;
-        if(window.turnstile && turnstileWidgetId === null){
-            turnstileWidgetId = window.turnstile.render(turnstileContainer, {
-                sitekey:widget.dataset.turnstileSitekey,
-                action:'support_ticket',
-                theme:'light',
-                size:'flexible',
-                language:'en'
-            });
+    function loadTurnstileScript(){
+        if(window.turnstile) return Promise.resolve(window.turnstile);
+        if(turnstileScriptPromise) return turnstileScriptPromise;
+
+        turnstileScriptPromise = new Promise(function(resolve, reject){
+            const existing = document.querySelector('script[data-can-turnstile-api]');
+            const script = existing || document.createElement('script');
+
+            script.addEventListener('load', function(){
+                if(window.turnstile) resolve(window.turnstile);
+                else reject(new Error('Turnstile API unavailable after loading.'));
+            }, {once:true});
+            script.addEventListener('error', function(){
+                reject(new Error('Turnstile API could not be loaded.'));
+            }, {once:true});
+
+            if(!existing){
+                script.src = 'https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit';
+                script.async = true;
+                script.defer = true;
+                script.dataset.canTurnstileApi = 'true';
+                document.head.appendChild(script);
+            }
+        });
+
+        return turnstileScriptPromise;
+    }
+
+    function renderTurnstile(){
+        if(!window.turnstile || turnstileWidgetId !== null) return;
+
+        turnstileWidgetId = window.turnstile.render(turnstileContainer, {
+            sitekey:widget.dataset.turnstileSitekey,
+            action:'support_ticket',
+            theme:'light',
+            size:'flexible',
+            appearance:'always',
+            language:'en',
+            callback:function(){
+                setTurnstileState('Visitor verification completed.', 'success');
+                submitButton.disabled = false;
+            },
+            'expired-callback':function(){
+                setTurnstileState('Verification expired. Please verify again.', 'error');
+                submitButton.disabled = true;
+            },
+            'error-callback':function(){
+                setTurnstileState('Verification failed to load. Check your connection and try again.', 'error');
+                submitButton.disabled = true;
+            }
+        });
+    }
+
+    function ensureTurnstile(){
+        if(widget.dataset.turnstileRequired !== 'true') return;
+
+        submitButton.disabled = true;
+        if(widget.dataset.turnstileConfigured !== 'true' || !turnstileContainer){
+            setTurnstileState('Visitor verification is not configured. Please contact support.', 'error');
             return;
         }
-        if(!window.turnstile && (attempt || 0) < 25){
-            window.setTimeout(function(){ ensureTurnstile((attempt || 0) + 1); }, 200);
-        }
+
+        setTurnstileState('Loading visitor verification...');
+        loadTurnstileScript()
+            .then(function(){
+                renderTurnstile();
+                if(turnstileWidgetId !== null){
+                    setTurnstileState('Complete the verification to send your request.');
+                }
+            })
+            .catch(function(){
+                setTurnstileState('Visitor verification could not be loaded. Disable content blockers and try again.', 'error');
+                submitButton.disabled = true;
+            });
     }
 
     function resetTurnstile(){
         if(window.turnstile && turnstileWidgetId !== null){
             window.turnstile.reset(turnstileWidgetId);
+            submitButton.disabled = true;
+            setTurnstileState('Complete the verification to send your request.');
         }
     }
 
@@ -924,7 +997,7 @@ $supportWidgetJs = <<<'JS'
         panel.hidden = false;
         launcher.setAttribute('aria-expanded', 'true');
         document.body.style.overflow = 'hidden';
-        ensureTurnstile(0);
+        ensureTurnstile();
         window.setTimeout(function(){
             const firstField = panel.querySelector('input:not([type="hidden"]):not(.can-support-honeypot), select, textarea');
             if(firstField) firstField.focus();
@@ -1043,6 +1116,18 @@ $supportWidgetJs = <<<'JS'
             dropzone.focus();
             return;
         }
+
+        /*
+         * DEFENSE COTE NAVIGATEUR : le serveur effectue toujours la validation
+         * definitive, mais on evite une requete inutile si aucun jeton n'existe.
+         */
+        if(widget.dataset.turnstileRequired === 'true'){
+            const challengeResponse = form.querySelector('[name="cf-turnstile-response"]');
+            if(!challengeResponse || !challengeResponse.value){
+                setTurnstileState('Please complete the visitor verification.', 'error');
+                return;
+            }
+        }
         clearErrors();
         submitButton.disabled = true;
         submitButton.innerHTML = '<i class="ri-loader-4-line" aria-hidden="true"></i><span>Sending...</span>';
@@ -1097,6 +1182,8 @@ $this->registerJs($supportWidgetJs, View::POS_END);
     id="canSupportWidget"
     data-csrf-param="<?= Html::encode($supportCsrfParam) ?>"
     data-csrf-token="<?= Html::encode($supportCsrfToken) ?>"
+    data-turnstile-required="<?= $supportIsGuest ? 'true' : 'false' ?>"
+    data-turnstile-configured="<?= $supportTurnstileConfigured ? 'true' : 'false' ?>"
     data-turnstile-enabled="<?= $supportTurnstileEnabled ? 'true' : 'false' ?>"
     data-turnstile-sitekey="<?= Html::encode($supportTurnstileSiteKey) ?>"
 >
@@ -1254,14 +1341,23 @@ $this->registerJs($supportWidgetJs, View::POS_END);
                             <span class="can-support-error" data-error-for="attachment"></span>
                         </div>
 
-                        <?php if ($supportTurnstileEnabled): ?>
+                        <?php if ($supportIsGuest): ?>
                             <!--
                               CAPTCHA VISITEUR :
                               Turnstile injecte cf-turnstile-response dans ce formulaire.
                               La valeur reste inutile sans sa validation serveur obligatoire.
                             -->
                             <div class="can-support-field is-full">
-                                <div class="can-support-turnstile" data-support-turnstile></div>
+                                <?php if ($supportTurnstileConfigured): ?>
+                                    <div class="can-support-turnstile" data-support-turnstile></div>
+                                    <span class="can-support-turnstile-state" data-support-turnstile-state role="status" aria-live="polite">
+                                        Visitor verification will load when this panel opens.
+                                    </span>
+                                <?php else: ?>
+                                    <div class="can-support-turnstile-state is-error" data-support-turnstile-state role="alert">
+                                        Visitor verification is not configured. Please contact support.
+                                    </div>
+                                <?php endif; ?>
                                 <span class="can-support-error" data-error-for="turnstile"></span>
                             </div>
                         <?php endif; ?>
@@ -1273,7 +1369,7 @@ $this->registerJs($supportWidgetJs, View::POS_END);
                     </div>
 
                     <div class="can-support-actions">
-                        <button class="can-support-submit" type="submit" data-support-submit>
+                        <button class="can-support-submit" type="submit" data-support-submit<?= $supportIsGuest ? ' disabled' : '' ?>>
                             <i class="ri-send-plane-line" aria-hidden="true"></i>
                             <span>Send support request</span>
                         </button>

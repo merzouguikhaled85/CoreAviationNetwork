@@ -54,7 +54,14 @@ $readOptionalEnvironmentValue = static function (
     string $defaultValue = ''
 ) use ($localValues): string {
     $systemValue = getenv($environmentName);
-    $value = $systemValue !== false
+
+    /*
+     * CPANEL / APACHE : une variable peut exister dans le processus Web avec
+     * une valeur vide, alors qu'elle est totalement absente du PHP CLI. Une
+     * chaîne vide ne doit pas masquer la valeur persistante de env-local.php.
+     */
+    $hasUsableSystemValue = is_string($systemValue) && trim($systemValue) !== '';
+    $value = $hasUsableSystemValue
         ? $systemValue
         : ($localValues[$localKey] ?? $defaultValue);
 
