@@ -32,18 +32,21 @@ jobs:
       SSH_HOST: ${{ secrets.PROD_SSH_HOST }}
       SSH_PORT: ${{ secrets.PROD_SSH_PORT }}
       SSH_USER: ${{ secrets.PROD_SSH_USER }}
-      SSH_PRIVATE_KEY: ${{ secrets.PROD_SSH_PRIVATE_KEY }}
       SSH_KNOWN_HOSTS: ${{ secrets.PROD_SSH_KNOWN_HOSTS }}
 
     steps:
       - name: Vérifier la présence des secrets de déploiement
         shell: bash
+        env:
+          # Le mot de passe reste limité aux étapes qui doivent le contrôler
+          # ou l'utiliser ; il n'est pas exposé aux autres commandes du job.
+          SSH_PASSWORD: ${{ secrets.PROD_SSH_PASSWORD }}
         run: |
           set -Eeuo pipefail
 
           # L'arrêt immédiat donne un diagnostic clair lorsqu'un secret GitHub
           # a été oublié, au lieu d'obtenir une erreur SSH difficile à analyser.
-          for variable in SSH_HOST SSH_PORT SSH_USER SSH_PRIVATE_KEY SSH_KNOWN_HOSTS; do
+          for variable in SSH_HOST SSH_PORT SSH_USER SSH_PASSWORD SSH_KNOWN_HOSTS; do
             if [[ -z "${!variable:-}" ]]; then
               echo "Le secret correspondant à ${variable} est absent."
               exit 1
@@ -57,19 +60,30 @@ jobs:
           umask 077
           mkdir -p "$HOME/.ssh"
 
-          # La clé privée est reconstruite uniquement dans le runner temporaire.
-          # La suppression des retours chariot assure la compatibilité lorsque
-          # le secret a été copié depuis un poste Windows.
-          printf '%s\n' "$SSH_PRIVATE_KEY" | tr -d '\r' > "$HOME/.ssh/deployment_key"
-          chmod 600 "$HOME/.ssh/deployment_key"
-
           # La clé d'hôte connue est fournie explicitement par GitHub afin
           # d'empêcher une connexion silencieuse à un faux serveur SSH.
           printf '%s\n' "$SSH_KNOWN_HOSTS" | tr -d '\r' > "$HOME/.ssh/known_hosts"
           chmod 600 "$HOME/.ssh/known_hosts"
 
+      - name: Installer le client d'authentification GoDaddy
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+
+          # L'offre Web Hosting cPanel utilisée impose le mot de passe SSH.
+          # sshpass le transmet sans interaction et sans l'écrire dans la ligne
+          # de commande, les fichiers du runner ou les journaux GitHub Actions.
+          if ! command -v sshpass >/dev/null 2>&1; then
+            sudo apt-get update -qq
+            sudo apt-get install -y --no-install-recommends sshpass
+          fi
+
       - name: Mettre à jour l'application et la base de données
         shell: bash
+        env:
+          # sshpass lit exclusivement SSHPASS dans l'environnement temporaire
+          # de cette étape. GitHub masque la valeur provenant du secret.
+          SSH_PASSWORD: ${{ secrets.PROD_SSH_PASSWORD }}
         run: |
           set -Eeuo pipefail
 
@@ -77,11 +91,11 @@ jobs:
           # lors de sa toute première installation. Le script effectue ensuite
           # ses propres contrôles, Composer, les migrations et le cache Yii.
           # env-local.php demeure sur GoDaddy parce qu'il est ignoré par Git.
-          ssh \
-            -i "$HOME/.ssh/deployment_key" \
+          SSHPASS="$SSH_PASSWORD" sshpass -e ssh \
             -p "$SSH_PORT" \
-            -o BatchMode=yes \
-            -o IdentitiesOnly=yes \
+            -o PreferredAuthentications=password \
+            -o PubkeyAuthentication=no \
+            -o NumberOfPasswordPrompts=1 \
             -o StrictHostKeyChecking=yes \
             "$SSH_USER@$SSH_HOST" \
             'bash -se' <<'REMOTE_COMMANDS'

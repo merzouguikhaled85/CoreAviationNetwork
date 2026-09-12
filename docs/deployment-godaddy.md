@@ -8,19 +8,16 @@ Root du sous-domaine `can.coreaviationnetwork.com` doit pointer précisément ve
 `public_html/can/web`. Cette séparation empêche l'accès web direct à `config`,
 `vendor`, `runtime`, `migrations` et aux autres sources internes de Yii2.
 
-## 1. Créer une clé dédiée à GitHub Actions
+## 1. Préparer l'authentification SSH GoDaddy
 
-La clé utilisée par MobaXterm ne doit pas être réutilisée. Depuis un terminal
-local, créer une clé RSA dédiée, sans phrase secrète car le runner GitHub doit
-pouvoir l'utiliser sans intervention humaine :
+Cette offre Web Hosting cPanel accepte la connexion SSH avec le mot de passe du
+compte, mais refuse l'authentification finale par clé malgré les clés marquées
+comme autorisées dans cPanel. Le workflow utilise donc `sshpass` et le secret
+GitHub `PROD_SSH_PASSWORD` pour fournir le mot de passe sans interaction.
 
-```bash
-ssh-keygen -t rsa -b 4096 -m PEM -f can_github_actions -N ""
-```
-
-Importer uniquement `can_github_actions.pub` dans cPanel, puis l'autoriser dans
-`SSH Access > Manage SSH Keys`. Le fichier `can_github_actions` est la clé privée
-à enregistrer dans GitHub ; il ne doit jamais être ajouté au dépôt.
+Ce compromis donne au workflow les droits du compte cPanel. Le dépôt doit rester
+privé, l'environnement `production` doit être limité à `main`, et le mot de passe
+doit être remplacé immédiatement s'il apparaît dans un journal ou un fichier.
 
 ## 2. Créer l'environnement GitHub
 
@@ -30,7 +27,7 @@ Dans le dépôt GitHub, ouvrir `Settings > Environments`, créer l'environnement
 - `PROD_SSH_HOST` : adresse IP ou nom du serveur GoDaddy ;
 - `PROD_SSH_PORT` : généralement `22` ;
 - `PROD_SSH_USER` : utilisateur cPanel ;
-- `PROD_SSH_PRIVATE_KEY` : contenu complet de `can_github_actions` ;
+- `PROD_SSH_PASSWORD` : mot de passe cPanel utilisé également par SSH ;
 - `PROD_SSH_KNOWN_HOSTS` : ligne de clé d'hôte vérifiée du serveur.
 
 La protection de l'environnement peut demander une approbation manuelle avant
