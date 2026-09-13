@@ -1039,16 +1039,25 @@ $this->layout = 'login';
     }
 
     $model = new LoginForm();
-    if ($model->load(Yii::$app->request->post()) && $model->login()) {
+    $loginSubmitted = $model->load(Yii::$app->request->post());
+    if ($loginSubmitted && $model->login()) {
         $user = Yii::$app->user->identity;
         if ($user) {
             if ($user->status == 'banned') {
-                Yii::$app->user->logout(); // Log out the user if banned
+                Yii::$app->auditService->record('LOGIN_FAILED', [
+                    'username' => $model->username,
+                    'new_values' => ['reason' => 'INVALID_CREDENTIALS_OR_ACCOUNT_NOT_ALLOWED'],
+                ]);
+                Yii::$app->user->logout(); // Deconnecter immediatement un compte bloque.
                 Yii::$app->session->setFlash('error', 'Your account has been banned. Please contact support for assistance.');
                 return $this->refresh();
             }
                         if ($user->getUserType() !== 'admin' && $user->email_verified == 0) {
-                Yii::$app->user->logout(); // Log out the user if banned
+                Yii::$app->auditService->record('LOGIN_FAILED', [
+                    'username' => $model->username,
+                    'new_values' => ['reason' => 'INVALID_CREDENTIALS_OR_ACCOUNT_NOT_ALLOWED'],
+                ]);
+                Yii::$app->user->logout(); // Deconnecter un compte qui n'est pas encore verifie.
                 Yii::$app->session->setFlash('error', 'Your account is not verified. Please contact support for assistance.');
                 return $this->refresh();
             }
@@ -1074,11 +1083,20 @@ $this->layout = 'login';
 
             }
             
+            Yii::$app->auditService->record('LOGIN');
             Yii::$app->session->setFlash('message', 'You have successfully logged in. ' );
             return $this->redirect(['dashboard/home']);
         } else {
             Yii::$app->session->setFlash('error', 'Failed to set user identity.');
         }
+    }
+
+    if ($loginSubmitted && Yii::$app->user->isGuest) {
+        /* Le mot de passe tente n'est jamais transmis au service d'audit. */
+        Yii::$app->auditService->record('LOGIN_FAILED', [
+            'username' => $model->username,
+            'new_values' => ['reason' => 'INVALID_CREDENTIALS'],
+        ]);
     }
 
     $model->password = '';
@@ -1095,6 +1113,8 @@ $this->layout = 'login';
      */
     public function actionLogout()
     {
+        /* L'identite doit etre photographiee avant sa suppression de la session. */
+        Yii::$app->auditService->record('LOGOUT');
         Yii::$app->user->logout();
 
         return $this->goHome();

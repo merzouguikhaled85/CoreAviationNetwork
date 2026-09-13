@@ -54,10 +54,8 @@ class AwaitingRequestResponseController extends Controller
             throw new NotFoundHttpException('The requested AO profile does not exist.');
         }
     
-        // Directly update the status in the database without triggering Yii validation
-        $result = Yii::$app->db->createCommand()
-            ->update('ao_profiles', ['status' => 'banned'], ['ao_id' => $id])
-            ->execute();
+        // Mise a jour sans validation metier, mais via ActiveRecord afin de conserver l'audit.
+        $result = $ao->updateAttributes(['status' => 'banned']);
     
         if ($result) {
             Yii::$app->session->setFlash('success', 'AO has been banned successfully.');
@@ -74,10 +72,8 @@ class AwaitingRequestResponseController extends Controller
             throw new NotFoundHttpException('The requested AO profile does not exist.');
         }
     
-        // Directly update the status in the database without triggering Yii validation
-        $result = Yii::$app->db->createCommand()
-            ->update('ao_profiles', ['status' => 'active'], ['ao_id' => $id])
-            ->execute();
+        // Mise a jour sans validation metier, mais via ActiveRecord afin de conserver l'audit.
+        $result = $ao->updateAttributes(['status' => 'active']);
     
         if ($result) {
             Yii::$app->session->setFlash('success', 'AO has been unbanned successfully.');

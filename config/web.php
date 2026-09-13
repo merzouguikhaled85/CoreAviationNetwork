@@ -3,12 +3,20 @@
 $params = require __DIR__ . '/params.php';
 $db = require __DIR__ . '/db.php';
 $environment = require __DIR__ . '/env.php';
+$cloudflareTrustedHosts = [];
+foreach ($environment['cloudflareTrustedProxies'] as $cloudflareCidr) {
+    $cloudflareTrustedHosts[$cloudflareCidr] = [
+        'CF-Connecting-IP',
+        'CF-IPCountry',
+        'X-Forwarded-Proto',
+    ];
+}
 $config = [
     'id' => 'basic',
     'name' => 'Core Aviation Network',
     'basePath' => dirname(__DIR__),
       'homeUrl' => ['site/index'],
-    'bootstrap' => ['log'],
+    'bootstrap' => ['log', 'auditTrail'],
     'aliases' => [
         '@bower' => '@vendor/bower-asset',
         '@npm'   => '@vendor/npm-asset',
@@ -31,6 +39,24 @@ $config = [
             'cookieValidationKey' => $environment['cookieValidationKey'],
            'enableCsrfValidation' => false, // Disable CSRF (Not recommended for production)
 
+            /*
+             * PROXY ZERO-TRUST : ces en-tetes sont supprimes par Yii lorsque le
+             * pair direct n'appartient pas aux CIDR Cloudflare configures.
+             */
+            'trustedHosts' => $cloudflareTrustedHosts,
+            'secureHeaders' => [
+                'X-Forwarded-For',
+                'X-Forwarded-Host',
+                'X-Forwarded-Proto',
+                'X-Forwarded-Port',
+                'Front-End-Https',
+                'X-Rewrite-Url',
+                'X-Original-Host',
+                'CF-Connecting-IP',
+                'CF-IPCountry',
+            ],
+            'ipHeaders' => ['CF-Connecting-IP'],
+
         ],
         'session' => [
             'class' => 'yii\web\Session',
@@ -38,6 +64,21 @@ $config = [
         ],
         'cache' => [
             'class' => 'yii\caching\FileCache',
+        ],
+        'auditRedactor' => [
+            'class' => 'app\components\AuditDataRedactor',
+        ],
+        'auditContext' => [
+            'class' => 'app\components\AuditRequestContext',
+        ],
+        'auditGeoIp' => [
+            'class' => 'app\components\CloudflareAuditGeoIpProvider',
+        ],
+        'auditService' => [
+            'class' => 'app\components\AuditService',
+        ],
+        'auditTrail' => [
+            'class' => 'app\components\AuditTrailBootstrap',
         ],
         'user' => [
             'identityClass' => 'app\models\User',
@@ -94,6 +135,9 @@ $config = [
             'enablePrettyUrl' => true,
             'showScriptName' => false,
             'rules' => [
+                'admin/audit-log' => 'admin-audit-log/index',
+                'admin/audit-log/view/<id:[A-Za-z0-9]+>' => 'admin-audit-log/view',
+                'admin/audit-log/request/<requestId:[a-f0-9]{32}>' => 'admin-audit-log/request',
                 'awaiting-request-response' => 'app\controllers\AwaitingRequestResponseController',
                 'mro-aircraft-certificates' => 'mro-aircraft-certificates/index',
                 'mro-aircraft-certificates/create' => 'mro-aircraft-certificates/create',

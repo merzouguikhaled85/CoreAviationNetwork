@@ -68,6 +68,24 @@ $readOptionalEnvironmentValue = static function (
     return is_string($value) ? trim($value) : $defaultValue;
 };
 
+$readOptionalEnvironmentList = static function (
+    string $environmentName,
+    string $localKey
+) use ($localValues): array {
+    $systemValue = getenv($environmentName);
+    $value = is_string($systemValue) && trim($systemValue) !== ''
+        ? $systemValue
+        : ($localValues[$localKey] ?? '');
+
+    if (is_array($value)) {
+        $items = $value;
+    } else {
+        $items = preg_split('/[\s,;]+/', trim((string) $value), -1, PREG_SPLIT_NO_EMPTY);
+    }
+
+    return array_values(array_unique(array_filter(array_map('trim', $items))));
+};
+
 return [
     'cookieValidationKey' => $readEnvironmentValue(
         'CAN_COOKIE_VALIDATION_KEY',
@@ -101,5 +119,14 @@ return [
         'CAN_TURNSTILE_EXPECTED_HOSTNAME',
         'turnstileExpectedHostname',
         YII_ENV_DEV ? 'localhost' : 'can.coreaviationnetwork.com'
+    ),
+
+    /*
+     * CIDR Cloudflare IPv4 et IPv6, fournis hors Git. Tant que cette liste est
+     * vide, Yii ignore les en-tetes proxy et conserve REMOTE_ADDR.
+     */
+    'cloudflareTrustedProxies' => $readOptionalEnvironmentList(
+        'CAN_CLOUDFLARE_TRUSTED_PROXIES',
+        'cloudflareTrustedProxies'
     ),
 ];

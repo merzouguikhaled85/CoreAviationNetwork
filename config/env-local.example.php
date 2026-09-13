@@ -24,4 +24,11 @@ return [
     'turnstileSiteKey' => '1x00000000000000000000AA',
     'turnstileSecretKey' => '1x0000000000000000000000000000000AA',
     'turnstileExpectedHostname' => 'localhost',
+
+    /*
+     * En local, conserver une liste vide : REMOTE_ADDR sera utilise. En production,
+     * recopier toutes les plages IPv4 et IPv6 publiees officiellement par Cloudflare.
+     * Ne jamais utiliser 0.0.0.0/0 ou ::/0, car les en-tetes deviendraient falsifiables.
+     */
+    'cloudflareTrustedProxies' => [],
 ];

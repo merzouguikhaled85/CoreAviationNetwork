@@ -8,6 +8,7 @@ $db = require __DIR__ . '/test_db.php';
 return [
     'id' => 'basic-tests',
     'basePath' => dirname(__DIR__),
+    'bootstrap' => ['auditTrail'],
     'aliases' => [
         '@bower' => '@vendor/bower-asset',
         '@npm'   => '@vendor/npm-asset',
@@ -15,6 +16,21 @@ return [
     'language' => 'en-US',
     'components' => [
         'db' => $db,
+        'auditRedactor' => [
+            'class' => 'app\components\AuditDataRedactor',
+        ],
+        'auditContext' => [
+            'class' => 'app\components\AuditRequestContext',
+        ],
+        'auditGeoIp' => [
+            'class' => 'app\components\CloudflareAuditGeoIpProvider',
+        ],
+        'auditService' => [
+            'class' => 'app\components\AuditService',
+        ],
+        'auditTrail' => [
+            'class' => 'app\components\AuditTrailBootstrap',
+        ],
         'mailer' => [
             'class' => \yii\symfonymailer\Mailer::class,
             'viewPath' => '@app/mail',
