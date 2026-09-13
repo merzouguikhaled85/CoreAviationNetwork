@@ -112,9 +112,22 @@ jobs:
           git diff --quiet
           git diff --cached --quiet
 
+          # AMORÇAGE DE LA PERSISTANCE : ce bloc est indispensable lors du premier
+          # déploiement qui retire les anciennes pièces jointes de l'index Git.
+          # Les fichiers sont copiés hors du dépôt avant l'avance rapide, puis
+          # restaurés avant de confier les déploiements suivants au script versionné.
+          PERSISTENT_UPLOADS="$HOME/.core-aviation-network-persistent/bootstrap-$(date +%Y%m%d%H%M%S)-$$/uploads"
+          mkdir -p "$PERSISTENT_UPLOADS"
+          if [[ -d web/uploads ]]; then
+            cp -a web/uploads/. "$PERSISTENT_UPLOADS/"
+          fi
+
           git fetch --prune origin main
           git checkout main
           git merge --ff-only origin/main
+
+          mkdir -p web/uploads
+          cp -a "$PERSISTENT_UPLOADS/." web/uploads/
           bash scripts/deploy-production.sh
           REMOTE_COMMANDS
 
@@ -137,3 +150,48 @@ jobs:
             --max-time 30 \
             https://can.coreaviationnetwork.com/ \
             > /dev/null
+
+      - name: Vérifier les assets critiques publiés par Yii
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+
+          # La page de connexion charge jQuery, Yii ActiveForm et Bootstrap.
+          # Chaque URL hachée annoncée dans son HTML doit donc être accessible.
+          page_file="$(mktemp)"
+          trap 'rm -f "$page_file"' EXIT
+
+          curl \
+            --fail \
+            --silent \
+            --show-error \
+            --location \
+            --max-time 30 \
+            https://can.coreaviationnetwork.com/site/login \
+            --output "$page_file"
+
+          mapfile -t asset_urls < <(
+            grep -oE '(src|href)="[^"]*/assets/[^"]+"' "$page_file" \
+              | sed -E 's/^(src|href)="//; s/"$//; s/&amp;/\&/g' \
+              | sort -u
+          )
+
+          if [[ "${#asset_urls[@]}" -eq 0 ]]; then
+            echo "Aucun asset Yii haché n'a été trouvé dans la page de connexion."
+            exit 1
+          fi
+
+          for asset_url in "${asset_urls[@]}"; do
+            if [[ "$asset_url" == /* ]]; then
+              asset_url="https://can.coreaviationnetwork.com${asset_url}"
+            fi
+
+            curl \
+              --fail \
+              --silent \
+              --show-error \
+              --location \
+              --max-time 30 \
+              "$asset_url" \
+              > /dev/null
+          done

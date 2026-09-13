@@ -51,22 +51,40 @@ class User extends BaseObject implements IdentityInterface
 
      public static function findIdentity($id)
      {
-         $admin = AdminProfile::findOne(['admin_id' => $id]);
-         if ($admin !== null) {
-             return new static($admin->toArray());
+         /*
+          * L'identifiant persistant contient le rôle afin que admin:12, mro:12
+          * et ao:12 ne puissent jamais restaurer le mauvais compte.
+          */
+         if (preg_match('/^(admin|mro|ao):([1-9][0-9]*)$/', (string) $id, $matches)) {
+             return static::findIdentityByTypeAndId($matches[1], (int) $matches[2]);
          }
- 
-         $mro = MroProfile::findOne(['mro_id' => $id]);
-         if ($mro !== null) {
-             return new static($mro->toArray());
+
+         /*
+          * Compatibilité de transition : une ancienne session numérique n'est
+          * restaurée que si son rôle est encore présent dans cette même session.
+          */
+         if (filter_var($id, FILTER_VALIDATE_INT, ['options' => ['min_range' => 1]]) !== false) {
+             $userType = Yii::$app->session->get('user_type');
+             if (in_array($userType, ['admin', 'mro', 'ao'], true)) {
+                 return static::findIdentityByTypeAndId($userType, (int) $id);
+             }
          }
- 
-         $ao = AoProfile::findOne(['ao_id' => $id]);
-         if ($ao !== null) {
-             return new static($ao->toArray());
-         }
- 
+
          return null;
+     }
+
+     private static function findIdentityByTypeAndId($userType, $id)
+     {
+         $profile = null;
+         if ($userType === 'admin') {
+             $profile = AdminProfile::findOne(['admin_id' => $id]);
+         } elseif ($userType === 'mro') {
+             $profile = MroProfile::findOne(['mro_id' => $id]);
+         } elseif ($userType === 'ao') {
+             $profile = AoProfile::findOne(['ao_id' => $id]);
+         }
+
+         return $profile === null ? null : new static($profile->toArray());
      }
  
      public static function findIdentityByAccessToken($token, $type = null)
@@ -118,18 +136,40 @@ class User extends BaseObject implements IdentityInterface
  
      public function getId()
      {
+         if ($this->admin_id !== null) {
+             return 'admin:' . (int) $this->admin_id;
+         }
+         if ($this->mro_id !== null) {
+             return 'mro:' . (int) $this->mro_id;
+         }
+         if ($this->ao_id !== null) {
+             return 'ao:' . (int) $this->ao_id;
+         }
 
-         return $this->admin_id ?? $this->mro_id ?? $this->ao_id;
+         return null;
      }
  
      public function getAuthKey()
      {
-         return $this->authKey;
+         /*
+          * La clé dérive du rôle, de l'identifiant et du hash du mot de passe.
+          * Elle change automatiquement après une modification du mot de passe.
+          */
+         if ($this->getId() === null || empty($this->password)) {
+             return null;
+         }
+
+         return hash_hmac(
+             'sha256',
+             $this->getId() . '|' . $this->password,
+             Yii::$app->request->cookieValidationKey
+         );
      }
  
      public function validateAuthKey($authKey)
      {
-         return $this->authKey === $authKey;
+         $expected = $this->getAuthKey();
+         return is_string($authKey) && is_string($expected) && hash_equals($expected, $authKey);
      }
  
      public function validatePassword($password)

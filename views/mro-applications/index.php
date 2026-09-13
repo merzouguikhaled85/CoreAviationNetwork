@@ -9,14 +9,6 @@ use yii\widgets\LinkPager; // Widget Yii2 utilise pour afficher la pagination
 
 $this->title = $title;
 
-// Chargement direct et versionné pour contourner l'ancien AppAsset de production.
-$requestSyncFile = Yii::getAlias('@webroot/js/request-sync.js');
-$requestSyncVersion = is_file($requestSyncFile) ? (string) filemtime($requestSyncFile) : '1';
-$this->registerJsFile(
-    rtrim(Yii::getAlias('@web'), '/') . '/js/request-sync.js?v=' . $requestSyncVersion,
-    ['depends' => [\yii\web\YiiAsset::class]]
-);
-
 // Mot cle actuel de recherche.
 // Le controller envoie $search, et on garde aussi q comme ancien parametre compatible.
 $searchQuery = trim((string) ($search ?? Yii::$app->request->get('search', Yii::$app->request->get('q', ''))));

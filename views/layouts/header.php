@@ -3,6 +3,7 @@
 use app\models\User;
 use yii\helpers\Url;
 use yii\helpers\Html;
+use yii\helpers\Json;
 use yii\helpers\VarDumper;
 use app\components\UrlIdHelper;
 use app\models\SupportTicket;
@@ -18,8 +19,11 @@ $identity = Yii::$app->user->identity;
  * L'identifiant signé reste volontairement nul ; tous les liens privés qui
  * l'utilisent sont déjà protégés plus bas par la condition !isGuest.
  */
-$encodedId = $identity !== null
-    ? UrlIdHelper::encode($identity->getId())
+$identityNumericId = $identity !== null
+    ? ($identity->admin_id ?? $identity->mro_id ?? $identity->ao_id)
+    : null;
+$encodedId = $identityNumericId !== null
+    ? UrlIdHelper::encode($identityNumericId)
     : null;
 $userType  = Yii::$app->session->get('user_type');
 $fullName  = '';
@@ -1143,15 +1147,63 @@ $notificationUpdateUrl       = Url::to(['notification/update-notification']);
 $notificationDeleteUrl       = Url::to(['notification/delete-notification']);
 $deleteAllNotificationsUrl   = Url::to(['notification/delete-all']);
 $markllNotificationAsReadURL = Url::to(['notification/mark-all-as-read']);
+$notificationUrlsJson = Json::htmlEncode([
+    'count' => $notificationCountUrl,
+    'list' => $notificationListUrl,
+    'update' => $notificationUpdateUrl,
+    'delete' => $notificationDeleteUrl,
+    'deleteAll' => $deleteAllNotificationsUrl,
+    'markAllRead' => $markllNotificationAsReadURL,
+]);
+$notificationCsrfParamJson = Json::htmlEncode(Yii::$app->request->csrfParam);
+$notificationCsrfTokenJson = Json::htmlEncode(Yii::$app->request->getCsrfToken());
 
 $js = <<<JS
 let notificationDropdownOpen = false;
 let activeNotificationFilter = 'unread';
 let notificationFilterInitialized = false;
 let notificationRequestSequence = 0;
+const notificationUrls = $notificationUrlsJson;
+const notificationCsrfParam = $notificationCsrfParamJson;
+const notificationCsrfToken = $notificationCsrfTokenJson;
+
+/* Toutes les mutations utilisent POST et transportent déjà le jeton CSRF Yii. */
+function postNotification(url) {
+    const body = new URLSearchParams();
+    body.append(notificationCsrfParam, notificationCsrfToken);
+
+    return fetch(url, {
+        method: 'POST',
+        credentials: 'same-origin',
+        headers: {
+            'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8',
+            'X-Requested-With': 'XMLHttpRequest'
+        },
+        body: body.toString()
+    });
+}
+
+/* Le contenu vient de la base : il doit rester du texte et ne jamais devenir du HTML exécutable. */
+function escapeNotificationHtml(value) {
+    return String(value ?? '').replace(/[&<>"']/g, character => ({
+        '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;'
+    })[character]);
+}
+
+/* Une action de notification ne peut rediriger que vers cette même application. */
+function safeNotificationAction(value) {
+    try {
+        const url = new URL(String(value || ''), window.location.origin);
+        return url.origin === window.location.origin
+            ? url.pathname + url.search + url.hash
+            : '';
+    } catch (error) {
+        return '';
+    }
+}
 
 function updateNotificationCount() {
-    fetch('$notificationCountUrl')
+    fetch(notificationUrls.count, {credentials: 'same-origin'})
         .then(response => response.json())
         .then(data => {
             if (data.success) {
@@ -1214,9 +1266,9 @@ function renderEmptyNotificationState(filter) {
 function fetchNotifications(filter) {
     const requestedFilter = filter || activeNotificationFilter;
     const requestNumber = ++notificationRequestSequence;
-    const separator = '$notificationListUrl'.indexOf('?') === -1 ? '?' : '&';
+    const separator = notificationUrls.list.indexOf('?') === -1 ? '?' : '&';
 
-    fetch('$notificationListUrl' + separator + 'filter=' + encodeURIComponent(requestedFilter))
+    fetch(notificationUrls.list + separator + 'filter=' + encodeURIComponent(requestedFilter), {credentials: 'same-origin'})
         .then(response => response.json())
         .then(data => {
             /* Une reponse ancienne ne doit pas remplacer le dernier onglet selectionne. */
@@ -1262,16 +1314,17 @@ function fetchNotifications(filter) {
                     let content = '<div class="notification-content">';
                     content += '<i class="fas ' + notificationIcon + ' notification-message-icon"></i>';
                     content += '<div class="notification-text">';
-                    content += '<div>' + notification.message + '</div>';
+                    content += '<div>' + escapeNotificationHtml(notification.message) + '</div>';
                     if (notification.created_at) {
-                        content += '<div class="notification-created-at"><i class="far fa-clock"></i><span>' + notification.created_at + '</span></div>';
+                        content += '<div class="notification-created-at"><i class="far fa-clock"></i><span>' + escapeNotificationHtml(notification.created_at) + '</span></div>';
                     }
                     content += '</div>';
                     content += '</div>';
                     content += '<div class="notification-actions">';
 
-                    if (notification.actions) {
-                        content += '<a href="' + notification.actions + '" class="btn-notif btn-notif-view"><i class="fas fa-eye"></i> View</a>';
+                    const notificationAction = safeNotificationAction(notification.actions);
+                    if (notificationAction) {
+                        content += '<a href="' + escapeNotificationHtml(notificationAction) + '" class="btn-notif btn-notif-view"><i class="fas fa-eye"></i> View</a>';
                     }
                     if (notification.read !== "read") {
                         content += '<button class="btn-notif btn-notif-read mark-as-read-btn" data-id="' + notification.id + '"><i class="fas fa-check"></i> Mark as Read</button>';
@@ -1292,7 +1345,7 @@ function fetchNotifications(filter) {
 }
 
 function markAllNotificationsAsRead() {
-    fetch('$markllNotificationAsReadURL')
+    postNotification(notificationUrls.markAllRead)
         .then(response => response.json())
         .then(data => {
             if (data.success) {
@@ -1339,7 +1392,7 @@ document.getElementById('notification-dropdown').addEventListener('click', funct
     const markAsReadButton = event.target.closest('.mark-as-read-btn');
     if (markAsReadButton) {
         let notificationId = markAsReadButton.getAttribute('data-id');
-        fetch('$notificationUpdateUrl?id=' + notificationId)
+        postNotification(notificationUrls.update + '?id=' + encodeURIComponent(notificationId))
             .then(response => response.json())
             .then(data => {
                 if (data.success) {
@@ -1353,7 +1406,7 @@ document.getElementById('notification-dropdown').addEventListener('click', funct
     const deleteNotificationButton = event.target.closest('.delete-notification-btn');
     if (deleteNotificationButton) {
         let notificationId = deleteNotificationButton.getAttribute('data-id');
-        fetch('$notificationDeleteUrl?id=' + notificationId)
+        postNotification(notificationUrls.delete + '?id=' + encodeURIComponent(notificationId))
             .then(response => response.json())
             .then(data => {
                 if (data.success) {
@@ -1369,7 +1422,7 @@ document.getElementById('notification-dropdown').addEventListener('click', funct
 
     const deleteAllButton = event.target.closest('.delete-all');
     if (deleteAllButton) {
-        fetch('$deleteAllNotificationsUrl')
+        postNotification(notificationUrls.deleteAll)
             .then(response => response.json())
             .then(data => {
                 if (data.success) {

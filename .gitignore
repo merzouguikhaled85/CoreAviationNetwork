@@ -1,5 +1,17 @@
-assets/*
-!assets/.gitignore
+# Les bundles déclarés dans assets/ sont du code source et doivent être versionnés.
+# Seuls les fichiers publiés et hachés par Yii dans web/assets sont générés.
+web/assets/*
+!web/assets/.gitignore
+
+# Composer reconstruit vendor/ exclusivement depuis composer.lock.
+vendor/
+
+# Les pièces jointes appartiennent aux utilisateurs et persistent hors de Git.
+web/uploads/*
+!web/uploads/.gitignore
+
+# Ce marqueur temporaire est créé uniquement pendant un déploiement.
+web/maintenance.flag
 protected/runtime/*
 !protected/runtime/.gitignore
 protected/data/*.db

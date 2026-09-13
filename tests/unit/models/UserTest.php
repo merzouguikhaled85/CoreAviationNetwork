@@ -3,42 +3,55 @@
 namespace tests\unit\models;
 
 use app\models\User;
+use Codeception\Test\Unit;
+use Yii;
 
-class UserTest extends \Codeception\Test\Unit
+class UserTest extends Unit
 {
-    public function testFindUserById()
+    public function testIdentityIdIncludesTheUserRole(): void
     {
-        verify($user = User::findIdentity(100))->notEmpty();
-        verify($user->username)->equals('admin');
-
-        verify(User::findIdentity(999))->empty();
+        $this->assertSame('admin:12', (new User(['admin_id' => 12]))->getId());
+        $this->assertSame('mro:12', (new User(['mro_id' => 12]))->getId());
+        $this->assertSame('ao:12', (new User(['ao_id' => 12]))->getId());
     }
 
-    public function testFindUserByAccessToken()
+    public function testIdentityWithoutRoleHasNoId(): void
     {
-        verify($user = User::findIdentityByAccessToken('100-token'))->notEmpty();
-        verify($user->username)->equals('admin');
-
-        verify(User::findIdentityByAccessToken('non-existing'))->empty();        
+        $this->assertNull((new User())->getId());
     }
 
-    public function testFindUserByUsername()
+    public function testUnsupportedAccessTokenIsRejected(): void
     {
-        verify($user = User::findByUsername('admin'))->notEmpty();
-        verify(User::findByUsername('not-admin'))->empty();
+        $this->assertNull(User::findIdentityByAccessToken('token-inconnu'));
     }
 
-    /**
-     * @depends testFindUserByUsername
-     */
-    public function testValidateUser()
+    public function testMalformedIdentityIsRejectedWithoutDatabaseLookup(): void
     {
-        $user = User::findByUsername('admin');
-        verify($user->validateAuthKey('test100key'))->notEmpty();
-        verify($user->validateAuthKey('test102key'))->empty();
-
-        verify($user->validatePassword('admin'))->notEmpty();
-        verify($user->validatePassword('123456'))->empty();        
+        $this->assertNull(User::findIdentity('12'));
+        $this->assertNull(User::findIdentity('invalid:12'));
+        $this->assertNull(User::findIdentity('admin:0'));
     }
 
+    public function testAuthenticationKeyDependsOnRoleIdAndPasswordHash(): void
+    {
+        $passwordHash = Yii::$app->security->generatePasswordHash('mot-de-passe-test');
+        $admin = new User(['admin_id' => 7, 'password' => $passwordHash]);
+        $mro = new User(['mro_id' => 7, 'password' => $passwordHash]);
+
+        $this->assertNotNull($admin->getAuthKey());
+        $this->assertTrue($admin->validateAuthKey($admin->getAuthKey()));
+        $this->assertFalse($admin->validateAuthKey($mro->getAuthKey()));
+        $this->assertFalse($admin->validateAuthKey('cle-invalide'));
+    }
+
+    public function testPasswordValidationUsesTheStoredHash(): void
+    {
+        $user = new User([
+            'admin_id' => 7,
+            'password' => Yii::$app->security->generatePasswordHash('mot-de-passe-test'),
+        ]);
+
+        $this->assertTrue($user->validatePassword('mot-de-passe-test'));
+        $this->assertFalse($user->validatePassword('mot-de-passe-incorrect'));
+    }
 }

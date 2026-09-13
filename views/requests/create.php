@@ -9,7 +9,6 @@ use app\models\Aircrafts;
 use app\models\Requests;
 use kartik\datetime\DateTimePicker;
 use yii\web\JsExpression;
-use yii\web\View;
 
 $this->title = 'Create Request';
 
@@ -23,28 +22,6 @@ if ($request->operational_priority === null || $request->operational_priority ==
 }
 
 $this->registerCssFile('https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css');
-
-/*
- * ASSETS CRITIQUES DU COMPOSANT : la page les enregistre explicitement afin
- * qu'une ancienne instance d'AppAsset conservée par OPcache ne puisse jamais
- * afficher les radios sans leurs cartes. Le timestamp change automatiquement
- * dès que le fichier est déployé et neutralise aussi un cache navigateur/CDN.
- */
-$formSystemPath = Yii::getAlias('@webroot/css/form-system.css');
-$priorityScriptPath = Yii::getAlias('@webroot/js/operational-priority.js');
-$formSystemVersion = is_file($formSystemPath) ? (string) filemtime($formSystemPath) : '1';
-$priorityScriptVersion = is_file($priorityScriptPath) ? (string) filemtime($priorityScriptPath) : '1';
-
-$this->registerCssFile(
-    Yii::getAlias('@web/css/form-system.css') . '?v=' . rawurlencode($formSystemVersion)
-);
-$this->registerJsFile(
-    Yii::getAlias('@web/js/operational-priority.js') . '?v=' . rawurlencode($priorityScriptVersion),
-    [
-        'depends' => [\yii\web\YiiAsset::class],
-        'position' => View::POS_END,
-    ]
-);
 
 $this->registerCss(<<<CSS
 :root {

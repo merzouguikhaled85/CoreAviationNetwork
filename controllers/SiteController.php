@@ -106,9 +106,12 @@ public function beforeAction($action)
         return parent::beforeAction($action);
     }
 
-    // Regenerate CSRF token for guests
+    /*
+     * Initialise le jeton des visiteurs sans le remplacer avant un POST.
+     * Une régénération forcée ici invaliderait le formulaire qui vient d'être soumis.
+     */
     if (Yii::$app->user->isGuest) {
-        Yii::$app->request->getCsrfToken(true);
+        Yii::$app->request->getCsrfToken();
     }
 
     if (!Yii::$app->user->isGuest && Yii::$app->session->get('user_type') === null) {
@@ -478,7 +481,8 @@ $message = Yii::$app->mailer->compose()
                 $model->confirm_password = trim($model->confirm_password);
             }
             if ($model->password !== $model->confirm_password) {
-                Yii::$app->session->setFlash('error', 'Passwords do not match ' .$model->password .' : '.$model->confirm_password);
+                // Un mot de passe en clair ne doit jamais être recopié dans la session ou la réponse HTML.
+                Yii::$app->session->setFlash('error', 'Passwords do not match.');
                 return $this->refresh();
             }
             
@@ -1040,10 +1044,25 @@ $this->layout = 'login';
 
     $model = new LoginForm();
     $loginSubmitted = $model->load(Yii::$app->request->post());
-    if ($loginSubmitted && $model->login()) {
+    $normalizedUsername = mb_strtolower(trim((string) $model->username), 'UTF-8');
+    $loginRateKey = 'login-rate:' . hash('sha256', $normalizedUsername . '|' . Yii::$app->request->userIP);
+    $loginFailures = $loginSubmitted ? (int) Yii::$app->cache->get($loginRateKey) : 0;
+    $loginRateLimited = $loginSubmitted && $loginFailures >= 5;
+
+    /* Une fenêtre glissante simple limite les essais automatisés par compte et adresse IP. */
+    $registerLoginFailure = static function () use ($loginRateKey, $loginFailures) {
+        Yii::$app->cache->set($loginRateKey, $loginFailures + 1, 900);
+    };
+
+    if ($loginRateLimited) {
+        $model->addError('password', 'Too many login attempts. Please try again in 15 minutes.');
+    }
+
+    if ($loginSubmitted && !$loginRateLimited && $model->login()) {
         $user = Yii::$app->user->identity;
         if ($user) {
             if ($user->status == 'banned') {
+                $registerLoginFailure();
                 Yii::$app->auditService->record('LOGIN_FAILED', [
                     'username' => $model->username,
                     'new_values' => ['reason' => 'INVALID_CREDENTIALS_OR_ACCOUNT_NOT_ALLOWED'],
@@ -1052,7 +1071,8 @@ $this->layout = 'login';
                 Yii::$app->session->setFlash('error', 'Your account has been banned. Please contact support for assistance.');
                 return $this->refresh();
             }
-                        if ($user->getUserType() !== 'admin' && $user->email_verified == 0) {
+            if ($user->getUserType() !== 'admin' && $user->email_verified == 0) {
+                $registerLoginFailure();
                 Yii::$app->auditService->record('LOGIN_FAILED', [
                     'username' => $model->username,
                     'new_values' => ['reason' => 'INVALID_CREDENTIALS_OR_ACCOUNT_NOT_ALLOWED'],
@@ -1083,6 +1103,7 @@ $this->layout = 'login';
 
             }
             
+            Yii::$app->cache->delete($loginRateKey);
             Yii::$app->auditService->record('LOGIN');
             Yii::$app->session->setFlash('message', 'You have successfully logged in. ' );
             return $this->redirect(['dashboard/home']);
@@ -1092,10 +1113,15 @@ $this->layout = 'login';
     }
 
     if ($loginSubmitted && Yii::$app->user->isGuest) {
+        if (!$loginRateLimited) {
+            $registerLoginFailure();
+        }
         /* Le mot de passe tente n'est jamais transmis au service d'audit. */
         Yii::$app->auditService->record('LOGIN_FAILED', [
             'username' => $model->username,
-            'new_values' => ['reason' => 'INVALID_CREDENTIALS'],
+            'new_values' => [
+                'reason' => $loginRateLimited ? 'RATE_LIMITED' : 'INVALID_CREDENTIALS',
+            ],
         ]);
     }
 

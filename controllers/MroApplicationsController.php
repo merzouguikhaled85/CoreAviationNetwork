@@ -12,6 +12,7 @@ use app\models\Feedback;
 use app\models\RepairReport;
 use Yii;
 use yii\filters\AccessControl;
+use yii\filters\VerbFilter;
 use yii\data\Pagination; // Pagination Yii2 pour limiter le nombre de lignes par page
 use yii\web\Controller;
 use app\models\MroRequestApply;
@@ -67,6 +68,19 @@ class MroApplicationsController extends Controller
                             return false; // Deny access for other cases
                         }
                     ],
+                ],
+            ],
+            'verbs' => [
+                'class' => VerbFilter::class,
+                'actions' => [
+                    'cancel-application' => ['POST'],
+                    'accept-po' => ['POST'],
+                    'start-work' => ['POST'],
+                    'accept-update' => ['POST'],
+                    'deny-request' => ['POST'],
+                    'set-appointment' => ['GET', 'POST'],
+                    'submit-report' => ['GET', 'POST'],
+                    'provide-new-quote' => ['GET', 'POST'],
                 ],
             ],
         ];
@@ -397,8 +411,19 @@ class MroApplicationsController extends Controller
     if (!$id) {
         throw new NotFoundHttpException('Invalid request link.');
     }
-        // Find the mroRequestsApplications record by ID
-        $mroRequestApplication = MroRequestApply::findOne($id);
+        /* Le lien signé identifie la ressource ; la requête vérifie aussi son propriétaire. */
+        if (Yii::$app->session->get('user_type') === 'ao') {
+            $mroRequestApplication = MroRequestApply::find()
+                ->alias('application')
+                ->innerJoin(['request' => Requests::tableName()], 'request.request_id = application.request_id')
+                ->where([
+                    'application.id' => (int) $id,
+                    'request.ao_id' => (int) Yii::$app->session->get('ao_id'),
+                ])
+                ->one();
+        } else {
+            $mroRequestApplication = $this->findOwnedApplication($id);
+        }
 
         if ($mroRequestApplication) {
             // You can render a view or perform any other necessary actions here
@@ -414,7 +439,7 @@ class MroApplicationsController extends Controller
 {
     // MRO ACTION IDS 2026: resolve the signed application identifier.
     $id = $this->decodeActionId($id);
-    $mroRequestApplication = MroRequestApply::findOne($id);
+    $mroRequestApplication = $this->findOwnedApplication($id);
     if ($mroRequestApplication) {
         $requestId = $mroRequestApplication->request_id;
         $mroRequestApplication->delete();
@@ -452,6 +477,7 @@ public function actionViewPo($id)
 
     // MRO ACTION IDS 2026: view-po now uses the same signed ID as the list.
     $id = $this->decodeActionId($id);
+    $this->findOwnedApplication($id);
     $aoRequestsApplications = AoRequestsApplications::find()->where(['application_id' => $id])->all();
 
     return $this->render('view-po', [
@@ -464,7 +490,10 @@ public function actionAcceptPo($id)
     $id = $this->decodeActionId($id);
     // The view sends MroRequestApply::id. Keep a fallback for older links
     // that may send AoRequestsApplications::id directly.
-    $application = MroRequestApply::findOne($id);
+    $application = MroRequestApply::findOne([
+        'id' => $id,
+        'mro_id' => (int) Yii::$app->session->get('mro_id'),
+    ]);
 
     if ($application) {
         $aoRequestApplication = AoRequestsApplications::find()
@@ -474,7 +503,13 @@ public function actionAcceptPo($id)
         $request = Requests::findOne($application->request_id);
     } else {
         $aoRequestApplication = AoRequestsApplications::findOne($id);
-        $request = $aoRequestApplication ? $aoRequestApplication->getRequest()->one() : null;
+        $legacyApplication = $aoRequestApplication
+            ? MroRequestApply::findOne([
+                'id' => $aoRequestApplication->application_id,
+                'mro_id' => (int) Yii::$app->session->get('mro_id'),
+            ])
+            : null;
+        $request = $legacyApplication ? Requests::findOne($legacyApplication->request_id) : null;
     }
 
     if (!$aoRequestApplication || !$request) {
@@ -523,7 +558,7 @@ public function actionSetAppointment($app_request_id)
         throw new NotFoundHttpException('Invalid request link.');
     }
     $appointment = new Appointment();
-    $application = MroRequestApply::findOne($app_request_id);
+    $application = $this->findOwnedApplication($app_request_id);
 
     if (!$application) {
         throw new \yii\web\NotFoundHttpException('The requested application does not exist.');
@@ -583,7 +618,7 @@ public function actionStartWork($id)
 {
     // MRO ACTION IDS 2026: start-work receives the encoded request ID.
     $id = $this->decodeActionId($id);
-    $request = Requests::findOne($id);
+    $request = $this->findOwnedRequest($id);
     if ($request) {
         $request->status = 'work_started';
         if ($request->save()) {
@@ -708,7 +743,7 @@ public function actionSubmitReport($id)
     |--------------------------------------------------------------------------
     | $id is the MroRequestApply id after decoding.
     */
-    $application = MroRequestApply::findOne($id);
+    $application = $this->findOwnedApplication($id);
 
     if (!$application) {
         throw new NotFoundHttpException('Request not found.');
@@ -863,7 +898,7 @@ public function actionViewReports($id)
         throw new NotFoundHttpException('Invalid request link.');
     }
     // Find the request by ID
-    $request = MroRequestApply::findOne($id);
+    $request = $this->findOwnedApplication($id);
 
     // Check if the request exists
     if (!$request) {
@@ -882,7 +917,14 @@ public function actionProvideNewQuote($id)
 {
     // SIGNED REPORT ID: decode before opening or updating the revision form.
     $id = UrlIdHelper::decodeOrFail($id, 'Invalid report link.');
-    $report = RepairReport::findOne($id);
+    $report = RepairReport::find()
+        ->alias('report')
+        ->innerJoin(['application' => MroRequestApply::tableName()], 'application.id = report.mro_request_apply_id')
+        ->where([
+            'report.repair_report_id' => (int) $id,
+            'application.mro_id' => (int) Yii::$app->session->get('mro_id'),
+        ])
+        ->one();
 
     if (!$report) {
         throw new NotFoundHttpException('Report not found.');
@@ -933,10 +975,13 @@ public function actionAcceptUpdate($id)
 {
     // SIGNED REQUEST ID: retain the current business workflow with a protected URL token.
     $id = UrlIdHelper::decodeOrFail($id, 'Invalid request link.');
-    $request = Requests::findOne($id);
+    $request = $this->findOwnedRequest($id);
 
     $mroRequest = MroRequestApply::find()
-    ->where(['request_id' => $id])
+    ->where([
+        'request_id' => $id,
+        'mro_id' => (int) Yii::$app->session->get('mro_id'),
+    ])
     ->orderBy(['id' => SORT_DESC])
     ->one();
     // Ensure the current status is update_request
@@ -986,7 +1031,7 @@ public function actionDenyRequest($id)
 {
     // SIGNED REQUEST ID: retain the current business workflow with a protected URL token.
     $id = UrlIdHelper::decodeOrFail($id, 'Invalid request link.');
-    $request = Requests::findOne($id);
+    $request = $this->findOwnedRequest($id);
 
     // Initially set the status to update_request_denied
     $request->status = Requests::STATUS_UPDATE_REQUEST_DENIED;
@@ -1085,7 +1130,7 @@ public function actionContact($id)
     if (!$id) {
         throw new NotFoundHttpException('Invalid request link.');
     }
-    $mroRequestApplication = MroRequestApply::findOne($id);
+    $mroRequestApplication = $this->findOwnedApplication($id);
     // Check if a conversation already exists for the given request
     $conversation = Conversations::findOne(['request_id' => $mroRequestApplication->request_id]);
 
@@ -1129,6 +1174,38 @@ public function actionContact($id)
         'chat_id' => UrlIdHelper::encode($conversation->chat_id),
     ]);
 }
+    /**
+     * Charge une candidature appartenant exclusivement au MRO connecté.
+     */
+    private function findOwnedApplication($id)
+    {
+        $mroId = (int) Yii::$app->session->get('mro_id');
+        $application = $mroId > 0
+            ? MroRequestApply::findOne(['id' => (int) $id, 'mro_id' => $mroId])
+            : null;
 
+        if ($application === null) {
+            throw new NotFoundHttpException('The requested application does not exist.');
+        }
 
+        return $application;
+    }
+
+    /**
+     * Charge une demande uniquement si le MRO connecté possède une candidature liée.
+     */
+    private function findOwnedRequest($id)
+    {
+        $mroId = (int) Yii::$app->session->get('mro_id');
+        $ownsRequest = $mroId > 0 && MroRequestApply::find()
+            ->where(['request_id' => (int) $id, 'mro_id' => $mroId])
+            ->exists();
+
+        $request = $ownsRequest ? Requests::findOne((int) $id) : null;
+        if ($request === null) {
+            throw new NotFoundHttpException('The requested request does not exist.');
+        }
+
+        return $request;
+    }
 }

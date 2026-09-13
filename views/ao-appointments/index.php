@@ -13,14 +13,6 @@ use yii\web\YiiAsset;
 
 YiiAsset::register($this);
 
-// Chargement direct et versionné pour contourner l'ancien AppAsset de production.
-$requestSyncFile = Yii::getAlias('@webroot/js/request-sync.js');
-$requestSyncVersion = is_file($requestSyncFile) ? (string) filemtime($requestSyncFile) : '1';
-$this->registerJsFile(
-    rtrim(Yii::getAlias('@web'), '/') . '/js/request-sync.js?v=' . $requestSyncVersion,
-    ['depends' => [YiiAsset::class]]
-);
-
 $this->title = 'My Appointments';
 
 // Keep optional variables safe when the controller does not provide them.

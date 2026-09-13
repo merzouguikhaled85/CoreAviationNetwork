@@ -5,6 +5,7 @@ namespace app\controllers;
 use Yii;
 use yii\data\Pagination;
 use yii\filters\AccessControl;
+use yii\filters\VerbFilter;
 use yii\web\Controller;
 use app\models\Appointment;
 use app\models\Aircrafts;
@@ -32,6 +33,14 @@ class AoAppointmentsController extends Controller
                             return in_array(Yii::$app->session->get('user_type'), ['ao']);
                         }
                     ],
+                ],
+            ],
+            'verbs' => [
+                'class' => VerbFilter::class,
+                'actions' => [
+                    'cancel' => ['POST'],
+                    'confirm' => ['POST'],
+                    'reschedule' => ['GET', 'POST'],
                 ],
             ],
         ];
@@ -204,7 +213,7 @@ class AoAppointmentsController extends Controller
     {
         // SIGNED APPOINTMENT ID: do not expose the database key in browser actions.
         $id = UrlIdHelper::decodeOrFail($id, 'Invalid appointment link.');
-        $appointment = Appointment::findOne($id);
+        $appointment = $this->findOwnedAppointment($id);
 
         if ($appointment) {
             // Set status to canceled.
@@ -246,7 +255,7 @@ class AoAppointmentsController extends Controller
     {
         // SIGNED APPOINTMENT ID: do not expose the database key in browser actions.
         $id = UrlIdHelper::decodeOrFail($id, 'Invalid appointment link.');
-        $appointment = Appointment::findOne($id);
+        $appointment = $this->findOwnedAppointment($id);
 
         if ($appointment) {
             // Set status to confirmed.
@@ -301,11 +310,7 @@ class AoAppointmentsController extends Controller
     {
         // SIGNED APPOINTMENT ID: do not expose the database key in browser actions.
         $id = UrlIdHelper::decodeOrFail($id, 'Invalid appointment link.');
-        $appointment = Appointment::findOne($id);
-
-        if (!$appointment) {
-            throw new NotFoundHttpException("Appointment not found with ID: $id");
-        }
+        $appointment = $this->findOwnedAppointment($id);
 
         if (Yii::$app->request->isPost) {
             $post = Yii::$app->request->post('Appointment');
@@ -361,5 +366,28 @@ class AoAppointmentsController extends Controller
         return $this->render('reschedule', [
             'appointment' => $appointment,
         ]);
+    }
+
+    /**
+     * Charge uniquement un rendez-vous appartenant à l'AO connecté.
+     * Une ressource étrangère reste volontairement indistinguable d'une ressource absente.
+     */
+    private function findOwnedAppointment($id)
+    {
+        $aoId = (int) Yii::$app->session->get('ao_id');
+        if ($aoId <= 0) {
+            throw new NotFoundHttpException('Appointment not found.');
+        }
+
+        $appointment = Appointment::findOne([
+            'id' => (int) $id,
+            'ao_id' => $aoId,
+        ]);
+
+        if ($appointment === null) {
+            throw new NotFoundHttpException('Appointment not found.');
+        }
+
+        return $appointment;
     }
 }
