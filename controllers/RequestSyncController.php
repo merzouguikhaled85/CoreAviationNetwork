@@ -58,11 +58,7 @@ class RequestSyncController extends Controller
                         'allow' => true,
                         'roles' => ['@'],
                         'matchCallback' => static function () {
-                            return in_array(
-                                strtolower((string) Yii::$app->session->get('user_type')),
-                                ['ao', 'mro', 'admin'],
-                                true
-                            );
+                            return self::resolveAuthenticatedRole() !== null;
                         },
                     ],
                 ],
@@ -87,7 +83,10 @@ class RequestSyncController extends Controller
         Yii::$app->response->format = Response::FORMAT_JSON;
         Yii::$app->response->headers->set('Cache-Control', 'no-store, no-cache, must-revalidate');
 
-        $role = strtolower((string) Yii::$app->session->get('user_type'));
+        $role = self::resolveAuthenticatedRole();
+        if ($role === null) {
+            throw new ForbiddenHttpException('Your authenticated profile is incomplete.');
+        }
         $context = strtolower(trim((string) $context));
 
         $this->assertContextAllowed($role, $context);
@@ -484,8 +483,18 @@ class RequestSyncController extends Controller
      */
     private function requireSessionId(string $key): int
     {
+        /*
+         * RESTAURATION « REMEMBER ME » : apres une expiration de session PHP,
+         * Yii restaure l'identite depuis son cookie, mais pas toujours les cles
+         * mro_id/ao_id ajoutees manuellement lors du login. L'identite authentifiee
+         * reste donc la source prioritaire, avec la session comme repli compatible.
+         */
+        $identity = Yii::$app->user->isGuest ? null : Yii::$app->user->identity;
+        $identityValue = $identity !== null && isset($identity->{$key})
+            ? $identity->{$key}
+            : null;
         $value = filter_var(
-            Yii::$app->session->get($key),
+            $identityValue ?? Yii::$app->session->get($key),
             FILTER_VALIDATE_INT,
             ['options' => ['min_range' => 1]]
         );
@@ -495,5 +504,34 @@ class RequestSyncController extends Controller
         }
 
         return (int) $value;
+    }
+
+    /**
+     * Determine le role depuis l'identite Yii restauree, sans dependre uniquement
+     * des donnees de session personnalisees. La session est resynchronisee pour
+     * conserver la compatibilite avec les controleurs existants.
+     */
+    private static function resolveAuthenticatedRole(): ?string
+    {
+        if (Yii::$app->user->isGuest || Yii::$app->user->identity === null) {
+            return null;
+        }
+
+        $identity = Yii::$app->user->identity;
+        foreach (['admin' => 'admin_id', 'mro' => 'mro_id', 'ao' => 'ao_id'] as $role => $idKey) {
+            $id = isset($identity->{$idKey})
+                ? filter_var($identity->{$idKey}, FILTER_VALIDATE_INT, ['options' => ['min_range' => 1]])
+                : false;
+            if ($id === false) {
+                continue;
+            }
+
+            Yii::$app->session->set('user_type', $role);
+            Yii::$app->session->set($idKey, (int) $id);
+            return $role;
+        }
+
+        $sessionRole = strtolower((string) Yii::$app->session->get('user_type'));
+        return in_array($sessionRole, ['ao', 'mro', 'admin'], true) ? $sessionRole : null;
     }
 }
