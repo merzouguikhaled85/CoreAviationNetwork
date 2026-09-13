@@ -913,8 +913,13 @@ body {
     overflow-x: clip !important;
 }
 
-/* Inputs and widgets must never exceed the card */
-.create-request-page input,
+/*
+ * Les champs visuels et les widgets ne doivent jamais dépasser la carte.
+ * Les radios, cases à cocher et champs cachés sont volontairement exclus :
+ * leur largeur est pilotée par leur composant spécialisé. Les forcer à 100 %
+ * détruisait notamment les cartes AOG/Urgent/Routine en production.
+ */
+.create-request-page input:not([type="radio"]):not([type="checkbox"]):not([type="hidden"]),
 .create-request-page select,
 .create-request-page textarea,
 .create-request-page button,
