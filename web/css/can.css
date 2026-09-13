@@ -3656,7 +3656,7 @@ body.mro-layout {
 
 /* --------- Variante DARK : image de nuit --------- */
 body.mro-layout[data-theme="dark"] .mro-hero {
-  background: url("../img/world-night.webp") no-repeat center/cover; /* 👉 mets ton image night ici */
+  background: url("../img/world-night.png") no-repeat center/cover; /* 👉 mets ton image night ici */
 }
 
 body.mro-layout[data-theme="dark"] .mro-hero::before {
