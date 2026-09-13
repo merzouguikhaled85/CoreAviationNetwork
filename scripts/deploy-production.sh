@@ -75,5 +75,35 @@ if ! "$PHP_BIN" yii cache/flush-schema db; then
     echo "[CAN] AVERTISSEMENT : le cache du schéma n'a pas pu être vidé."
 fi
 
+# Vide aussi les caches applicatifs susceptibles de conserver un fragment de
+# liste ou une ancienne représentation après la mise à jour du dépôt.
+if ! "$PHP_BIN" yii cache/flush-all --interactive=0; then
+    echo "[CAN] AVERTISSEMENT : les caches applicatifs n'ont pas tous pu être vidés."
+fi
+
+# INVALIDATION OPCACHE SUR HÉBERGEMENT PARTAGÉ : le processus PHP utilisé par
+# SSH n'emploie généralement pas le même cache mémoire que PHP-FPM/LSAPI. Un
+# opcache_reset() lancé en console serait donc trompeur. Mettre à jour la date
+# des seuls fichiers PHP applicatifs force leur revalidation par le processus
+# web, sans toucher à vendor, aux pièces jointes ou aux données métier.
+PHP_SOURCE_DIRS=(
+    commands
+    components
+    config
+    controllers
+    mail
+    migrations
+    models
+    views
+    widgets
+    web
+)
+
+for php_source_dir in "${PHP_SOURCE_DIRS[@]}"; do
+    if [[ -d "$php_source_dir" ]]; then
+        find "$php_source_dir" -type f -name '*.php' -exec touch {} +
+    fi
+done
+
 DEPLOYED_REVISION="$(git rev-parse --short HEAD)"
 echo "[CAN] Déploiement terminé avec succès : ${DEPLOYED_REVISION}"
