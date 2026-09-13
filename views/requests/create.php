@@ -9,6 +9,7 @@ use app\models\Aircrafts;
 use app\models\Requests;
 use kartik\datetime\DateTimePicker;
 use yii\web\JsExpression;
+use yii\web\View;
 
 $this->title = 'Create Request';
 
@@ -22,6 +23,28 @@ if ($request->operational_priority === null || $request->operational_priority ==
 }
 
 $this->registerCssFile('https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css');
+
+/*
+ * ASSETS CRITIQUES DU COMPOSANT : la page les enregistre explicitement afin
+ * qu'une ancienne instance d'AppAsset conservée par OPcache ne puisse jamais
+ * afficher les radios sans leurs cartes. Le timestamp change automatiquement
+ * dès que le fichier est déployé et neutralise aussi un cache navigateur/CDN.
+ */
+$formSystemPath = Yii::getAlias('@webroot/css/form-system.css');
+$priorityScriptPath = Yii::getAlias('@webroot/js/operational-priority.js');
+$formSystemVersion = is_file($formSystemPath) ? (string) filemtime($formSystemPath) : '1';
+$priorityScriptVersion = is_file($priorityScriptPath) ? (string) filemtime($priorityScriptPath) : '1';
+
+$this->registerCssFile(
+    Yii::getAlias('@web/css/form-system.css') . '?v=' . rawurlencode($formSystemVersion)
+);
+$this->registerJsFile(
+    Yii::getAlias('@web/js/operational-priority.js') . '?v=' . rawurlencode($priorityScriptVersion),
+    [
+        'depends' => [\yii\web\YiiAsset::class],
+        'position' => View::POS_END,
+    ]
+);
 
 $this->registerCss(<<<CSS
 :root {
@@ -913,8 +936,13 @@ body {
     overflow-x: clip !important;
 }
 
-/* Inputs and widgets must never exceed the card */
-.create-request-page input,
+/*
+ * Les champs visuels et les widgets ne doivent jamais dépasser la carte.
+ * Les radios, cases à cocher et champs cachés sont volontairement exclus :
+ * leur largeur est pilotée par leur composant spécialisé. Les forcer à 100 %
+ * détruisait notamment les cartes AOG/Urgent/Routine en production.
+ */
+.create-request-page input:not([type="radio"]):not([type="checkbox"]):not([type="hidden"]),
 .create-request-page select,
 .create-request-page textarea,
 .create-request-page button,
