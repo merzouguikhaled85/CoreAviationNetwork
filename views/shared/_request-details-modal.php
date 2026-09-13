@@ -2,6 +2,18 @@
 
 /** SHARED REQUEST DETAILS: one reusable read-only request modal per list page. */
 
+/*
+ * STYLE CRITIQUE DE LA MODALE : ce composant partagé enregistre lui-même sa
+ * feuille de style. Ainsi, une ancienne instance d'AppAsset encore présente
+ * dans OPcache ne peut pas livrer le nouveau HTML sans sa présentation. Yii
+ * déduplique automatiquement cette URL lorsque plusieurs composants la demandent.
+ */
+$listSystemPath = Yii::getAlias('@webroot/css/list-system.css');
+$listSystemVersion = is_file($listSystemPath) ? (string) filemtime($listSystemPath) : '1';
+$this->registerCssFile(
+    Yii::getAlias('@web/css/list-system.css') . '?v=' . rawurlencode($listSystemVersion)
+);
+
 $this->registerJs(<<<'JS'
 var canRequestModal = document.getElementById('canRequestModal');
 if (canRequestModal) {
