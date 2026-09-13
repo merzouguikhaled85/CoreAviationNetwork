@@ -1,4 +1,23 @@
 RewriteEngine on
+
+# Static fallbacks remain available when PHP/Yii cannot render its error view.
+ErrorDocument 400 /errors/error.html?code=400
+ErrorDocument 401 /errors/error.html?code=401
+ErrorDocument 403 /errors/error.html?code=403
+ErrorDocument 404 /errors/error.html?code=404
+ErrorDocument 405 /errors/error.html?code=405
+ErrorDocument 408 /errors/error.html?code=408
+ErrorDocument 410 /errors/error.html?code=410
+ErrorDocument 413 /errors/error.html?code=413
+ErrorDocument 415 /errors/error.html?code=415
+ErrorDocument 422 /errors/error.html?code=422
+ErrorDocument 429 /errors/error.html?code=429
+ErrorDocument 500 /errors/error.html?code=500
+ErrorDocument 501 /errors/error.html?code=501
+ErrorDocument 502 /errors/error.html?code=502
+ErrorDocument 503 /errors/error.html?code=503
+ErrorDocument 504 /errors/error.html?code=504
+
 RewriteCond %{REQUEST_FILENAME} !-d
 RewriteCond %{REQUEST_FILENAME} !-f
 RewriteRule . index.php [L]

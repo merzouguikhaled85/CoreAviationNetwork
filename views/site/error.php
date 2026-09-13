@@ -3,612 +3,308 @@
 /** @var yii\web\View $this */
 /** @var string $name */
 /** @var string $message */
-/** @var Exception $exception */
+/** @var Throwable $exception */
 
 use yii\helpers\Html;
 use yii\helpers\Url;
 
-$this->title = $name;
-
-// Extract error code and clean title
-$errorCode = '';
-if (preg_match('/\(#(\d+)\)/', $name, $matches)) {
-    $errorCode = $matches[1];
-    $cleanName = trim(str_replace($matches[0], '', $name));
-} else {
-    $cleanName = $name;
+$statusCode = null;
+if (isset($exception) && method_exists($exception, 'getStatusCode')) {
+    $statusCode = (int) $exception->getStatusCode();
 }
 
-if (empty($errorCode) && isset($exception) && method_exists($exception, 'getStatusCode')) {
-    $errorCode = (string) $exception->getStatusCode();
+if ($statusCode === null && preg_match('/\(#(\d{3})\)/', (string) $name, $matches)) {
+    $statusCode = (int) $matches[1];
 }
 
-// Error content by HTTP code
-$errorMap = [
-    '400' => [
-        'icon' => 'ti-alert-circle',
-        'footerTitle' => 'Bad request',
-        'footerSub' => 'The server could not process the submitted request.',
-        'pill' => 'Bad Request',
-        'title' => 'Bad Request',
-        'msg' => 'The submitted request is malformed or contains invalid parameters. Please check your data and try again.',
-    ],
-    '401' => [
-        'icon' => 'ti-shield-x',
-        'footerTitle' => 'Session expired',
-        'footerSub' => 'Your authentication token is invalid or has expired.',
-        'pill' => 'Authentication required',
-        'title' => 'Unauthenticated',
-        'msg' => 'Your session has expired or your credentials are invalid. Please log in again to continue.',
-    ],
-    '403' => [
-        'icon' => 'ti-lock',
-        'footerTitle' => 'Access denied',
-        'footerSub' => 'You do not have the required permissions for this resource.',
-        'pill' => 'Restricted access',
-        'title' => 'Unauthorized Access',
-        'msg' => 'You do not have the necessary permissions to view this page. Please contact your administrator.',
-    ],
-    '404' => [
-        'icon' => 'ti-map-search',
-        'footerTitle' => 'Route not found',
-        'footerSub' => 'The requested destination does not exist on this network.',
-        'pill' => 'System message',
-        'title' => 'Page Not Found',
-        'msg' => 'The page you are looking for does not exist, has been moved, or is temporarily unavailable.',
-    ],
-    '500' => [
-        'icon' => 'ti-server-off',
-        'footerTitle' => 'Server error',
-        'footerSub' => 'An internal anomaly occurred. Our teams have been notified.',
-        'pill' => 'Internal error',
-        'title' => 'Internal Server Error',
-        'msg' => 'An unexpected error occurred on the server. Our technical team has been automatically notified.',
-    ],
-    '503' => [
-        'icon' => 'ti-cloud-off',
-        'footerTitle' => 'Service unavailable',
-        'footerSub' => 'The service is under maintenance or temporarily offline.',
-        'pill' => 'Maintenance',
-        'title' => 'Service Temporarily Unavailable',
-        'msg' => 'The service is currently undergoing maintenance. Please try again later.',
-    ],
+// Non-HTTP exceptions must never expose their internal name or message in production.
+$statusCode = $statusCode ?: 500;
+
+$errors = [
+    400 => ['Bad request', 'Request not understood', 'The request could not be processed. Check the information provided and try again.', 'request'],
+    401 => ['Authentication required', 'Please sign in', 'Your session may have expired. Sign in again to continue securely.', 'access'],
+    403 => ['Access restricted', 'Permission denied', 'You do not have permission to access this resource. Contact your administrator if you believe this is a mistake.', 'access'],
+    404 => ['We took a wrong turn', 'Page not found', 'The page you are looking for may have moved, changed its address, or no longer exists.', 'not-found'],
+    405 => ['Action not available', 'Method not allowed', 'This action cannot be completed in the way it was requested. Return to the previous page and try again.', 'request'],
+    408 => ['Request timeout', 'The request took too long', 'The connection timed out before the operation completed. Please try again.', 'network'],
+    409 => ['Request conflict', 'A conflict occurred', 'The requested change conflicts with the current state of this resource. Refresh the page and try again.', 'request'],
+    410 => ['Resource unavailable', 'This page is no longer available', 'The requested resource has been permanently removed from the platform.', 'not-found'],
+    413 => ['Upload too large', 'File size limit exceeded', 'The submitted file is larger than the platform allows. Reduce its size and try again.', 'request'],
+    415 => ['Unsupported format', 'File type not accepted', 'The submitted content format is not supported by the platform.', 'request'],
+    422 => ['Validation error', 'We could not process the request', 'Some submitted information is invalid. Review the form and try again.', 'request'],
+    429 => ['Traffic limit reached', 'Too many requests', 'Too many attempts were received in a short time. Wait a moment before trying again.', 'network'],
+    500 => ['Unexpected turbulence', 'Internal server error', 'An unexpected problem occurred. Please try again or contact platform support if the problem continues.', 'server'],
+    501 => ['Feature unavailable', 'Not implemented', 'This operation is not available on the platform yet.', 'server'],
+    502 => ['Connection interrupted', 'Gateway temporarily unavailable', 'The platform did not receive a valid response from an upstream service. Please try again shortly.', 'server'],
+    503 => ['Scheduled ground stop', 'Service temporarily unavailable', 'The platform is undergoing maintenance or is temporarily overloaded. Please try again shortly.', 'server'],
+    504 => ['Connection timeout', 'Gateway timeout', 'A connected service took too long to respond. Please try again in a few moments.', 'network'],
 ];
 
-$e = $errorMap[$errorCode] ?? [
-    'icon' => 'ti-alert-hexagon',
-    'footerTitle' => 'Unexpected error',
-    'footerSub' => 'An unforeseen situation has occurred.',
-    'pill' => 'Application error',
-    'title' => $cleanName,
-    'msg' => $message,
+$error = $errors[$statusCode] ?? [
+    'Unexpected turbulence',
+    'Something went wrong',
+    'We could not complete your request. Please try again or contact platform support.',
+    'server',
 ];
 
-/* ERROR PAGE NAVIGATION: authenticated users return to their workspace; guests return home. */
-$homeRoute = Yii::$app->user->isGuest ? ['/site/index'] : ['/dashboard/home'];
-$homeLabel = Yii::$app->user->isGuest ? 'Back to home' : 'Go to dashboard';
+[$eyebrow, $title, $description, $tone] = $error;
+$this->title = $statusCode . ' - ' . $title;
+
+$isGuest = Yii::$app->user->isGuest;
+$homeRoute = $isGuest ? ['/site/index'] : ['/dashboard/home'];
+$homeLabel = $isGuest ? 'Back to home' : 'Go to dashboard';
+$supportEmail = Yii::$app->params['publicSupportEmail'] ?? 'support@coreaviationnetwork.com';
+$reference = 'HTTP-' . $statusCode;
 
 $this->registerCss(<<<CSS
-/* Import fonts */
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+* { box-sizing: border-box; }
 
-/* Import Tabler icons */
-@import url('https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.19.0/dist/tabler-icons.min.css');
-
-:root {
-    --primary: #2563eb;
-    --primary-dark: #1d4ed8;
-    --dark: #0f172a;
-    --muted: #64748b;
-    --border: rgba(148, 163, 184, .25);
-    --card: rgba(255, 255, 255, .92);
-    --bg: #eef4ff;
+html,
+body.can-error-layout {
+    margin: 0;
+    min-height: 100%;
 }
 
-/* Main page */
+body.can-error-layout {
+    color: #07172f;
+    background: #f8fbff;
+    font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+
 .can-error-page {
-    min-height: calc(100vh - 76px);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    padding: clamp(24px, 5vh, 54px) 18px;
-    font-family: 'Inter', sans-serif;
-    background:
-        radial-gradient(circle at top left, rgba(37, 99, 235, .22), transparent 35%),
-        radial-gradient(circle at bottom right, rgba(14, 165, 233, .18), transparent 35%),
-        linear-gradient(135deg, #eef4ff 0%, #f8fafc 100%);
+    min-height: 100vh;
+    display: grid;
+    grid-template-columns: minmax(470px, 44%) 1fr;
     overflow: hidden;
-    position: relative;
 }
 
-/* Background grid */
-.can-error-page::before {
-    content: "";
-    position: absolute;
-    inset: 0;
-    background-image:
-        linear-gradient(rgba(37, 99, 235, .055) 1px, transparent 1px),
-        linear-gradient(90deg, rgba(37, 99, 235, .055) 1px, transparent 1px);
-    background-size: 42px 42px;
-}
-
-/* Floating background shapes */
-.error-shape {
-    position: absolute;
-    border-radius: 999px;
-    filter: blur(55px);
-    opacity: .55;
-}
-
-.error-shape.one {
-    width: 260px;
-    height: 260px;
-    background: #60a5fa;
-    top: 5%;
-    left: 7%;
-}
-
-.error-shape.two {
-    width: 300px;
-    height: 300px;
-    background: #38bdf8;
-    right: 5%;
-    bottom: 5%;
-}
-
-/* Main card */
-.error-card {
+.can-error-content {
     position: relative;
     z-index: 2;
-    width: 100%;
-    max-width: 900px;
-    display: grid;
-    grid-template-columns: 300px 1fr;
-    overflow: hidden;
-    border-radius: 26px;
-    background: var(--card);
-    border: 1px solid rgba(255, 255, 255, .75);
-    box-shadow: 0 28px 70px rgba(15, 23, 42, .16);
-    backdrop-filter: blur(18px);
-    animation: cardIn .55s ease both;
-}
-
-@keyframes cardIn {
-    from {
-        opacity: 0;
-        transform: translateY(25px) scale(.97);
-    }
-    to {
-        opacity: 1;
-        transform: translateY(0) scale(1);
-    }
-}
-
-/* Left panel */
-.error-left {
-    position: relative;
-    padding: 30px 26px;
-    background:
-        radial-gradient(circle at 85% 10%, rgba(14, 165, 233, .35), transparent 31%),
-        linear-gradient(155deg, #07172d 0%, #123b77 58%, #1556c0 100%);
-    color: #fff;
-    overflow: hidden;
-}
-
-.error-left::before,
-.error-left::after {
-    content: "";
-    position: absolute;
-    border-radius: 50%;
-    border: 1px solid rgba(255, 255, 255, .13);
-}
-
-.error-left::before {
-    width: 350px;
-    height: 350px;
-    top: -150px;
-    right: -160px;
-}
-
-.error-left::after {
-    width: 210px;
-    height: 210px;
-    bottom: -90px;
-    left: -90px;
-}
-
-/* Brand chip */
-.brand-chip {
-    position: relative;
-    z-index: 1;
-    display: inline-flex;
-    align-items: center;
-    gap: 10px;
-    padding: 8px 13px 8px 9px;
-    border-radius: 999px;
-    font-size: 12px;
-    font-weight: 700;
-    letter-spacing: .4px;
-    text-transform: uppercase;
-    background: rgba(255, 255, 255, .13);
-    border: 1px solid rgba(255, 255, 255, .20);
-}
-
-.brand-chip img {
-    width: 31px;
-    height: 31px;
-    object-fit: contain;
-    filter: drop-shadow(0 4px 8px rgba(0, 0, 0, .2));
-}
-
-/* Icon area */
-.icon-zone {
-    position: relative;
-    z-index: 1;
-    min-height: 245px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-}
-
-.icon-bubble {
-    width: 116px;
-    height: 116px;
-    border-radius: 32px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    background: rgba(255, 255, 255, .13);
-    border: 1px solid rgba(255, 255, 255, .22);
-    box-shadow: inset 0 1px 0 rgba(255, 255, 255, .22);
-    animation: floatIcon 4s ease-in-out infinite;
-    position: relative;
-}
-
-.icon-bubble::after {
-    content: "";
-    position: absolute;
-    width: 184px;
-    height: 78px;
-    left: -34px;
-    top: 18px;
-    border-top: 1px dashed rgba(255, 255, 255, .34);
-    border-radius: 50%;
-    transform: rotate(-18deg);
-}
-
-.icon-bubble .ti {
-    font-size: 54px;
-    color: #fff;
-}
-
-@keyframes floatIcon {
-    0%, 100% {
-        transform: translateY(0) rotate(-2deg);
-    }
-    50% {
-        transform: translateY(-13px) rotate(3deg);
-    }
-}
-
-/* Bottom status box */
-.status-box {
-    position: relative;
-    z-index: 1;
-    display: flex;
-    gap: 13px;
-    align-items: flex-start;
-    padding: 16px;
-    border-radius: 18px;
-    background: rgba(255, 255, 255, .12);
-    border: 1px solid rgba(255, 255, 255, .18);
-}
-
-.status-icon {
-    width: 42px;
-    height: 42px;
-    min-width: 42px;
-    border-radius: 14px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    background: rgba(251, 191, 36, .18);
-    color: #fbbf24;
-}
-
-.status-icon .ti {
-    font-size: 22px;
-}
-
-.status-box strong {
-    display: block;
-    font-size: 14px;
-    margin-bottom: 4px;
-}
-
-.status-box span {
-    display: block;
-    font-size: 12.5px;
-    line-height: 1.5;
-    color: rgba(255, 255, 255, .68);
-}
-
-/* Right panel */
-.error-right {
-    padding: 42px 44px;
+    min-height: 100vh;
     display: flex;
     flex-direction: column;
-    justify-content: center;
+    padding: clamp(32px, 5vw, 88px);
+    background:
+        radial-gradient(circle at 12% 92%, rgba(14, 165, 233, .09), transparent 28%),
+        #fff;
 }
 
-/* Small pill */
-.error-pill {
-    width: fit-content;
+.can-error-brand {
     display: inline-flex;
     align-items: center;
-    gap: 8px;
-    padding: 8px 15px;
-    margin-bottom: 18px;
-    border-radius: 999px;
-    background: #eff6ff;
-    color: var(--primary);
-    border: 1px solid rgba(37, 99, 235, .18);
+    gap: 12px;
+    width: fit-content;
+    color: #07172f;
+    text-decoration: none;
+    font-weight: 800;
+    font-size: 18px;
+    letter-spacing: -.02em;
+}
+
+.can-error-brand img {
+    width: 128px;
+    height: 96px;
+    object-fit: contain;
+    margin: -15px -18px -15px -20px;
+}
+
+.can-error-copy {
+    width: 100%;
+    max-width: 600px;
+    margin: auto;
+    padding: 72px 0 36px;
+    text-align: center;
+}
+
+.can-error-code {
+    margin: 0;
+    color: #ef4f5f;
+    font-size: clamp(86px, 10vw, 146px);
+    font-weight: 900;
+    line-height: .82;
+    letter-spacing: -.075em;
+}
+
+.can-error-eyebrow {
+    margin: 32px 0 12px;
+    color: #1676d2;
     font-size: 12px;
-    font-weight: 800;
+    font-weight: 900;
+    letter-spacing: .18em;
     text-transform: uppercase;
-    letter-spacing: .45px;
 }
 
-.error-pill span {
-    width: 8px;
-    height: 8px;
-    border-radius: 50%;
-    background: currentColor;
+.can-error-title {
+    margin: 0;
+    color: #07172f;
+    font-size: clamp(32px, 3.2vw, 50px);
+    line-height: 1.08;
+    letter-spacing: -.045em;
 }
 
-/* Error code */
-.error-code {
-    margin-bottom: 8px;
-    font-size: 78px;
-    line-height: .95;
-    font-weight: 800;
-    letter-spacing: -6px;
-    color: var(--dark);
+.can-error-description {
+    max-width: 530px;
+    margin: 20px auto 0;
+    color: #64748b;
+    font-size: 16px;
+    line-height: 1.75;
 }
 
-/* Title and message */
-.error-title {
-    margin: 0 0 14px;
-    color: var(--dark);
-    font-size: 29px;
-    font-weight: 800;
-    letter-spacing: -.8px;
-}
-
-.error-message {
-    max-width: 480px;
-    margin: 0 0 24px;
-    color: var(--muted);
-    font-size: 15px;
-    line-height: 1.7;
-}
-
-/* Buttons */
-.error-actions {
+.can-error-actions {
     display: flex;
     flex-wrap: wrap;
+    justify-content: center;
     gap: 12px;
-    margin-bottom: 26px;
+    margin-top: 32px;
 }
 
-.error-btn {
-    height: 48px;
-    padding: 0 22px;
-    border-radius: 15px;
+.can-error-button {
+    min-height: 52px;
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    gap: 9px;
+    gap: 10px;
+    padding: 0 22px;
+    border: 1px solid #dbe5f1;
+    border-radius: 13px;
+    color: #17345f;
+    background: #fff;
+    text-decoration: none;
     font-size: 14px;
-    font-weight: 700;
-    text-decoration: none !important;
-    transition: all .22s ease;
+    font-weight: 800;
+    box-shadow: 0 8px 24px rgba(15, 47, 87, .06);
+    transition: transform .18s ease, box-shadow .18s ease, background .18s ease;
 }
 
-.error-btn-primary {
-    color: #fff !important;
-    background: linear-gradient(135deg, var(--primary), #0ea5e9);
-    box-shadow: 0 14px 28px rgba(37, 99, 235, .28);
+.can-error-button:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 12px 28px rgba(15, 47, 87, .12);
 }
 
-.error-btn-primary:hover {
-    transform: translateY(-3px);
-    box-shadow: 0 18px 36px rgba(37, 99, 235, .35);
-}
-
-.error-btn:focus-visible {
-    outline: 3px solid rgba(14, 165, 233, .35);
+.can-error-button:focus-visible {
+    outline: 3px solid rgba(14, 165, 233, .32);
     outline-offset: 3px;
 }
 
-.error-btn-secondary {
-    color: #334155 !important;
-    background: #f8fafc;
-    border: 1px solid var(--border);
+.can-error-button--primary {
+    border-color: transparent;
+    color: #fff;
+    background: linear-gradient(135deg, #1558c8, #08a9df);
+    box-shadow: 0 13px 28px rgba(21, 88, 200, .24);
 }
 
-.error-btn-secondary:hover {
-    transform: translateY(-3px);
-    background: #f1f5f9;
+.can-error-button svg {
+    width: 17px;
+    height: 17px;
+    stroke: currentColor;
 }
 
-/* Metadata */
-.error-meta {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 9px;
-    padding-top: 20px;
-    border-top: 1px solid rgba(148, 163, 184, .22);
+.can-error-help {
+    margin: 30px 0 0;
+    color: #8190a5;
+    font-size: 13px;
 }
 
-.error-meta span {
-    padding: 7px 12px;
-    border-radius: 999px;
-    background: #f8fafc;
-    border: 1px solid rgba(148, 163, 184, .22);
-    color: #64748b;
-    font-size: 12px;
-    font-weight: 600;
+.can-error-help a {
+    color: #1558c8;
+    font-weight: 800;
 }
 
-/* Responsive design */
-@media (max-width: 820px) {
-    .error-card {
-        grid-template-columns: 1fr;
-        max-width: 560px;
-    }
+.can-error-reference {
+    margin-top: auto;
+    color: #94a3b8;
+    font-size: 11px;
+    letter-spacing: .06em;
+    text-align: center;
+    text-transform: uppercase;
+}
 
-    .error-left {
-        padding: 28px 24px;
-    }
+.can-error-visual {
+    position: relative;
+    min-height: 100vh;
+    overflow: hidden;
+    background:
+        linear-gradient(145deg, rgba(7, 23, 47, .08), rgba(21, 88, 200, .18)),
+        #dbeafe;
+}
 
-    .icon-zone {
-        min-height: 165px;
-    }
+.can-error-visual > img {
+    width: 100%;
+    height: 100%;
+    position: absolute;
+    inset: 0;
+    object-fit: cover;
+    object-position: center;
+}
 
-    .error-right {
-        padding: 34px 26px;
-    }
+.can-error-visual::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    background: linear-gradient(90deg, rgba(255,255,255,.10), transparent 32%);
+}
 
-    .error-code {
-        font-size: 68px;
-        letter-spacing: -4px;
-    }
+@media (max-width: 920px) {
+    .can-error-page { grid-template-columns: 1fr; }
+    .can-error-content { min-height: 62vh; padding: 28px 24px 42px; }
+    .can-error-copy { padding: 64px 0 28px; }
+    .can-error-visual { min-height: 38vh; }
+}
 
-    .error-title {
-        font-size: 25px;
-    }
+@media (max-width: 520px) {
+    .can-error-brand { font-size: 16px; }
+    .can-error-brand img { width: 108px; height: 82px; margin: -12px -15px -12px -17px; }
+    .can-error-copy { padding-top: 54px; }
+    .can-error-actions { flex-direction: column; }
+    .can-error-button { width: 100%; }
 }
 
 @media (prefers-reduced-motion: reduce) {
-    .error-card,
-    .icon-bubble {
-        animation: none;
-    }
-
-    .error-btn {
-        transition: none;
-    }
-}
-
-@media (max-width: 480px) {
-    .can-error-page {
-        padding: 22px 12px;
-    }
-
-    .error-card {
-        border-radius: 24px;
-    }
-
-    .error-code {
-        font-size: 56px;
-    }
-
-    .error-title {
-        font-size: 22px;
-    }
-
-    .error-actions {
-        flex-direction: column;
-    }
-
-    .error-btn {
-        width: 100%;
-    }
+    .can-error-button { transition: none; }
 }
 CSS);
 ?>
 
-<main class="can-error-page" aria-labelledby="error-page-title">
+<main class="can-error-page can-error-page--<?= Html::encode($tone) ?>" aria-labelledby="can-error-title">
+    <section class="can-error-content">
+        <a class="can-error-brand" href="<?= Url::to(['/site/index']) ?>" aria-label="Core Aviation Network home">
+            <img src="<?= Url::to('@web/logo/can-logo-main.png') ?>" alt="">
+            <span>Core Aviation Network</span>
+        </a>
 
-    <!-- Decorative background shapes -->
-    <div class="error-shape one"></div>
-    <div class="error-shape two"></div>
-
-    <div class="error-card">
-
-        <!-- Left visual panel -->
-        <div class="error-left">
-
-            <!-- Brand -->
-            <div class="brand-chip">
-                <img src="<?= Url::to('@web/logo/can-logo-main.png') ?>" alt="">
-                Core Aviation Network
-            </div>
-
-            <!-- Main icon -->
-            <div class="icon-zone">
-                <div class="icon-bubble">
-                    <i class="ti <?= Html::encode($e['icon']) ?>" aria-hidden="true"></i>
-                </div>
-            </div>
-
-            <!-- Error status information -->
-            <div class="status-box">
-                <div class="status-icon">
-                    <i class="ti ti-alert-triangle" aria-hidden="true"></i>
-                </div>
-                <div>
-                    <strong><?= Html::encode($e['footerTitle']) ?></strong>
-                    <span><?= Html::encode($e['footerSub']) ?></span>
-                </div>
-            </div>
-
-        </div>
-
-        <!-- Right content panel -->
-        <div class="error-right">
-
-            <!-- Error category -->
-            <div class="error-pill">
-                <span></span>
-                <?= Html::encode($e['pill']) ?>
-            </div>
-
-            <!-- Error code -->
-            <?php if (!empty($errorCode)): ?>
-                <div class="error-code"><?= Html::encode($errorCode) ?></div>
-            <?php endif; ?>
-
-            <!-- Error title -->
-            <h1 class="error-title" id="error-page-title"><?= Html::encode($e['title']) ?></h1>
-
-            <!-- Error message -->
-            <p class="error-message">
-                <?= nl2br(Html::encode($e['msg'])) ?>
+        <div class="can-error-copy">
+            <p class="can-error-code" aria-label="Error <?= Html::encode((string) $statusCode) ?>">
+                <?= Html::encode((string) $statusCode) ?>
             </p>
+            <p class="can-error-eyebrow"><?= Html::encode($eyebrow) ?></p>
+            <h1 class="can-error-title" id="can-error-title"><?= Html::encode($title) ?></h1>
+            <p class="can-error-description"><?= Html::encode($description) ?></p>
 
-            <!-- Action buttons -->
-            <div class="error-actions">
-                <a href="<?= Url::to($homeRoute) ?>" class="error-btn error-btn-primary">
-                    <i class="ti <?= Yii::$app->user->isGuest ? 'ti-home' : 'ti-layout-dashboard' ?>" aria-hidden="true"></i>
+            <div class="can-error-actions">
+                <a class="can-error-button can-error-button--primary" href="<?= Url::to($homeRoute) ?>">
+                    <svg viewBox="0 0 24 24" fill="none" stroke-width="2" aria-hidden="true"><path d="M3 11.5 12 4l9 7.5"/><path d="M5.5 10.5V20h13v-9.5M9.5 20v-6h5v6"/></svg>
                     <?= Html::encode($homeLabel) ?>
                 </a>
-
-                <a href="javascript:history.back()" class="error-btn error-btn-secondary">
-                    <i class="ti ti-arrow-left" aria-hidden="true"></i>
-                    Go back
+                <a class="can-error-button" href="mailto:<?= Html::encode($supportEmail) ?>?subject=Platform%20error%20<?= Html::encode((string) $statusCode) ?>%20-%20<?= Html::encode($reference) ?>">
+                    Contact support
+                    <svg viewBox="0 0 24 24" fill="none" stroke-width="2" aria-hidden="true"><path d="M5 12h14M14 7l5 5-5 5"/></svg>
                 </a>
             </div>
 
-            <!-- Technical metadata -->
-            <div class="error-meta">
-                <span>Reference: <?= Html::encode($errorCode ?: 'Application error') ?></span>
-                <span>Core Aviation Network</span>
-                <span><?= date('Y-m-d H:i') ?></span>
-            </div>
-
+            <p class="can-error-help">
+                Need help? Email us at
+                <a href="mailto:<?= Html::encode($supportEmail) ?>"><?= Html::encode($supportEmail) ?></a>
+            </p>
         </div>
 
-    </div>
+        <div class="can-error-reference">
+            Error <?= Html::encode((string) $statusCode) ?> · Reference <?= Html::encode($reference) ?>
+        </div>
+    </section>
+
+    <aside class="can-error-visual" aria-label="Core Aviation Network aircraft maintenance">
+        <img src="<?= Url::to('@web/img/home-carousel/mro-team.jpg') ?>" alt="Aircraft maintenance team at work">
+    </aside>
 </main>

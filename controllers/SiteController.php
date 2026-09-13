@@ -99,6 +99,13 @@ class SiteController extends Controller
 
 public function beforeAction($action)
 {
+    // Error pages use a small standalone layout so they still render when the
+    // authenticated navigation or another application widget is unavailable.
+    if ($action->id === 'error') {
+        $this->layout = 'error';
+        return parent::beforeAction($action);
+    }
+
     // Regenerate CSRF token for guests
     if (Yii::$app->user->isGuest) {
         Yii::$app->request->getCsrfToken(true);

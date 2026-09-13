@@ -2,6 +2,24 @@ Options -Indexes
 RewriteEngine On
 RewriteBase /
 
+# Fallbacks for hosts whose document root still points to the project root.
+ErrorDocument 400 /web/errors/error.html?code=400
+ErrorDocument 401 /web/errors/error.html?code=401
+ErrorDocument 403 /web/errors/error.html?code=403
+ErrorDocument 404 /web/errors/error.html?code=404
+ErrorDocument 405 /web/errors/error.html?code=405
+ErrorDocument 408 /web/errors/error.html?code=408
+ErrorDocument 410 /web/errors/error.html?code=410
+ErrorDocument 413 /web/errors/error.html?code=413
+ErrorDocument 415 /web/errors/error.html?code=415
+ErrorDocument 422 /web/errors/error.html?code=422
+ErrorDocument 429 /web/errors/error.html?code=429
+ErrorDocument 500 /web/errors/error.html?code=500
+ErrorDocument 501 /web/errors/error.html?code=501
+ErrorDocument 502 /web/errors/error.html?code=502
+ErrorDocument 503 /web/errors/error.html?code=503
+ErrorDocument 504 /web/errors/error.html?code=504
+
 RewriteCond %{REQUEST_FILENAME} !-f
 RewriteCond %{REQUEST_FILENAME} !-d
 RewriteRule ^ index.php [L]

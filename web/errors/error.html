@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="robots" content="noindex,nofollow">
+  <title>Service error | Core Aviation Network</title>
+  <style>
+    *{box-sizing:border-box}html,body{margin:0;min-height:100%;font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:#07172f;background:#fff}.page{min-height:100vh;display:grid;grid-template-columns:minmax(470px,44%) 1fr;overflow:hidden}.content{min-height:100vh;display:flex;flex-direction:column;padding:clamp(32px,5vw,88px);background:radial-gradient(circle at 12% 92%,rgba(14,165,233,.09),transparent 28%),#fff}.brand{display:inline-flex;align-items:center;gap:12px;width:max-content;color:#07172f;text-decoration:none;font-size:18px;font-weight:800;letter-spacing:-.02em}.brand img{width:128px;height:96px;object-fit:contain;margin:-15px -18px -15px -20px}.copy{width:100%;max-width:600px;margin:auto;padding:72px 0 36px;text-align:center}.code{margin:0;color:#ef4f5f;font-size:clamp(86px,10vw,146px);font-weight:900;line-height:.82;letter-spacing:-.075em}.eyebrow{margin:32px 0 12px;color:#1676d2;font-size:12px;font-weight:900;letter-spacing:.18em;text-transform:uppercase}.title{margin:0;font-size:clamp(32px,3.2vw,50px);line-height:1.08;letter-spacing:-.045em}.description{max-width:530px;margin:20px auto 0;color:#64748b;font-size:16px;line-height:1.75}.actions{display:flex;flex-wrap:wrap;justify-content:center;gap:12px;margin-top:32px}.button{min-height:52px;display:inline-flex;align-items:center;justify-content:center;gap:10px;padding:0 22px;border:1px solid #dbe5f1;border-radius:13px;color:#17345f;background:#fff;text-decoration:none;font-size:14px;font-weight:800;box-shadow:0 8px 24px rgba(15,47,87,.06)}.button.primary{border-color:transparent;color:#fff;background:linear-gradient(135deg,#1558c8,#08a9df);box-shadow:0 13px 28px rgba(21,88,200,.24)}.help{margin:30px 0 0;color:#8190a5;font-size:13px}.help a{color:#1558c8;font-weight:800}.reference{margin-top:auto;color:#94a3b8;font-size:11px;letter-spacing:.06em;text-align:center;text-transform:uppercase}.visual{position:relative;min-height:100vh;overflow:hidden;background:#dbeafe}.visual>img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:center}.visual:after{content:"";position:absolute;inset:0;background:linear-gradient(90deg,rgba(255,255,255,.1),transparent 32%)}@media(max-width:920px){.page{grid-template-columns:1fr}.content{min-height:62vh;padding:28px 24px 42px}.copy{padding:64px 0 28px}.visual{min-height:38vh}}@media(max-width:520px){.brand{font-size:16px}.brand img{width:108px;height:82px;margin:-12px -15px -12px -17px}.copy{padding-top:54px}.actions{flex-direction:column}.button{width:100%}}
+  </style>
+</head>
+<body>
+  <main class="page">
+    <section class="content">
+      <a class="brand" href="/"><img src="../logo/can-logo-main.png" alt=""><span>Core Aviation Network</span></a>
+      <div class="copy">
+        <p class="code" id="error-code">500</p>
+        <p class="eyebrow" id="error-eyebrow">Unexpected turbulence</p>
+        <h1 class="title" id="error-title">Service temporarily unavailable</h1>
+        <p class="description" id="error-description">The platform cannot complete your request right now. Please try again shortly.</p>
+        <div class="actions">
+          <a class="button primary" href="/">Back to home</a>
+          <a class="button" id="support-link" href="mailto:support@coreaviationnetwork.com">Contact support →</a>
+        </div>
+        <p class="help">Need help? Email us at <a href="mailto:support@coreaviationnetwork.com">support@coreaviationnetwork.com</a></p>
+      </div>
+      <div class="reference" id="error-reference">HTTP-500</div>
+    </section>
+    <aside class="visual" aria-label="Core Aviation Network aircraft maintenance">
+      <img src="../img/home-carousel/mro-team.jpg" alt="Aircraft maintenance team at work">
+    </aside>
+  </main>
+  <script>
+    (function(){
+      var messages={
+        400:['Bad request','Request not understood','The request could not be processed. Check the information provided and try again.'],
+        401:['Authentication required','Please sign in','Your session may have expired. Sign in again to continue securely.'],
+        403:['Access restricted','Permission denied','You do not have permission to access this resource.'],
+        404:['We took a wrong turn','Page not found','The page you are looking for may have moved, changed its address, or no longer exists.'],
+        405:['Action not available','Method not allowed','This action cannot be completed in the way it was requested.'],
+        408:['Request timeout','The request took too long','The connection timed out before the operation completed. Please try again.'],
+        410:['Resource unavailable','This page is no longer available','The requested resource has been permanently removed from the platform.'],
+        413:['Upload too large','File size limit exceeded','The submitted file is larger than the platform allows.'],
+        415:['Unsupported format','File type not accepted','The submitted content format is not supported by the platform.'],
+        422:['Validation error','We could not process the request','Some submitted information is invalid. Review it and try again.'],
+        429:['Traffic limit reached','Too many requests','Wait a moment before trying again.'],
+        500:['Unexpected turbulence','Internal server error','An unexpected problem occurred. Please try again shortly.'],
+        501:['Feature unavailable','Not implemented','This operation is not available on the platform yet.'],
+        502:['Connection interrupted','Gateway temporarily unavailable','The platform did not receive a valid response from an upstream service. Please try again shortly.'],
+        503:['Scheduled ground stop','Service temporarily unavailable','The platform is undergoing maintenance or is temporarily overloaded.'],
+        504:['Connection timeout','Gateway timeout','A connected service took too long to respond. Please try again shortly.']
+      };
+      var code=parseInt(new URLSearchParams(location.search).get('code'),10);
+      if(!messages[code])code=500;
+      var message=messages[code];
+      document.getElementById('error-code').textContent=code;
+      document.getElementById('error-eyebrow').textContent=message[0];
+      document.getElementById('error-title').textContent=message[1];
+      document.getElementById('error-description').textContent=message[2];
+      document.getElementById('error-reference').textContent='HTTP-'+code;
+      document.getElementById('support-link').href='mailto:support@coreaviationnetwork.com?subject=Platform%20error%20HTTP-'+code;
+      document.title=code+' - '+message[1]+' | Core Aviation Network';
+    }());
+  </script>
+</body>
+</html>
