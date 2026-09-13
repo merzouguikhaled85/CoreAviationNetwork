@@ -6,6 +6,7 @@ use app\models\AoRequestsApplications;
 use Yii;
 use app\components\UrlIdHelper;
 use yii\filters\AccessControl;
+use yii\filters\VerbFilter;
 use yii\helpers\ArrayHelper;
 use yii\web\Controller;
 use yii\data\Pagination;
@@ -35,6 +36,13 @@ class AoMroDisputeController extends Controller
                     ],
                 ],
             ],
+            'verbs' => [
+                'class' => VerbFilter::class,
+                'actions' => [
+                    'close' => ['POST'],
+                    'delete' => ['POST'],
+                ],
+            ],
         ];
     }
 
@@ -43,20 +51,16 @@ class AoMroDisputeController extends Controller
     {
         // Keep the same GET parameter used by the view filter form.
         $search = trim((string) Yii::$app->request->get('search', ''));
-        $userId = Yii::$app->user->identity->id;
+        [$userType, $userId] = $this->currentActor();
 
         // Use aliases to avoid ambiguous column names when filtering joined tables.
         $query = Dispute::find()->alias('d')
             ->leftJoin(['ao' => 'ao_profiles'], 'd.ao_id = ao.ao_id')
             ->leftJoin(['mro' => 'mro_profiles'], 'd.mro_id = mro.mro_id')
             ->leftJoin(['r' => 'requests'], 'd.request_id = r.request_id')
-            ->where([
-                'or',
-                ['d.ao_id' => $userId],
-                ['d.mro_id' => $userId],
-                ['ao.ao_id' => $userId],
-                ['mro.mro_id' => $userId],
-            ]);
+            ->where($userType === 'ao'
+                ? ['d.ao_id' => $userId]
+                : ['d.mro_id' => $userId]);
 
         // Important: keep all search conditions inside one AND group.
         // Using orFilterWhere() directly after where() breaks the user restriction
@@ -117,8 +121,9 @@ class AoMroDisputeController extends Controller
 
         $dispute = $this->findModel($disputeId);
 
-        $userId = (int) Yii::$app->user->identity->id;
-        if ((int) $dispute->ao_id !== $userId && (int) $dispute->mro_id !== $userId) {
+        [$userType, $userId] = $this->currentActor();
+        $ownerId = $userType === 'ao' ? (int) $dispute->ao_id : (int) $dispute->mro_id;
+        if ($ownerId !== $userId) {
             throw new ForbiddenHttpException('You are not allowed to view this dispute.');
         }
 
@@ -132,7 +137,7 @@ class AoMroDisputeController extends Controller
         
         // Load the request data based on user type (AO or MRO)
         if (Yii::$app->session->get('user_type') == 'ao') {
-            $aoId = Yii::$app->user->identity->id;
+            [, $aoId] = $this->currentActor();
             $requests = AoRequestsApplications::find()
                 ->select('ao_requests_applications.request_id, MAX(ao_requests_applications.id) AS max_id')
                 ->leftJoin('requests', 'ao_requests_applications.request_id = requests.request_id')
@@ -144,7 +149,7 @@ class AoMroDisputeController extends Controller
             $aoProfiles = ArrayHelper::map(AoProfile::find()->all(), 'ao_id', 'username');
             $mroProfiles = [];
         } elseif (Yii::$app->session->get('user_type') == 'mro') {
-            $mroId = Yii::$app->user->identity->id;
+            [, $mroId] = $this->currentActor();
             $requests = MroRequestApply::find()
                 ->select('request_id, MAX(id) AS max_id')
                 ->where(['mro_id' => $mroId])
@@ -1070,5 +1075,21 @@ class AoMroDisputeController extends Controller
         }
 
         return $default;
+    }
+    /**
+     * Retourne le rôle et l'identifiant numérique du participant connecté.
+     */
+    private function currentActor()
+    {
+        $userType = Yii::$app->session->get('user_type');
+        $identity = Yii::$app->user->identity;
+        $attribute = $userType === 'ao' ? 'ao_id' : ($userType === 'mro' ? 'mro_id' : null);
+        $userId = $attribute !== null ? (int) ($identity->{$attribute} ?? 0) : 0;
+
+        if ($userId <= 0) {
+            throw new ForbiddenHttpException('Invalid user identity.');
+        }
+
+        return [$userType, $userId];
     }
 }

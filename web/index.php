@@ -1,7 +1,11 @@
 <?php
 if (file_exists(__DIR__ . '/maintenance.flag')) {
     http_response_code(503);
-    header('Retry-After: 3600');
+    header('Retry-After: 300');
+    header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
+    header('Pragma: no-cache');
+    header('Expires: 0');
+    header('Content-Type: text/html; charset=UTF-8');
 
     $maintenanceFile = __DIR__ . '/maintenance.html';
 

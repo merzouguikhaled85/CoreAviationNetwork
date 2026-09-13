@@ -10,6 +10,7 @@ use app\models\MroProfile;
 use app\models\MroprofileAirport;
 use yii\data\Pagination;
 use yii\filters\AccessControl;
+use yii\filters\VerbFilter;
 use yii\helpers\ArrayHelper;
 use yii\web\Controller;
 use yii\web\NotFoundHttpException;
@@ -31,6 +32,11 @@ class MroAirportsController extends Controller
                         }
                     ],
                 ],
+            ],
+            // Une suppression ne doit jamais être déclenchée par une URL GET.
+            'verbs' => [
+                'class' => VerbFilter::class,
+                'actions' => ['delete' => ['POST']],
             ],
         ];
     }

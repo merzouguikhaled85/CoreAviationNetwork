@@ -8,6 +8,7 @@ use app\models\AoNotificationsPreferences;
 use app\models\MroProfileResetPasswordForm;
 use Yii;
 use yii\filters\AccessControl;
+use yii\filters\VerbFilter;
 use yii\web\Controller;
 use app\models\AoProfile;
 use yii\web\UploadedFile;
@@ -72,6 +73,14 @@ class AoProfileController extends Controller
                             return in_array(Yii::$app->session->get('user_type'), ['admin']);
                         }
                     ],
+                ],
+            ],
+            // Les opérations administratives sensibles exigent POST et le jeton CSRF.
+            'verbs' => [
+                'class' => VerbFilter::class,
+                'actions' => [
+                    'delete' => ['POST'],
+                    'toggle-status' => ['POST'],
                 ],
             ],
         ];

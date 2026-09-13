@@ -18,6 +18,7 @@ use app\models\MroProfile;
 use yii\web\UploadedFile;
 use yii\data\Pagination;
 use yii\filters\AccessControl;
+use yii\filters\VerbFilter;
 use yii\helpers\Html;
 use yii\helpers\Json;
 use yii\helpers\VarDumper;
@@ -75,6 +76,14 @@ class MroProfileController extends Controller
                             return in_array(Yii::$app->session->get('user_type'), ['admin']);
                         }
                     ],
+                ],
+            ],
+            // Les opérations administratives sensibles exigent POST et le jeton CSRF.
+            'verbs' => [
+                'class' => VerbFilter::class,
+                'actions' => [
+                    'delete' => ['POST'],
+                    'toggle-status' => ['POST'],
                 ],
             ],
         ];
@@ -400,7 +409,8 @@ public function actionCitiesByCountry($country_id)
                 $model->confirm_password = trim($model->confirm_password);
             }
             if ($model->password !== $model->confirm_password) {
-                Yii::$app->session->setFlash('passwordError', 'Passwords do not match ' .$model->password .' : '.$model->confirm_password);
+                // Un mot de passe en clair ne doit jamais être recopié dans la session ou la réponse HTML.
+                Yii::$app->session->setFlash('passwordError', 'Passwords do not match.');
                 return $this->refresh();
             }
             

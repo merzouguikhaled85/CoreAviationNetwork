@@ -7,6 +7,7 @@ use app\models\MroInsuranceDocuments;
 use app\models\MroProfile;
 use yii\data\Pagination;
 use yii\filters\AccessControl;
+use yii\filters\VerbFilter;
 use yii\helpers\FileHelper;
 use yii\web\Controller;
 use yii\web\NotFoundHttpException;
@@ -28,6 +29,11 @@ class MroInsuranceDocumentsController extends Controller
                         },
                     ],
                 ],
+            ],
+            // Une suppression ne doit jamais être déclenchée par une URL GET.
+            'verbs' => [
+                'class' => VerbFilter::class,
+                'actions' => ['delete' => ['POST']],
             ],
         ];
     }

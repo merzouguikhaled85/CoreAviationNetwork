@@ -5,6 +5,7 @@ use Yii;
 use app\models\MroProfile;
 use app\models\Certificates;
 use yii\filters\AccessControl;
+use yii\filters\VerbFilter;
 use yii\web\Controller;
 use yii\web\NotFoundHttpException;
 use yii\web\UploadedFile;
@@ -28,6 +29,11 @@ class MroCertificatesController extends Controller
                         }
                     ],
                 ],
+            ],
+            // Une suppression ne doit jamais être déclenchée par une URL GET.
+            'verbs' => [
+                'class' => VerbFilter::class,
+                'actions' => ['delete' => ['POST']],
             ],
         ];
     }

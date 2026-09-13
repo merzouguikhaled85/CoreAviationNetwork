@@ -37,7 +37,15 @@ $config = [
              * CAN_COOKIE_VALIDATION_KEY est prioritaire.
              */
             'cookieValidationKey' => $environment['cookieValidationKey'],
-           'enableCsrfValidation' => false, // Disable CSRF (Not recommended for production)
+            /* Toutes les écritures Web doivent désormais présenter le jeton généré par Yii. */
+            'enableCsrfValidation' => true,
+
+            /* Le cookie CSRF est inaccessible au JavaScript et limité au même site. */
+            'csrfCookie' => [
+                'httpOnly' => true,
+                'secure' => YII_ENV_PROD,
+                'sameSite' => 'Lax',
+            ],
 
             /*
              * PROXY ZERO-TRUST : ces en-tetes sont supprimes par Yii lorsque le
@@ -60,7 +68,27 @@ $config = [
         ],
         'session' => [
             'class' => 'yii\web\Session',
-            'timeout' => 1800,  // 1-hour session timeout
+            'timeout' => 1800,
+            'useStrictMode' => true,
+            'cookieParams' => [
+                'httpOnly' => true,
+                'secure' => YII_ENV_PROD,
+                'sameSite' => 'Lax',
+            ],
+        ],
+        'response' => [
+            'on beforeSend' => static function ($event) {
+                $headers = $event->sender->headers;
+                $headers->set('X-Content-Type-Options', 'nosniff');
+                $headers->set('X-Frame-Options', 'SAMEORIGIN');
+                $headers->set('Referrer-Policy', 'strict-origin-when-cross-origin');
+                $headers->set('Permissions-Policy', 'camera=(), microphone=(), geolocation=()');
+
+                /* HSTS est envoyé uniquement en production sur une requête HTTPS. */
+                if (YII_ENV_PROD && Yii::$app->request->isSecureConnection) {
+                    $headers->set('Strict-Transport-Security', 'max-age=15552000; includeSubDomains');
+                }
+            },
         ],
         'cache' => [
             'class' => 'yii\caching\FileCache',
@@ -83,6 +111,12 @@ $config = [
         'user' => [
             'identityClass' => 'app\models\User',
             'enableAutoLogin' => true,
+            'identityCookie' => [
+                'name' => '_identity',
+                'httpOnly' => true,
+                'secure' => YII_ENV_PROD,
+                'sameSite' => 'Lax',
+            ],
             'loginUrl' => ['site/login'], // Redirect to login page if not authenticated
         ],
         'errorHandler' => [

@@ -1142,6 +1142,7 @@ $fileSizeLabel = function (?string $relativePath): string {
                                                         'aria-label' => 'Delete',
                                                         'data-swal' => 'delete',
                                                         'data-dispute-id' => (string) $disputeId,
+                                                        'data-method' => 'post',
                                                     ]
                                                 ) ?>
                                             <?php endif; ?>
@@ -1157,6 +1158,7 @@ $fileSizeLabel = function (?string $relativePath): string {
                                                         'aria-label' => 'Close',
                                                         'data-swal' => 'close',
                                                         'data-dispute-id' => (string) $disputeId,
+                                                        'data-method' => 'post',
                                                     ]
                                                 ) ?>
                                             <?php endif; ?>

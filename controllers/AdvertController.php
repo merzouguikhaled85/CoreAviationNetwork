@@ -4,6 +4,7 @@ namespace app\controllers;
 
 use Yii;
 use yii\filters\AccessControl;
+use yii\filters\VerbFilter;
 use yii\helpers\ArrayHelper;
 use yii\web\Controller;
 use yii\web\UploadedFile;
@@ -28,6 +29,14 @@ class AdvertController extends Controller
                             return in_array(Yii::$app->session->get('user_type'), ['admin']);
                         }
                     ],
+                ],
+            ],
+            // Les changements d'état exigent une requête POST protégée par CSRF.
+            'verbs' => [
+                'class' => VerbFilter::class,
+                'actions' => [
+                    'toggle-status' => ['POST'],
+                    'delete' => ['POST'],
                 ],
             ],
         ];

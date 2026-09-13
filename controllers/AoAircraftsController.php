@@ -4,6 +4,7 @@ namespace app\controllers;
 
 use Yii;
 use yii\filters\AccessControl;
+use yii\filters\VerbFilter;
 use yii\web\Controller;
 use app\models\Aircrafts;
 use app\models\AircraftModel;
@@ -28,6 +29,11 @@ class AoAircraftsController extends Controller
                         },
                     ],
                 ],
+            ],
+            // Une suppression ne doit jamais être déclenchée par une URL GET.
+            'verbs' => [
+                'class' => VerbFilter::class,
+                'actions' => ['delete' => ['POST']],
             ],
         ];
     }
