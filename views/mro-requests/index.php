@@ -17,6 +17,14 @@ use app\models\Requests;
 
 $this->title = $title ?? 'New Requests';
 
+// Chargement direct et versionné pour contourner l'ancien AppAsset de production.
+$requestSyncFile = Yii::getAlias('@webroot/js/request-sync.js');
+$requestSyncVersion = is_file($requestSyncFile) ? (string) filemtime($requestSyncFile) : '1';
+$this->registerJsFile(
+    rtrim(Yii::getAlias('@web'), '/') . '/js/request-sync.js?v=' . $requestSyncVersion,
+    ['depends' => [\yii\web\YiiAsset::class]]
+);
+
 // Current search keyword from GET.
 // Keep the same `search` parameter if the controller already supports filtering.
 $searchQuery = trim((string) ($search ?? Yii::$app->request->get('search', '')));

@@ -10,6 +10,13 @@
 
 use yii\helpers\Html;
 use yii\helpers\Url;
+// Chargement direct et versionné pour contourner l'ancien AppAsset de production.
+$requestSyncFile = Yii::getAlias('@webroot/js/request-sync.js');
+$requestSyncVersion = is_file($requestSyncFile) ? (string) filemtime($requestSyncFile) : '1';
+$this->registerJsFile(
+    rtrim(Yii::getAlias('@web'), '/') . '/js/request-sync.js?v=' . $requestSyncVersion,
+    ['depends' => [\yii\web\YiiAsset::class]]
+);
 
 $this->title = 'My Appointments';
 

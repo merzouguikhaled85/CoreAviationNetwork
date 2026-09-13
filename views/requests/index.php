@@ -10,6 +10,15 @@ use app\models\Requests;
 
 $this->title = $title;
 
+// Chargement direct et versionné : le dossier assets/ est ignoré par Git dans ce
+// projet, la page ne doit donc pas dépendre d'une modification locale d'AppAsset.
+$requestSyncFile = Yii::getAlias('@webroot/js/request-sync.js');
+$requestSyncVersion = is_file($requestSyncFile) ? (string) filemtime($requestSyncFile) : '1';
+$this->registerJsFile(
+    rtrim(Yii::getAlias('@web'), '/') . '/js/request-sync.js?v=' . $requestSyncVersion,
+    ['depends' => [\yii\web\YiiAsset::class]]
+);
+
 // Current search keyword from GET.
 // The controller must use the same `q` parameter to filter results before pagination.
 $searchQuery = trim((string) Yii::$app->request->get('q', ''));

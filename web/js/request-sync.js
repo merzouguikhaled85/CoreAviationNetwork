@@ -143,9 +143,9 @@
 
     /**
      * LECTURE INCRÉMENTALE : credentials conserve la session Yii2 et no-store
-     * interdit l'emploi d'une ancienne réponse. Les statuts 401/403 arrêtent la
-     * surveillance, car répéter l'appel après expiration ou refus de session ne
-     * peut apporter aucun résultat utile.
+     * interdit l'emploi d'une ancienne réponse. Une erreur d'authentification
+     * transitoire ne doit pas arrêter définitivement la surveillance : la session
+     * peut être restaurée par Yii ou renouvelée dans un autre onglet.
      */
     RequestSyncInstance.prototype.poll = function () {
         var self = this;
@@ -174,8 +174,7 @@
             }
 
             if (response.status === 401 || response.status === 403) {
-                self.stopped = true;
-                throw new Error('request-sync-forbidden');
+                throw new Error('request-sync-auth-' + response.status);
             }
 
             if (!response.ok) {
@@ -219,6 +218,17 @@
              * automatiquement dès que le serveur répond de nouveau.
              */
             self.failureCount += 1;
+
+            // Diagnostic volontairement limité au contexte et au type d'erreur :
+            // aucune donnée métier ni information de session n'est exposée.
+            if (window.console && typeof window.console.warn === 'function') {
+                window.console.warn('[CAN sync] Nouvelle tentative planifiée.', {
+                    context: self.context,
+                    error: error.message,
+                    attempt: self.failureCount
+                });
+            }
+
             self.schedule(Math.min(DEFAULT_DELAY * Math.pow(2, self.failureCount), MAX_FAILURE_DELAY));
         }).finally(function () {
             /*
@@ -587,9 +597,9 @@
     });
 
     /*
-     * API PUBLIQUE MINIMALE : discover permet à un futur fragment injecté en AJAX
-     * de s'enregistrer, tandis que refresh force un contrôle après une action locale
-     * réussie sans recharger toute la page.
+     * API PUBLIQUE : discover enregistre un fragment injecté, refresh force un
+     * contrôle et diagnostics permet de vérifier le polling dans la console sans
+     * exposer les données reçues du serveur.
      */
     window.CANRequestSync = {
         discover: discover,
@@ -597,6 +607,18 @@
             instances.forEach(function (instance) {
                 instance.pause();
                 instance.start();
+            });
+        },
+        diagnostics: function () {
+            return instances.map(function (instance) {
+                return {
+                    context: instance.context,
+                    cursor: instance.cursor,
+                    running: instance.running,
+                    stopped: instance.stopped,
+                    failures: instance.failureCount,
+                    nextPollScheduled: instance.timer !== null
+                };
             });
         }
     };
