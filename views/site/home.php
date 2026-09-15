@@ -93,7 +93,7 @@ $homeUserType = (string) Yii::$app->session->get('user_type');
 
 if ($isGuest) {
     $heroPrimaryUrl = ['/site/become-ao'];
-    $heroPrimaryLabel = 'Join as Operator';
+    $heroPrimaryLabel = 'Join as AO';
     $heroSecondaryUrl = ['/site/become-mro'];
     $heroSecondaryLabel = 'Join as MRO';
 } elseif ($homeUserType === 'ao') {
@@ -262,7 +262,7 @@ $this->registerJs(<<<JS
     hydrateSlide(idx);
     hydrateSlide((idx + 1) % slides.length);
     slides.forEach((s, i) => s.classList.toggle('active', i === idx));
-    updateHeroMessage(slides[idx]);
+    /* La proposition de valeur reste stable pendant la rotation des visuels. */
     dots.forEach((d, i) => {
       d.classList.toggle('active', i === idx);
       d.setAttribute('aria-selected', i === idx ? 'true' : 'false');
@@ -747,6 +747,12 @@ $this->registerCss(<<<CSS
     line-height:1.02;
 }
 
+.home-hero-title > span:first-child{
+    display:block;
+    white-space:nowrap;
+    font-size:clamp(30px, 2.8vw, 43px);
+}
+
 .home-hero-title [data-hero-highlight]{
     display:block;
     color:#38bdf8;
@@ -761,6 +767,26 @@ $this->registerCss(<<<CSS
     line-height:1.5;
 }
 
+
+/* PREUVE DU HERO : resume la promesse de tracabilite sans suivre le carrousel. */
+.home-hero-proof{
+    display:inline-flex;
+    align-items:center;
+    gap:8px;
+    margin:13px 0 0;
+    color:#e0f2fe;
+    font-size:11px;
+    font-weight:800;
+    letter-spacing:.04em;
+}
+.home-hero-proof::before{
+    width:7px;
+    height:7px;
+    border-radius:50%;
+    background:#22c55e;
+    box-shadow:0 0 0 5px rgba(34,197,94,.14);
+    content:"";
+}
 .home-hero-actions{
     display:flex;
     flex-wrap:wrap;
@@ -837,25 +863,144 @@ $this->registerCss(<<<CSS
     .nav-aviation .btn-login{padding:10px 20px; font-size:14px; font-weight:700;}
 }
 
-/* WORKFLOW: explain the actual request-to-compliance process used by AO and MRO users. */
-.workflow-heading{
+/* ===== PUBLICS DU RESEAU : operateurs/CAMO, CAN et MRO ===== */
+.network-audience-section{
+    padding:clamp(72px, 8vw, 112px) 0;
+    background:
+        radial-gradient(circle at 50% 45%, rgba(14,165,233,.12), transparent 24%),
+        linear-gradient(180deg, #f8fbff 0%, #ffffff 100%);
+}
+.home-section-heading{
+    max-width:760px;
+    margin:0 auto 44px;
+    text-align:center;
+}
+.home-section-eyebrow{
+    display:inline-flex;
+    align-items:center;
+    gap:8px;
+    margin:0 0 12px;
+    color:#0369a1;
+    font-size:11px;
+    font-weight:900;
+    letter-spacing:.14em;
+    text-transform:uppercase;
+}
+.home-section-eyebrow::before,
+.home-section-eyebrow::after{
+    width:24px;
+    height:1px;
+    background:#38bdf8;
+    content:"";
+}
+.home-section-heading h2{
+    margin:0;
+    color:#0f172a;
+    font-size:clamp(30px, 4vw, 48px);
+    font-weight:850;
+    letter-spacing:-.04em;
+    line-height:1.05;
+}
+.home-section-heading p{
+    max-width:660px;
+    margin:18px auto 0;
+    color:#64748b;
+    font-size:16px;
+    line-height:1.7;
+}
+.audience-network-grid{
+    display:grid;
+    max-width:1110px;
+    margin:0 auto;
+    grid-template-columns:repeat(2, minmax(0, 1fr));
+    align-items:stretch;
+    gap:24px;
+}
+.audience-card{
+    position:relative;
+    overflow:hidden;
+    border:1px solid #dbe7f3;
+    border-radius:24px;
+    padding:32px;
+    background:#fff;
+    box-shadow:0 18px 48px rgba(15,23,42,.08);
+}
+.audience-card::after{
+    position:absolute;
+    right:-55px;
+    bottom:-65px;
+    width:170px;
+    height:170px;
+    border-radius:50%;
+    background:rgba(14,165,233,.07);
+    content:"";
+}
+.audience-card-icon{
+    width:56px;
+    height:56px;
+    display:grid;
+    place-items:center;
+    border-radius:17px;
+    background:#e0f2fe;
+    color:#0369a1;
+    font-size:27px;
+}
+.audience-card h3{
+    margin:23px 0 10px;
+    color:#0f172a;
+    font-size:22px;
+    font-weight:850;
+}
+.audience-card > p{
+    margin:0;
+    color:#64748b;
+    line-height:1.65;
+}
+.audience-benefits{
+    position:relative;
+    z-index:1;
+    display:grid;
+    gap:11px;
+    margin:24px 0 0;
+    padding:0;
+    list-style:none;
+}
+.audience-benefits li{
     display:flex;
-    align-items:flex-end;
-    justify-content:space-between;
-    gap:30px;
-    margin-bottom:30px;
+    align-items:center;
+    gap:10px;
+    color:#334155;
+    font-size:13px;
+    font-weight:750;
+}
+.audience-benefits i{color:#0284c7; font-size:18px;}
+@media (max-width:991.98px){
+    .audience-network-grid{grid-template-columns:1fr;}
 }
 
-.workflow-heading p{
-    max-width:520px;
-    margin:0;
-    color:var(--text-muted, #64748b);
-    line-height:1.65;
+@media (max-width:575.98px){
+    .network-audience-section{padding:58px 0;}
+    .home-section-heading{margin-bottom:30px; text-align:left;}
+    .home-section-eyebrow::before,
+    .home-section-eyebrow::after{display:none;}
+    .audience-card{padding:25px 22px;}
+}
+
+/* PARCOURS PRINCIPAL : meme hierarchie centree que la section des publics. */
+.workflow-heading.home-section-heading{
+    display:block;
+    max-width:760px;
+    margin:0 auto 34px;
+    text-align:center;
+}
+.workflow-heading.home-section-heading p:last-child{
+    max-width:660px;
+    margin:18px auto 0;
 }
 
 .workflow-grid{
     display:grid;
-    grid-template-columns:repeat(4, minmax(0, 1fr));
+    grid-template-columns:repeat(3, minmax(0, 1fr));
     gap:18px;
 }
 
@@ -955,11 +1100,194 @@ $this->registerCss(<<<CSS
      * visibles, y compris avec une langue plus longue ou un zoom navigateur.
      */
     .home-hero-title{font-size:clamp(28px, 8.5vw, 35px); overflow-wrap:anywhere;}
+    .home-hero-title > span:first-child{font-size:clamp(23px, 7.4vw, 32px);}
     .home-hero-text{overflow-wrap:anywhere;}
     .home-hero-actions{display:grid; grid-template-columns:1fr;}
     .home-hero-action{width:100%; box-sizing:border-box;}
     .workflow-grid{grid-template-columns:1fr;}
     .workflow-card{min-height:0;}
+}
+
+/* ===== PRIORITES OPERATIONNELLES : AOG, urgent et planifie ===== */
+.maintenance-priority-section{
+    padding:clamp(72px, 8vw, 108px) 0;
+    border-top:1px solid #e5edf6;
+    background:#f7f9fc;
+}
+
+.maintenance-priority-grid{
+    display:grid;
+    max-width:1160px;
+    margin:0 auto;
+    grid-template-columns:repeat(3, minmax(0, 1fr));
+    gap:20px;
+}
+
+.maintenance-priority-card{
+    --priority-color:#0284c7;
+    --priority-soft:#eff8ff;
+    position:relative;
+    overflow:hidden;
+    border:1px solid #dbe5ef;
+    border-radius:18px;
+    padding:28px 28px 24px 32px;
+    background:#fff;
+    box-shadow:0 12px 28px rgba(15,23,42,.06);
+}
+
+.maintenance-priority-card::before{
+    position:absolute;
+    top:0;
+    bottom:0;
+    left:0;
+    width:5px;
+    background:var(--priority-color);
+    content:"";
+}
+
+.maintenance-priority-card--aog{
+    --priority-color:#dc3f4f;
+    --priority-soft:#fff1f2;
+}
+
+.maintenance-priority-card--urgent{
+    --priority-color:#d97706;
+    --priority-soft:#fff7ed;
+}
+
+.maintenance-priority-card--planned{
+    --priority-color:#087fb8;
+    --priority-soft:#eff8ff;
+}
+
+.maintenance-priority-card__header{
+    display:flex;
+    align-items:flex-start;
+    justify-content:space-between;
+    gap:18px;
+}
+
+.maintenance-priority-card__icon{
+    width:48px;
+    height:48px;
+    display:grid;
+    flex:0 0 48px;
+    place-items:center;
+    border-radius:12px;
+    background:var(--priority-soft);
+    color:var(--priority-color);
+    font-size:23px;
+}
+
+.maintenance-priority-card__level{
+    margin:4px 0 0;
+    color:var(--priority-color);
+    font-size:10px;
+    font-weight:900;
+    letter-spacing:.13em;
+    text-transform:uppercase;
+}
+
+.maintenance-priority-card h3{
+    margin:24px 0 6px;
+    color:#0f172a;
+    font-size:24px;
+    font-weight:850;
+    letter-spacing:-.025em;
+}
+
+.maintenance-priority-card__context{
+    min-height:52px;
+    margin:0;
+    color:#64748b;
+    font-size:14px;
+    line-height:1.65;
+}
+
+.maintenance-priority-card__details{
+    display:grid;
+    gap:0;
+    margin:24px 0 0;
+    padding:0;
+    border-top:1px solid #e8eef5;
+    list-style:none;
+}
+
+.maintenance-priority-card__details li{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:18px;
+    padding:13px 0;
+    border-bottom:1px solid #eef3f8;
+    color:#64748b;
+    font-size:12px;
+}
+
+.maintenance-priority-card__details strong{
+    color:#1e293b;
+    font-size:12px;
+    font-weight:800;
+    text-align:right;
+}
+
+.maintenance-priority-example{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:16px;
+    margin-top:18px;
+    border-radius:12px;
+    padding:13px 15px;
+    background:#172033;
+    color:#fff;
+}
+
+.maintenance-priority-example span{
+    color:#a9b7ca;
+    font-size:10px;
+    font-weight:750;
+    letter-spacing:.06em;
+    text-transform:uppercase;
+}
+
+.maintenance-priority-example strong{
+    color:#fff;
+    font-size:13px;
+    white-space:nowrap;
+}
+
+.maintenance-priority-note{
+    display:flex;
+    max-width:1160px;
+    margin:24px auto 0;
+    align-items:flex-start;
+    justify-content:center;
+    gap:9px;
+    color:#64748b;
+    font-size:12px;
+    line-height:1.6;
+    text-align:center;
+}
+
+.maintenance-priority-note i{
+    margin-top:2px;
+    color:#0284c7;
+    font-size:15px;
+}
+
+@media (max-width:991.98px){
+    .maintenance-priority-grid{
+        max-width:680px;
+        grid-template-columns:1fr;
+    }
+    .maintenance-priority-card__context{min-height:0;}
+}
+
+@media (max-width:575.98px){
+    .maintenance-priority-section{padding:58px 0;}
+    .maintenance-priority-card{padding:24px 22px 21px 27px;}
+    .maintenance-priority-note{text-align:left;}
 }
 
 /* ==========================================================
@@ -1488,12 +1816,13 @@ CSS
     -->
     <div class="home-hero-message">
       <div class="home-hero-panel" aria-live="polite">
-        <p class="home-hero-kicker" data-hero-kicker><?= Html::encode($heroSlides[0]['kicker']) ?></p>
+        <p class="home-hero-kicker">Aircraft maintenance coordination</p>
         <h1 class="home-hero-title" id="home-hero-title">
-          <span data-hero-title><?= Html::encode($heroSlides[0]['title']) ?></span>
-          <span data-hero-highlight><?= Html::encode($heroSlides[0]['highlight']) ?></span>
+          <span>Aircraft Maintenance.</span>
+          <span data-hero-highlight>One Network. One Workflow.</span>
         </h1>
-        <p class="home-hero-text" data-hero-description><?= Html::encode($heroSlides[0]['description']) ?></p>
+        <p class="home-hero-text">Connect aircraft operators and CAMOs with relevant MRO capabilities—from request and quotation to work completion.</p>
+        <p class="home-hero-proof">One request. One history. Full traceability.</p>
         <div class="home-hero-actions">
           <?= Html::a(
               '<i class="ri-send-plane-line"></i><span>' . Html::encode($heroPrimaryLabel) . '</span>',
@@ -1686,6 +2015,42 @@ CSS
           aria-label="Show scene <?= $index + 1 ?>: <?= Html::encode($heroSlide['kicker']) ?>"
         ></button>
       <?php endforeach; ?>
+    </div>
+  </section>
+
+  <!-- ================== PUBLICS DU RESEAU ================== -->
+  <section class="network-audience-section" id="network" aria-labelledby="network-audience-title">
+    <div class="container">
+      <header class="home-section-heading">
+        <p class="home-section-eyebrow">Who CAN is for</p>
+        <h2 id="network-audience-title">Two sides. One controlled maintenance network.</h2>
+        <p>Core Aviation Network connects operational demand with relevant maintenance capabilities while keeping every exchange attached to the same request.</p>
+      </header>
+
+      <div class="audience-network-grid">
+        <article class="audience-card">
+          <span class="audience-card-icon" aria-hidden="true"><i class="ri-plane-line"></i></span>
+          <h3>For Aircraft Operators &amp; CAMOs</h3>
+          <p>Structure maintenance needs, compare responses and retain operational visibility from the first request to completion.</p>
+          <ul class="audience-benefits">
+            <li><i class="ri-check-line" aria-hidden="true"></i> Submit structured maintenance requests</li>
+            <li><i class="ri-check-line" aria-hidden="true"></i> Compare relevant MRO quotations</li>
+            <li><i class="ri-check-line" aria-hidden="true"></i> Track documents, decisions and progress</li>
+          </ul>
+        </article>
+
+
+        <article class="audience-card">
+          <span class="audience-card-icon" aria-hidden="true"><i class="ri-building-2-line"></i></span>
+          <h3>For MROs</h3>
+          <p>Receive requests aligned with your maintenance capabilities and manage commercial and operational responses in one place.</p>
+          <ul class="audience-benefits">
+            <li><i class="ri-check-line" aria-hidden="true"></i> Review relevant maintenance opportunities</li>
+            <li><i class="ri-check-line" aria-hidden="true"></i> Prepare controlled quotations</li>
+            <li><i class="ri-check-line" aria-hidden="true"></i> Coordinate work, reports and CRS records</li>
+          </ul>
+        </article>
+      </div>
     </div>
   </section>
 
@@ -1933,44 +2298,121 @@ CSS
   <!-- ================== AO / MRO WORKFLOW ================== -->
   <section class="services workflow-section" aria-labelledby="services-title">
     <div class="container">
-      <div class="workflow-heading">
-        <h2 id="services-title" class="section-title">
-          One maintenance workflow
-          <span class="underline"></span>
-        </h2>
-        <p>From the first operational need to final compliance evidence, every key exchange remains connected to the same maintenance request.</p>
-      </div>
+      <header class="home-section-heading workflow-heading">
+        <p class="home-section-eyebrow">How CAN works</p>
+        <h2 id="services-title">From request to completion</h2>
+        <p>One structured workflow connects operational demand, relevant maintenance capabilities, commercial decisions and final records.</p>
+      </header>
 
-      <!-- WORKFLOW: the four cards reflect the application business sequence. -->
       <div class="workflow-grid">
         <article class="workflow-card">
           <span class="workflow-number">01</span>
           <span class="workflow-icon"><i class="ri-file-add-line"></i></span>
-          <h3>Create the request</h3>
-          <p>Record aircraft, registration, serial number, ETA/ETD, location, scope and controlled attachments.</p>
+          <h3>Request</h3>
+          <p>Capture aircraft, location, priority, schedule, maintenance scope and controlled attachments.</p>
         </article>
 
         <article class="workflow-card">
           <span class="workflow-number">02</span>
-          <span class="workflow-icon"><i class="ri-file-list-3-line"></i></span>
-          <h3>Compare MRO quotations</h3>
-          <p>Review technical scope, price, currency, lead time and official quotation documents in one place.</p>
+          <span class="workflow-icon"><i class="ri-route-line"></i></span>
+          <h3>Match</h3>
+          <p>Connect the requirement with MRO partners according to the operational information available in CAN.</p>
         </article>
 
         <article class="workflow-card">
           <span class="workflow-number">03</span>
-          <span class="workflow-icon"><i class="ri-shopping-bag-3-line"></i></span>
-          <h3>Confirm and issue the PO</h3>
-          <p>Select the maintenance partner, accept the commercial response and keep purchase orders linked to the request.</p>
+          <span class="workflow-icon"><i class="ri-file-list-3-line"></i></span>
+          <h3>Quote</h3>
+          <p>Compare technical scope, price, currency, lead time and quotation documents in one place.</p>
         </article>
 
         <article class="workflow-card">
           <span class="workflow-number">04</span>
+          <span class="workflow-icon"><i class="ri-shopping-bag-3-line"></i></span>
+          <h3>Purchase Order</h3>
+          <p>Confirm the selected response and retain the purchase order with its maintenance request.</p>
+        </article>
+
+        <article class="workflow-card">
+          <span class="workflow-number">05</span>
+          <span class="workflow-icon"><i class="ri-tools-line"></i></span>
+          <h3>Work</h3>
+          <p>Coordinate appointments, messages, operational updates and supporting maintenance records.</p>
+        </article>
+
+        <article class="workflow-card">
+          <span class="workflow-number">06</span>
           <span class="workflow-icon"><i class="ri-shield-check-line"></i></span>
-          <h3>Track work and compliance</h3>
-          <p>Follow updates, appointments, messages, reports, CRS documents, feedback and dispute records.</p>
+          <h3>Complete</h3>
+          <p>Keep reports, CRS documents, feedback and the final history connected and traceable.</p>
         </article>
       </div>
+    </div>
+  </section>
+  <!-- ========== PRIORITES DE MAINTENANCE ========== -->
+  <section class="maintenance-priority-section" id="maintenance-priorities" aria-labelledby="maintenance-priority-title">
+    <div class="container">
+      <header class="home-section-heading">
+        <p class="home-section-eyebrow">AOG and Planned Maintenance</p>
+        <h2 id="maintenance-priority-title">One workflow, adapted to operational urgency.</h2>
+        <p>From an aircraft grounded event to scheduled maintenance, CAN keeps the priority, requested response timing and operational context visible.</p>
+      </header>
+
+      <div class="maintenance-priority-grid">
+        <article class="maintenance-priority-card maintenance-priority-card--aog">
+          <div class="maintenance-priority-card__header">
+            <span class="maintenance-priority-card__icon" aria-hidden="true">
+              <i class="ri-error-warning-line"></i>
+            </span>
+            <span class="maintenance-priority-card__level">Immediate attention</span>
+          </div>
+          <h3>AOG</h3>
+          <p class="maintenance-priority-card__context">Aircraft grounded and a response time is required for the maintenance request.</p>
+          <ul class="maintenance-priority-card__details">
+            <li><span>Response time</span><strong>Required</strong></li>
+            <li><span>Accepted range</span><strong>15 min – 24 h</strong></li>
+          </ul>
+          <div class="maintenance-priority-example" aria-label="Illustrative AOG response target">
+            <span>Example · response target</span>
+            <strong>18 min remaining</strong>
+          </div>
+        </article>
+
+        <article class="maintenance-priority-card maintenance-priority-card--urgent">
+          <div class="maintenance-priority-card__header">
+            <span class="maintenance-priority-card__icon" aria-hidden="true">
+              <i class="ri-flashlight-line"></i>
+            </span>
+            <span class="maintenance-priority-card__level">Time-sensitive</span>
+          </div>
+          <h3>Urgent</h3>
+          <p class="maintenance-priority-card__context">A maintenance need requiring a fast review without declaring the aircraft grounded.</p>
+          <ul class="maintenance-priority-card__details">
+            <li><span>Response time</span><strong>Optional</strong></li>
+            <li><span>Operational focus</span><strong>Fast review</strong></li>
+          </ul>
+        </article>
+
+        <article class="maintenance-priority-card maintenance-priority-card--planned">
+          <div class="maintenance-priority-card__header">
+            <span class="maintenance-priority-card__icon" aria-hidden="true">
+              <i class="ri-calendar-check-line"></i>
+            </span>
+            <span class="maintenance-priority-card__level">Scheduled work</span>
+          </div>
+          <h3>Routine / Planned</h3>
+          <p class="maintenance-priority-card__context">Scheduled maintenance coordinated through the same structured and traceable request workflow.</p>
+          <ul class="maintenance-priority-card__details">
+            <li><span>Response deadline</span><strong>None required</strong></li>
+            <li><span>Operational focus</span><strong>Standard planning</strong></li>
+          </ul>
+        </article>
+      </div>
+
+      <p class="maintenance-priority-note">
+        <i class="ri-information-line" aria-hidden="true"></i>
+        <span>Response timing is defined within each request and does not represent a guaranteed MRO response SLA.</span>
+      </p>
     </div>
   </section>
 
