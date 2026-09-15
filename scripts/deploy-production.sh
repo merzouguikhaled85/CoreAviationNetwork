@@ -119,7 +119,7 @@ rollback_deployment() {
     fi
 
     if [[ "$rollback_failed" -eq 0 ]]; then
-        "$PHP_BIN" yii cache/flush-schema db >/dev/null 2>&1 || true
+        "$PHP_BIN" yii cache/flush-schema db --interactive=0 >/dev/null 2>&1 || true
         "$PHP_BIN" yii cache/flush-all --interactive=0 >/dev/null 2>&1 || true
         "$PHP_BIN" yii help >/dev/null 2>&1 || rollback_failed=1
     fi
@@ -310,7 +310,7 @@ export COMPOSER_ALLOW_SUPERUSER=1
 MIGRATIONS_STARTED=1
 "$PHP_BIN" yii migrate --interactive=0
 
-if ! "$PHP_BIN" yii cache/flush-schema db; then
+if ! "$PHP_BIN" yii cache/flush-schema db --interactive=0; then
     echo "[CAN] AVERTISSEMENT : le cache du schéma n'a pas pu être vidé."
 fi
 
