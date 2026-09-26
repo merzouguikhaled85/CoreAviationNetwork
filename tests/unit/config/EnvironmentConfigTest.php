@@ -11,6 +11,24 @@ use Codeception\Test\Unit;
  */
 class EnvironmentConfigTest extends Unit
 {
+    public function testPrelaunchModeCanBeDisabledExplicitly(): void
+    {
+        $previousValue = getenv('CAN_PRELAUNCH_MODE');
+
+        try {
+            putenv('CAN_PRELAUNCH_MODE=0');
+            $environment = require dirname(__DIR__, 3) . '/config/env.php';
+
+            $this->assertSame('0', $environment['prelaunchMode']);
+        } finally {
+            if ($previousValue === false) {
+                putenv('CAN_PRELAUNCH_MODE');
+            } else {
+                putenv('CAN_PRELAUNCH_MODE=' . $previousValue);
+            }
+        }
+    }
+
     public function testEmptyTurnstileEnvironmentValuesFallBackToLocalFile(): void
     {
         $localFile = dirname(__DIR__, 3) . '/config/env-local.php';

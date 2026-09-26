@@ -1,10 +1,41 @@
 <?php
 /** @var yii\web\View $this */
+use app\components\PrelaunchMode;
 use yii\helpers\Html;
 use yii\helpers\Url;
 use app\models\Advert;
+use app\models\PrelaunchSubscriber;
+use yii\widgets\ActiveForm;
+
+/** @var PrelaunchSubscriber $prelaunchSubscriber */
 
 $this->title = 'Core Aviation Network';
+
+$this->registerCssFile(
+    '@web/css/prelaunch.css?v=20260926-1',
+    ['depends' => [\yii\bootstrap5\BootstrapAsset::class]]
+);
+$this->registerJsFile(
+    '@web/js/prelaunch.js?v=20260926-1',
+    ['depends' => [\yii\web\JqueryAsset::class], 'position' => \yii\web\View::POS_END]
+);
+
+$prelaunchTurnstileSiteKey = trim((string) (Yii::$app->params['turnstileSiteKey'] ?? ''));
+$prelaunchTurnstileConfigured = $prelaunchTurnstileSiteKey !== ''
+    && trim((string) (Yii::$app->params['turnstileSecretKey'] ?? '')) !== ''
+    && trim((string) (Yii::$app->params['turnstileExpectedHostname'] ?? '')) !== '';
+if ($prelaunchTurnstileConfigured) {
+    $this->registerJsFile(
+        'https://challenges.cloudflare.com/turnstile/v0/api.js',
+        [
+            'async' => true,
+            'defer' => true,
+            'data-can-turnstile-api' => '1',
+            'position' => \yii\web\View::POS_END,
+        ],
+        'can-turnstile-api'
+    );
+}
 
 /*
  * ANCIENS MEDIAS DU HERO - CONSERVES COMME REFERENCE :
@@ -90,41 +121,58 @@ $this->registerLinkTag([
  */
 $isGuest = Yii::$app->user->isGuest;
 $homeUserType = (string) Yii::$app->session->get('user_type');
+$prelaunchMode = PrelaunchMode::isEnabled();
 
-if ($isGuest) {
+if ($isGuest && $prelaunchMode) {
+    $heroPrimaryUrl = '#early-access';
+    $heroPrimaryLabel = 'Get Early Access';
+    $heroPrimaryIcon = 'ri-flight-takeoff-line';
+    $heroSecondaryUrl = ['/site/login'];
+    $heroSecondaryLabel = 'Login';
+    $heroSecondaryIcon = 'ri-login-box-line';
+} elseif ($isGuest) {
     $heroPrimaryUrl = ['/site/become-ao'];
     $heroPrimaryLabel = 'Join as AO';
+    $heroPrimaryIcon = 'ri-send-plane-line';
     $heroSecondaryUrl = ['/site/become-mro'];
     $heroSecondaryLabel = 'Join as MRO';
+    $heroSecondaryIcon = 'ri-building-2-line';
 } elseif ($homeUserType === 'ao') {
     $heroPrimaryUrl = ['/requests/create'];
     $heroPrimaryLabel = 'New Request';
+    $heroPrimaryIcon = 'ri-send-plane-line';
     $heroSecondaryUrl = ['/dashboard/home'];
     $heroSecondaryLabel = 'Dashboard';
+    $heroSecondaryIcon = 'ri-layout-grid-line';
 } else {
     $heroPrimaryUrl = ['/mro-requests/index'];
     $heroPrimaryLabel = 'View Requests';
+    $heroPrimaryIcon = 'ri-file-list-3-line';
     $heroSecondaryUrl = ['/dashboard/home'];
     $heroSecondaryLabel = 'Dashboard';
+    $heroSecondaryIcon = 'ri-layout-grid-line';
 }
 
 
 $now = date('Y-m-d H:i:s');
 
-$aboutAdverts = Advert::find()
-    ->where(['status' => 'active'])
-    ->andWhere([
-        'or',
-        ['start_date' => null],
-        ['<=', 'start_date', $now],
-    ])
-    ->andWhere([
-        'or',
-        ['end_date' => null],
-        ['>=', 'end_date', $now],
-    ])
-    ->orderBy(['advert_id' => SORT_DESC])
-    ->all();
+$aboutAdverts = [];
+if (!$prelaunchMode) {
+    $aboutAdverts = Advert::find()
+        ->where(['status' => 'active'])
+        ->andWhere([
+            'or',
+            ['start_date' => null],
+            ['<=', 'start_date', $now],
+        ])
+        ->andWhere([
+            'or',
+            ['end_date' => null],
+            ['>=', 'end_date', $now],
+        ])
+        ->orderBy(['advert_id' => SORT_DESC])
+        ->all();
+}
 
 
 /* ===== JS du slider (auto, dots, prev/next, pause-hover, clavier, swipe, vidéo) ===== */
@@ -1394,6 +1442,132 @@ $this->registerCss(<<<CSS
     isolation:isolate;
 }
 
+.about-early-access-promo{
+    position:relative;
+    width:100%;
+    height:100%;
+    min-height:0;
+    overflow:hidden;
+    color:#FFFFFF;
+    background:#071A31;
+}
+
+.about-early-access-image,
+.about-early-access-overlay{
+    position:absolute;
+    inset:0;
+    width:100%;
+    height:100%;
+}
+
+.about-early-access-image{
+    z-index:0;
+    object-fit:cover;
+    object-position:58% center;
+    transform:scale(1.015);
+}
+
+.about-early-access-overlay{
+    z-index:1;
+    background:
+        linear-gradient(90deg, rgba(4,18,36,.98) 0%, rgba(4,25,49,.92) 35%, rgba(4,25,49,.56) 68%, rgba(4,25,49,.18) 100%),
+        linear-gradient(0deg, rgba(2,13,27,.58) 0%, transparent 45%);
+}
+
+.about-early-access-content{
+    position:relative;
+    z-index:2;
+    display:flex;
+    width:min(74%, 510px);
+    height:100%;
+    align-items:flex-start;
+    justify-content:center;
+    flex-direction:column;
+    padding:clamp(28px, 4.5vw, 64px);
+}
+
+.about-early-access-kicker{
+    display:inline-flex;
+    align-items:center;
+    gap:8px;
+    margin-bottom:14px;
+    color:#55D6FF;
+    font-size:11px;
+    font-weight:900;
+    letter-spacing:.13em;
+    text-transform:uppercase;
+}
+
+.about-early-access-kicker i{
+    font-size:17px;
+}
+
+.about-early-access-content h3{
+    max-width:470px;
+    margin:0;
+    color:#FFFFFF;
+    font-size:clamp(27px, 3.1vw, 46px);
+    font-weight:800;
+    line-height:1.08;
+    letter-spacing:-.035em;
+    text-wrap:balance;
+}
+
+.about-early-access-content p{
+    max-width:430px;
+    margin:18px 0 14px;
+    color:rgba(235,247,255,.86);
+    font-size:clamp(13px, 1.15vw, 16px);
+    line-height:1.6;
+}
+
+.about-early-access-audience{
+    display:inline-flex;
+    align-items:center;
+    min-height:30px;
+    margin-bottom:22px;
+    padding:0 11px;
+    border:1px solid rgba(138,222,255,.34);
+    border-radius:999px;
+    color:#DDF7FF;
+    background:rgba(6,60,92,.42);
+    font-size:10px;
+    font-weight:800;
+    letter-spacing:.04em;
+    backdrop-filter:blur(8px);
+    -webkit-backdrop-filter:blur(8px);
+}
+
+.about-early-access-button{
+    display:inline-flex;
+    min-height:48px;
+    align-items:center;
+    justify-content:center;
+    gap:12px;
+    padding:0 20px;
+    border:1px solid rgba(255,255,255,.2);
+    border-radius:12px;
+    color:#FFFFFF;
+    background:linear-gradient(135deg, #0A8CE2, #006BC1);
+    box-shadow:0 14px 28px rgba(0,115,199,.34);
+    font-size:13px;
+    font-weight:800;
+    text-decoration:none;
+    transition:transform .2s ease, box-shadow .2s ease, background .2s ease;
+}
+
+.about-early-access-button:hover,
+.about-early-access-button:focus-visible{
+    color:#FFFFFF;
+    background:linear-gradient(135deg, #10A5EF, #0879D3);
+    box-shadow:0 17px 34px rgba(0,115,199,.44);
+    transform:translateY(-2px);
+}
+
+.about-early-access-button i{
+    font-size:18px;
+}
+
 .about-ad-carousel,
 .about-ad-track,
 .about-ad-slide,
@@ -1753,6 +1927,30 @@ $this->registerCss(<<<CSS
         border-radius:18px;
     }
 
+    .about-early-access-image{
+        object-position:66% center;
+    }
+
+    .about-early-access-overlay{
+        background:
+            linear-gradient(90deg, rgba(4,18,36,.98) 0%, rgba(4,25,49,.86) 72%, rgba(4,25,49,.48) 100%),
+            linear-gradient(0deg, rgba(2,13,27,.68) 0%, transparent 55%);
+    }
+
+    .about-early-access-content{
+        width:100%;
+        padding:28px 24px;
+    }
+
+    .about-early-access-content h3{
+        max-width:340px;
+        font-size:clamp(26px, 8vw, 36px);
+    }
+
+    .about-early-access-content p{
+        max-width:315px;
+    }
+
     .about-ad-nav{
         width:38px;
         height:38px;
@@ -1790,19 +1988,7 @@ CSS
 
 <div class="site-index" style="margin:0;padding:0;">
 
-  <!-- ===== FLASH MESSAGES ===== -->
-  <?php if (Yii::$app->session->hasFlash('message')): ?>
-    <div class="alert alert-success"><?= Yii::$app->session->getFlash('message') ?></div>
-  <?php endif; ?>
-  <?php if (Yii::$app->session->hasFlash('error')): ?>
-    <div class="alert alert-danger"><?= Yii::$app->session->getFlash('error') ?></div>
-  <?php endif; ?>
-  <?php if (Yii::$app->session->hasFlash('usernameError')): ?>
-    <div class="alert alert-danger"><?= Yii::$app->session->getFlash('usernameError') ?></div>
-  <?php endif; ?>
-  <?php if (Yii::$app->session->hasFlash('passwordError')): ?>
-    <div class="alert alert-danger"><?= Yii::$app->session->getFlash('passwordError') ?></div>
-  <?php endif; ?>
+  <!-- Les notifications publiques sont rendues une seule fois par landing-main. -->
 
   <!--
     NOUVEAU HERO : ce carrousel raconte le parcours maintenance en cinq scenes.
@@ -1825,15 +2011,28 @@ CSS
         <p class="home-hero-proof">One request. One history. Full traceability.</p>
         <div class="home-hero-actions">
           <?= Html::a(
-              '<i class="ri-send-plane-line"></i><span>' . Html::encode($heroPrimaryLabel) . '</span>',
+              '<i class="' . Html::encode($heroPrimaryIcon) . '"></i><span>' . Html::encode($heroPrimaryLabel) . '</span>',
               $heroPrimaryUrl,
-              ['class' => 'home-hero-action is-primary']
+              [
+                  'class' => 'home-hero-action is-primary',
+                  'data-early-access-link' => $isGuest && $prelaunchMode ? '1' : null,
+              ]
           ) ?>
           <?= Html::a(
-              '<i class="ri-building-2-line"></i><span>' . Html::encode($heroSecondaryLabel) . '</span>',
+              '<i class="' . Html::encode($heroSecondaryIcon) . '"></i><span>' . Html::encode($heroSecondaryLabel) . '</span>',
               $heroSecondaryUrl,
               ['class' => 'home-hero-action is-secondary']
           ) ?>
+          <?php if ($isGuest && !$prelaunchMode): ?>
+            <?= Html::a(
+                '<i class="ri-flight-takeoff-line"></i><span>Early Access</span>',
+                '#early-access',
+                [
+                    'class' => 'home-hero-action is-secondary',
+                    'data-early-access-link' => '1',
+                ]
+            ) ?>
+          <?php endif; ?>
         </div>
       </div>
     </div>
@@ -2094,9 +2293,43 @@ CSS
         <div class="about-ad-column">
           <aside
             class="about-ad-zone"
-            aria-label="Sponsored aviation content"
+            aria-label="<?= $prelaunchMode ? 'Core Aviation Network Early Access' : 'Sponsored aviation content' ?>"
           >
-            <?php if (!empty($aboutAdverts)): ?>
+            <?php if ($prelaunchMode): ?>
+
+              <div class="about-early-access-promo">
+                <?= Html::img('@web/img/home-carousel/global-network.jpg', [
+                    'class' => 'about-early-access-image',
+                    'alt' => '',
+                    'loading' => 'lazy',
+                    'decoding' => 'async',
+                    'aria-hidden' => 'true',
+                ]) ?>
+                <div class="about-early-access-overlay" aria-hidden="true"></div>
+                <div class="about-early-access-content">
+                  <span class="about-early-access-kicker">
+                    <i class="ri-flight-takeoff-line" aria-hidden="true"></i>
+                    Be among the first
+                  </span>
+                  <h3>Get Early Access to Core Aviation Network</h3>
+                  <p>
+                    Join the launch list for product updates and priority onboarding.
+                  </p>
+                  <span class="about-early-access-audience">
+                    For Aircraft Operators &amp; MROs
+                  </span>
+                  <?= Html::a(
+                      '<span>Get Early Access</span><i class="ri-arrow-right-line" aria-hidden="true"></i>',
+                      '#early-access',
+                      [
+                          'class' => 'about-early-access-button',
+                          'data-early-access-link' => '1',
+                      ]
+                  ) ?>
+                </div>
+              </div>
+
+            <?php elseif (!empty($aboutAdverts)): ?>
 
               <div
                 class="about-ad-carousel"
@@ -2416,6 +2649,162 @@ CSS
     </div>
   </section>
 
-  
+  <!-- ================== EARLY ACCESS ================== -->
+  <section id="early-access" class="early-access-section" aria-labelledby="early-access-title">
+    <div class="container">
+      <div class="early-access-shell">
+        <div class="early-access-copy">
+          <p class="early-access-eyebrow"><i class="ri-radar-line" aria-hidden="true"></i> Early access</p>
+          <h2 id="early-access-title">Launching Soon</h2>
+          <p class="early-access-lead">
+            Be among the first aviation professionals to join Core Aviation Network.
+            We&apos;ll notify you when CAN goes live.
+          </p>
+
+          <div class="early-access-benefits" aria-label="Early access benefits">
+            <div><i class="ri-checkbox-circle-line" aria-hidden="true"></i><span>Launch notification for aviation professionals</span></div>
+            <div><i class="ri-checkbox-circle-line" aria-hidden="true"></i><span>One confirmation email to verify your address</span></div>
+            <div><i class="ri-checkbox-circle-line" aria-hidden="true"></i><span>No spam or unrelated marketing</span></div>
+          </div>
+
+          <div class="early-access-network-preview" aria-label="Core Aviation Network connection preview">
+            <div class="early-access-network-node">
+              <span class="early-access-network-icon"><i class="ri-plane-line" aria-hidden="true"></i></span>
+              <span><small>Demand</small><strong>Aircraft Operator</strong></span>
+            </div>
+            <div class="early-access-network-link" aria-hidden="true">
+              <span></span><i class="ri-arrow-left-right-line"></i><span></span>
+            </div>
+            <div class="early-access-network-node">
+              <span class="early-access-network-icon"><i class="ri-tools-line" aria-hidden="true"></i></span>
+              <span><small>Capability</small><strong>MRO Partner</strong></span>
+            </div>
+          </div>
+        </div>
+
+        <div class="early-access-form-card">
+          <?php $earlyAccessForm = ActiveForm::begin([
+              'id' => 'early-access-form',
+              'action' => ['/site/join-network'],
+              'method' => 'post',
+              'enableClientValidation' => true,
+              'options' => [
+                  'class' => 'early-access-form',
+                  'novalidate' => true,
+                  'data-early-access-form' => '1',
+              ],
+              'fieldConfig' => [
+                  'options' => ['class' => 'early-access-field'],
+                  'inputOptions' => ['class' => 'form-control early-access-input'],
+                  'errorOptions' => ['class' => 'early-access-error'],
+              ],
+          ]); ?>
+
+          <header class="early-access-form-header">
+            <div class="early-access-form-header-icon" aria-hidden="true">
+              <i class="ri-flight-takeoff-line"></i>
+            </div>
+            <div>
+              <p>Private launch list</p>
+              <h3>Request early access</h3>
+              <span>Complete the form and confirm your business email.</span>
+            </div>
+          </header>
+
+          <div class="early-access-form-trust" aria-label="Registration information">
+            <span><i class="ri-time-line" aria-hidden="true"></i> 2-minute registration</span>
+            <span><i class="ri-mail-check-line" aria-hidden="true"></i> Email confirmation</span>
+            <span><i class="ri-shield-check-line" aria-hidden="true"></i> Secure form</span>
+          </div>
+
+          <div class="early-access-form-body">
+
+          <div class="early-access-grid">
+            <?= $earlyAccessForm->field($prelaunchSubscriber, 'first_name')->textInput([
+                'maxlength' => true,
+                'autocomplete' => 'given-name',
+                'placeholder' => 'First name',
+            ]) ?>
+            <?= $earlyAccessForm->field($prelaunchSubscriber, 'last_name')->textInput([
+                'maxlength' => true,
+                'autocomplete' => 'family-name',
+                'placeholder' => 'Last name',
+            ]) ?>
+            <?= $earlyAccessForm->field($prelaunchSubscriber, 'company_name')->textInput([
+                'maxlength' => true,
+                'autocomplete' => 'organization',
+                'placeholder' => 'Company name',
+            ]) ?>
+            <?= $earlyAccessForm->field($prelaunchSubscriber, 'business_email')->input('email', [
+                'maxlength' => true,
+                'autocomplete' => 'email',
+                'inputmode' => 'email',
+                'placeholder' => 'name@company.com',
+            ]) ?>
+            <?= $earlyAccessForm->field($prelaunchSubscriber, 'company_website')->textInput([
+                'maxlength' => true,
+                'autocomplete' => 'url',
+                'inputmode' => 'url',
+                'placeholder' => 'https://company.com',
+            ])->label('Company Website <span>Optional</span>', ['encode' => false]) ?>
+            <?= $earlyAccessForm->field($prelaunchSubscriber, 'company_type')->dropDownList(
+                PrelaunchSubscriber::companyTypeOptions(),
+                ['prompt' => 'Select company type', 'class' => 'form-select early-access-input']
+            ) ?>
+          </div>
+
+          <div class="early-access-honeypot" aria-hidden="true">
+            <?= $earlyAccessForm->field($prelaunchSubscriber, 'website')->textInput([
+                'tabindex' => '-1',
+                'autocomplete' => 'off',
+            ])->label('Leave this field empty') ?>
+          </div>
+
+          <?= $earlyAccessForm->field($prelaunchSubscriber, 'consent', [
+              'options' => ['class' => 'early-access-consent'],
+          ])->checkbox([
+              'value' => 1,
+              'uncheck' => 0,
+              'class' => 'form-check-input',
+          ]) ?>
+
+          <?php if ($prelaunchTurnstileConfigured): ?>
+            <div class="early-access-turnstile">
+              <div
+                class="cf-turnstile"
+                data-sitekey="<?= Html::encode($prelaunchTurnstileSiteKey) ?>"
+                data-action="early_access"
+                data-theme="light"
+              ></div>
+            </div>
+          <?php else: ?>
+            <div class="early-access-verification-unavailable" role="alert">
+              Visitor verification is temporarily unavailable.
+            </div>
+          <?php endif; ?>
+
+          <button
+            type="submit"
+            class="early-access-submit"
+            data-joining-label="Joining..."
+            <?= $prelaunchTurnstileConfigured ? '' : 'disabled' ?>
+          >
+            <i class="ri-flight-takeoff-line" aria-hidden="true"></i>
+            <span>Join the Network</span>
+          </button>
+
+          <p class="early-access-privacy">
+            <i class="ri-lock-line" aria-hidden="true"></i>
+            No spam. You will only receive important launch-related updates.
+            See our <?= Html::a('Privacy Policy', ['/site/privacy-policy']) ?>.
+          </p>
+
+          </div>
+
+          <?php ActiveForm::end(); ?>
+        </div>
+      </div>
+    </div>
+  </section>
 
 </div>

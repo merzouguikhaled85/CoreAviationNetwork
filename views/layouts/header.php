@@ -869,7 +869,7 @@ if (!Yii::$app->user->isGuest && $userType === 'admin') {
                 </div>
 
                 <!-- PLATFORME : rassemble les referentiels generaux et la publicite. -->
-                <?php $platformOpen = $routeMatches(['country', 'city', 'currency', 'advert', 'admin-audit-log']); ?>
+                <?php $platformOpen = $routeMatches(['country', 'city', 'currency', 'advert', 'admin-audit-log', 'admin-prelaunch-subscribers']); ?>
                 <div class="sidebar-section-label">Platform</div>
                 <div class="dash-nav-dropdown <?= $platformOpen ? 'show' : '' ?>">
                     <a href="#!" class="dash-nav-item dash-nav-dropdown-toggle <?= $platformOpen ? 'active' : '' ?>" aria-expanded="<?= $platformOpen ? 'true' : 'false' ?>" title="Platform Settings">
@@ -880,6 +880,7 @@ if (!Yii::$app->user->isGuest && $userType === 'admin') {
                         <a href="<?= Url::to(['city/index']) ?>" class="dash-nav-dropdown-item <?= $routeMatches(['city']) ? 'active' : '' ?>">Cities</a>
                         <a href="<?= Url::to(['currency/index']) ?>" class="dash-nav-dropdown-item <?= $routeMatches(['currency']) ? 'active' : '' ?>">Currencies</a>
                         <a href="<?= Url::to(['advert/index']) ?>" class="dash-nav-dropdown-item <?= $routeMatches(['advert']) ? 'active' : '' ?>">Advertising</a>
+                        <a href="<?= Url::to(['/admin-prelaunch-subscribers/index']) ?>" class="dash-nav-dropdown-item <?= $routeMatches(['admin-prelaunch-subscribers']) ? 'active' : '' ?>">Early Access</a>
                         <a href="<?= Url::to(['admin-audit-log/index']) ?>" class="dash-nav-dropdown-item <?= $routeMatches(['admin-audit-log']) ? 'active' : '' ?>">Audit Trail</a>
                     </div>
                 </div>

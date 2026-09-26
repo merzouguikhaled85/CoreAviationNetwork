@@ -122,6 +122,16 @@ return [
     ),
 
     /*
+     * MODE PRE-LANCEMENT : actif par defaut. Mettre CAN_PRELAUNCH_MODE=0
+     * lorsque les inscriptions AO, MRO et la page Advertising doivent rouvrir.
+     */
+    'prelaunchMode' => $readOptionalEnvironmentValue(
+        'CAN_PRELAUNCH_MODE',
+        'prelaunchMode',
+        '1'
+    ),
+
+    /*
      * CIDR Cloudflare IPv4 et IPv6, fournis hors Git. Tant que cette liste est
      * vide, Yii ignore les en-tetes proxy et conserve REMOTE_ADDR.
      */
