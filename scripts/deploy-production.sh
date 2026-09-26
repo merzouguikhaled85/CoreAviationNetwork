@@ -33,6 +33,7 @@ export CAN_APP_DEBUG="0"
 # Git ; les uploads, les assets générés et les secrets ne sont jamais touchés.
 normalize_public_asset_permissions() {
     local public_asset=""
+    local public_directory=""
 
     for public_directory in web web/css web/js web/logo; do
         if [[ -d "$public_directory" ]]; then
@@ -40,9 +41,12 @@ normalize_public_asset_permissions() {
         fi
     done
 
-    while IFS= read -r -d '' public_asset; do
-        chmod 644 -- "$public_asset"
-    done < <(git ls-files -z -- web/css web/js web/logo web/favicon.png)
+    # Un pipeline est utilisé ici plutôt qu'une substitution de processus :
+    # l'hébergement partagé ne fournit pas /dev/fd.
+    git ls-files -z -- web/css web/js web/logo web/favicon.png \
+        | while IFS= read -r -d '' public_asset; do
+            chmod 644 -- "$public_asset"
+        done
 }
 
 cleanup_secrets() {
