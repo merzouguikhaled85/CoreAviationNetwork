@@ -7,9 +7,11 @@
 use app\components\UrlIdHelper;
 use app\models\Currency;
 use yii\helpers\Html;
+use yii\helpers\Url;
 
 $this->title = 'MRO Application #' . $application->id;
 $this->registerCssFile('https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css');
+$this->registerCssFile(Url::to('@web/css/requests-view-application-refresh.css') . '?v=20260926-2');
 $this->registerJsFile('https://cdn.jsdelivr.net/npm/sweetalert2@11', [
     'position' => \yii\web\View::POS_HEAD,
 ]);
@@ -34,6 +36,20 @@ $aircraftLabel = $aircraft
     : 'Aircraft deleted';
 $etaLabel = $request->eta ? date('d M Y H:i', strtotime($request->eta)) : 'N/A';
 $etdLabel = $request->etd ? date('d M Y H:i', strtotime($request->etd)) : 'N/A';
+$requestStatusText = ucwords(str_replace('_', ' ', (string) $request->status));
+$requestStatusClass = 'status-' . preg_replace('/[^a-zA-Z0-9_-]/', '', (string) $request->status);
+$formatRequestDate = static function ($value) {
+    $timestamp = !empty($value) ? strtotime((string) $value) : false;
+    return $timestamp ? date('d M Y H:i', $timestamp) : 'N/A';
+};
+$requestCreatedAt = $request->hasAttribute('created_at') ? $formatRequestDate($request->created_at) : 'N/A';
+$requestUpdatedAt = $request->hasAttribute('updated_at') ? $formatRequestDate($request->updated_at) : 'N/A';
+$applicationCreatedAt = $application->hasAttribute('created_at')
+    ? $formatRequestDate($application->created_at)
+    : $requestCreatedAt;
+$applicationUpdatedAt = $application->hasAttribute('updated_at')
+    ? $formatRequestDate($application->updated_at)
+    : $requestUpdatedAt;
 
 /* Resolve old and current attachment storage formats safely. */
 $attachment = trim((string) ($application->attachment ?? ''));
@@ -48,6 +64,18 @@ if ($attachment !== '') {
         $attachmentUrl = Yii::getAlias('@web/uploads/') . $attachment;
     }
 }
+$attachmentName = $attachmentUrl !== null ? basename($attachment) : null;
+$attachmentExtension = strtolower(pathinfo((string) $attachmentName, PATHINFO_EXTENSION));
+$attachmentIsImage = in_array($attachmentExtension, ['jpg', 'jpeg', 'png', 'gif', 'webp', 'bmp', 'svg'], true);
+$attachmentIconMap = [
+    'pdf' => 'bi-file-earmark-pdf-fill',
+    'doc' => 'bi-file-earmark-word-fill',
+    'docx' => 'bi-file-earmark-word-fill',
+    'xls' => 'bi-file-earmark-excel-fill',
+    'xlsx' => 'bi-file-earmark-excel-fill',
+    'zip' => 'bi-file-earmark-zip-fill',
+];
+$attachmentIcon = $attachmentIconMap[$attachmentExtension] ?? 'bi-file-earmark-fill';
 
 $this->registerCss(<<<CSS
 .application-view-page {
@@ -478,15 +506,27 @@ JS, \yii\web\View::POS_READY);
 ?>
 
 <!-- SHARED DETAIL SYSTEM: presentation only; application actions remain unchanged. -->
-<main class="application-view-page can-detail-page">
+<main class="application-view-page can-detail-page request-application-page">
     <div class="application-shell">
-        <header class="application-header">
-            <div class="application-title-group">
-                <span class="application-title-icon"><i class="bi bi-file-earmark-text"></i></span>
-                <div>
-                    <h1><?= Html::encode($this->title) ?></h1>
-                    <div class="application-subtitle">Review the MRO technical and commercial quotation before making a decision.</div>
+        <header class="application-header request-application-header">
+            <div class="request-application-header-copy">
+                <div class="request-application-heading">
+                    <?= Html::a('<i class="bi bi-arrow-left"></i>', ['check-applications', 'id' => $encodedRequestId], [
+                        'class' => 'request-application-back',
+                        'aria-label' => 'Back to applications',
+                        'title' => 'Back to applications',
+                    ]) ?>
+                    <h1>Request #<?= Html::encode($request->request_id) ?></h1>
+                    <?php if ($request->hasAttribute('operational_priority')): ?>
+                        <span class="request-application-priority priority-<?= Html::encode((string) $request->operational_priority) ?>">
+                            <i class="bi bi-broadcast-pin"></i><?= Html::encode($request->getOperationalPriorityLabel()) ?>
+                        </span>
+                    <?php endif; ?>
+                    <span class="request-application-status <?= Html::encode($requestStatusClass) ?>">
+                        <i class="bi bi-circle-fill"></i><?= Html::encode($requestStatusText) ?>
+                    </span>
                 </div>
+                <div class="application-subtitle">MRO application #<?= Html::encode($application->id) ?> · technical and commercial quotation</div>
             </div>
 
             <!-- Same business actions as the selected row in check-applications. -->
@@ -520,13 +560,55 @@ JS, \yii\web\View::POS_READY);
                     ['mro-profile/view', 'id' => $encodedMroId, 'fromApplication' => $application->id],
                     ['class' => 'application-action action-profile']
                 ) ?>
-                <?= Html::a(
-                    '<i class="bi bi-arrow-left"></i> Back',
-                    ['check-applications', 'id' => $encodedRequestId],
-                    ['class' => 'application-action action-back']
-                ) ?>
+                <div class="request-application-dates">
+                    <span>Created: <strong><?= Html::encode($applicationCreatedAt) ?></strong></span>
+                    <span>Last updated: <strong><?= Html::encode($applicationUpdatedAt) ?></strong></span>
+                </div>
             </div>
         </header>
+
+        <section class="application-card request-overview-card">
+            <h2 class="section-title"><i class="bi bi-airplane-engines"></i> Current Request Details</h2>
+            <div class="request-overview-grid">
+                <div class="request-overview-item request-aircraft-summary">
+                    <div class="detail-label"><i class="bi bi-airplane"></i> Aircraft</div>
+                    <div class="request-aircraft-value">
+                        <strong><?= Html::encode($aircraftLabel ?: 'N/A') ?></strong>
+                        <span><?= Html::encode($request->aircraft_registration ?: 'N/A') ?> · MSN <?= Html::encode($request->serial_number ?: 'N/A') ?></span>
+                        <span class="request-aircraft-image" role="img" aria-label="Aircraft maintenance"></span>
+                    </div>
+                </div>
+                <div class="request-overview-item request-mro-summary">
+                    <div class="detail-label"><i class="bi bi-building-gear"></i> MRO</div>
+                    <div class="detail-value"><?= Html::encode($mro->username ?? 'MRO deleted') ?></div>
+                </div>
+                <div class="request-overview-item request-location-summary">
+                    <div class="detail-label"><i class="bi bi-geo-alt"></i> Maintenance Location</div>
+                    <div class="detail-value"><?= Html::encode($request->location ?: 'N/A') ?></div>
+                </div>
+                <div class="request-overview-item request-schedule-summary">
+                    <div class="detail-label"><i class="bi bi-calendar-event"></i> ETA / ETD</div>
+                    <div class="request-schedule-value">
+                        <span><small>ETA</small><?= Html::encode($etaLabel) ?></span>
+                        <span><small>ETD</small><?= Html::encode($etdLabel) ?></span>
+                    </div>
+                </div>
+                <div class="request-overview-item request-price-summary">
+                    <div class="detail-label"><i class="bi bi-cash-stack"></i> Quoted Price</div>
+                    <div class="detail-value"><?= Html::encode(number_format((float) $application->price, 2, '.', ',')) ?> <?= Html::encode($application->currency ?: '') ?></div>
+                </div>
+                <div class="request-overview-item request-priority-summary">
+                    <div class="detail-label"><i class="bi bi-broadcast-pin"></i> Operational Priority</div>
+                    <div class="detail-value"><?= Html::encode($request->getOperationalPriorityLabel()) ?></div>
+                </div>
+                <div class="request-overview-item request-status-summary">
+                    <div class="detail-label"><i class="bi bi-activity"></i> Status</div>
+                    <div class="detail-value"><?= Html::encode($requestStatusText) ?></div>
+                </div>
+            </div>
+            <h2 class="section-title request-information-title"><i class="bi bi-info-circle"></i> Request Informations</h2>
+            <textarea class="request-information-readonly" readonly><?= Html::encode($request->request_details ?: 'No request information available.') ?></textarea>
+        </section>
 
         <div class="application-grid">
             <section class="application-card">
@@ -560,8 +642,15 @@ JS, \yii\web\View::POS_READY);
                         <?php if ($attachmentUrl !== null): ?>
                             <div class="attachment-card">
                                 <div class="attachment-name">
-                                    <i class="bi bi-file-earmark-check"></i>
-                                    <span><?= Html::encode(basename($attachment)) ?></span>
+                                    <?php if ($attachmentIsImage): ?>
+                                        <?= Html::img($attachmentUrl, ['class' => 'application-attachment-thumbnail', 'alt' => '', 'loading' => 'lazy']) ?>
+                                    <?php else: ?>
+                                        <span class="application-attachment-icon"><i class="bi <?= Html::encode($attachmentIcon) ?>"></i></span>
+                                    <?php endif; ?>
+                                    <span class="application-attachment-copy">
+                                        <strong><?= Html::encode($attachmentName) ?></strong>
+                                        <small><?= Html::encode(strtoupper($attachmentExtension ?: 'FILE')) ?></small>
+                                    </span>
                                 </div>
                                 <?= Html::a(
                                     '<i class="bi bi-eye"></i> View / Download',

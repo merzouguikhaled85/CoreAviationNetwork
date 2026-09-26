@@ -30,12 +30,22 @@ $formatOperationalDate = static function ($value) {
   $timestamp = strtotime($value);
   return $timestamp ? date('d M Y H:i', $timestamp) : $value;
 };
+$reportCount = count($repairReports);
+$requestStatusText = ucwords(str_replace('_', ' ', (string) $request->status));
+$requestStatusClass = 'status-' . preg_replace('/[^a-zA-Z0-9_-]/', '', (string) $request->status);
+$requestCreatedAt = $request->hasAttribute('created_at')
+  ? $formatOperationalDate($request->created_at)
+  : 'N/A';
+$requestUpdatedAt = $request->hasAttribute('updated_at')
+  ? $formatOperationalDate($request->updated_at)
+  : 'N/A';
 
 /* Bootstrap Icons */
 $this->registerCssFile(
   'https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css',
   ['position' => $this::POS_HEAD]
 );
+$this->registerCssFile(Url::to('@web/css/requests-view-reports-refresh.css') . '?v=20260926-5');
 
 /* CRS REPORT REVIEW 2026: confirmations for CRS decisions. */
 $this->registerJsFile(
@@ -503,39 +513,40 @@ document.addEventListener('DOMContentLoaded', function () {
   tooltipTriggerList.map(function (el) { return new bootstrap.Tooltip(el); });
 });
 
-document.addEventListener('submit', function (event) {
-  var form = event.target.closest('.js-crs-decision-form');
-  if (!form || form.dataset.confirmed === '1') {
+function confirmCrsDecision(form) {
+  if (!form || form.dataset.confirmed === '1' || form.dataset.dialogOpen === '1') {
     return;
   }
 
-  event.preventDefault();
   var isAccept = form.dataset.decision === 'yes';
+  var reportId = form.dataset.reportId || '';
+  var reportSuffix = reportId ? ' #' + reportId : '';
 
   if (typeof Swal === 'undefined') {
-    if (window.confirm(isAccept ? 'Accept this CRS?' : 'Request a CRS change?')) {
+    if (window.confirm(isAccept ? 'Accept CRS' + reportSuffix + '?' : 'Request a change for CRS' + reportSuffix + '?')) {
       form.dataset.confirmed = '1';
-      form.submit();
+      HTMLFormElement.prototype.submit.call(form);
     }
     return;
   }
 
+  form.dataset.dialogOpen = '1';
   Swal.fire({
-    title: isAccept ? 'Accept this CRS?' : 'Request a CRS change?',
+    title: isAccept ? 'Accept CRS' + reportSuffix + '?' : 'Request a CRS change' + reportSuffix + '?',
     html: isAccept
-      ? '<strong>The request will be closed after this CRS is accepted.</strong>'
-      : '<strong>The MRO will be asked to submit a corrected CRS document.</strong>',
+      ? '<strong>The request will be closed after this CRS is accepted.</strong><br>Please confirm that the maintenance release is compliant.'
+      : '<strong>The MRO will be asked to submit a corrected CRS document.</strong><br>The current report will not be accepted.',
     icon: isAccept ? 'question' : 'warning',
     showCancelButton: true,
     reverseButtons: true,
     focusCancel: true,
     allowOutsideClick: false,
+    allowEscapeKey: true,
     confirmButtonText: isAccept
-      ? '<i class="bi bi-check-circle-fill"></i> Accept CRS'
-      : '<i class="bi bi-arrow-repeat"></i> Request change',
-    cancelButtonText: '<i class="bi bi-arrow-counterclockwise"></i> Review report',
+      ? '<i class="bi bi-check-circle-fill"></i> Yes, accept CRS'
+      : '<i class="bi bi-arrow-repeat"></i> Yes, request change',
+    cancelButtonText: '<i class="bi bi-x-lg"></i> Cancel',
     buttonsStyling: false,
-    // SHARED DETAIL CONFIRMATION: reuse the common compact dialog presentation.
     customClass: {
       popup: 'crs-confirm-popup can-detail-swal',
       title: 'crs-confirm-title',
@@ -544,44 +555,76 @@ document.addEventListener('submit', function (event) {
       cancelButton: 'crs-swal-cancel'
     }
   }).then(function (result) {
+    delete form.dataset.dialogOpen;
     if (result.isConfirmed) {
       form.dataset.confirmed = '1';
-      form.submit();
+      HTMLFormElement.prototype.submit.call(form);
     }
   });
-});
+}
+
+/* Buttons are non-submit controls: no Yii handler can post before confirmation. */
+document.addEventListener('click', function (event) {
+  var button = event.target.closest('.js-crs-decision-button');
+  if (!button) {
+    return;
+  }
+  event.preventDefault();
+  event.stopPropagation();
+  confirmCrsDecision(button.closest('.js-crs-decision-form'));
+}, true);
+
+/* Keyboard/programmatic submit fallback uses the same confirmation. */
+document.addEventListener('submit', function (event) {
+  var form = event.target.closest('.js-crs-decision-form');
+  if (!form || form.dataset.confirmed === '1') {
+    return;
+  }
+  event.preventDefault();
+  event.stopImmediatePropagation();
+  confirmCrsDecision(form);
+}, true);
 JS);
+
 ?>
 
 <!-- SHARED DETAIL SYSTEM: presentation only; CRS decisions remain unchanged. -->
-<div class="notification-pref-wrapper can-detail-page">
+<div class="notification-pref-wrapper can-detail-page crs-detail-page">
   <div class="notification-pref-card">
 
     <!-- HEADER -->
-    <div class="notification-header">
-      <div class="notification-title-row">
-        <div class="notification-title-icon">
-          <i class="bi bi-file-earmark-text"></i>
+    <header class="notification-header crs-page-header">
+      <div class="crs-header-copy">
+        <div class="crs-heading-row">
+          <?= Html::a('<i class="bi bi-arrow-left"></i>', ['view', 'id' => $encodedRequestId], [
+            'class' => 'crs-back-link',
+            'aria-label' => 'Back to request',
+            'title' => 'Back to request',
+          ]) ?>
+          <h1 class="notification-title">Request #<?= Html::encode($request->request_id) ?></h1>
+          <?php if ($request->hasAttribute('operational_priority')): ?>
+            <span class="crs-priority-badge priority-<?= Html::encode((string) $request->operational_priority) ?>">
+              <i class="bi bi-broadcast-pin"></i>
+              <?= Html::encode($request->getOperationalPriorityLabel()) ?>
+            </span>
+          <?php endif; ?>
+          <span class="crs-status-badge <?= Html::encode($requestStatusClass) ?>">
+            <i class="bi bi-circle-fill"></i><?= Html::encode($requestStatusText) ?>
+          </span>
         </div>
-        <div>
-          <h1 class="notification-title"><?= Html::encode($this->title) ?></h1>
-          <div class="notification-subtitle">
-            Review the maintenance release before closing the request.
-          </div>
+        <div class="notification-subtitle">Maintenance release and repair report review</div>
+      </div>
 
-          <div class="notification-meta">
-            <span class="meta-pill">
-              <i class="bi bi-hash"></i>
-              Request: <?= Html::encode($request->request_id) ?>
-            </span>
-            <span class="meta-pill">
-              <i class="bi bi-info-circle"></i>
-              Status: <?= Html::encode(ucwords(str_replace('_',' ', (string)$request->status))) ?>
-            </span>
-          </div>
+      <div class="crs-header-side">
+        <?= Html::a('<i class="bi bi-eye"></i> View Request', ['view', 'id' => $encodedRequestId], [
+          'class' => 'crs-header-action',
+        ]) ?>
+        <div class="crs-header-dates">
+          <span>Created: <strong><?= Html::encode($requestCreatedAt) ?></strong></span>
+          <span>Last updated: <strong><?= Html::encode($requestUpdatedAt) ?></strong></span>
         </div>
       </div>
-    </div>
+    </header>
 
     <!-- BODY -->
     <div class="notification-body">
@@ -596,48 +639,66 @@ JS);
         <?php endif; ?>
       </div>
 
+      <section class="crs-overview-panel">
       <!-- CRS REPORT REVIEW 2026: request ID remains in the header; operational data is shown once below. -->
       <div class="section-title"><i class="bi bi-airplane-engines"></i> Current Request Details</div>
       <div class="request-detail-grid">
-        <div class="request-detail-item wide">
+        <div class="request-detail-item crs-aircraft-summary">
+          <div class="request-detail-label"><i class="bi bi-airplane"></i> Aircraft</div>
+          <div class="request-detail-value crs-aircraft-value">
+            <strong><?= Html::encode($aircraftName) ?></strong>
+            <span>
+              <?= Html::encode($request->aircraft_registration ?: 'N/A') ?>
+              · MSN <?= Html::encode($request->serial_number ?: 'N/A') ?>
+            </span>
+            <span class="crs-aircraft-image" role="img" aria-label="Aircraft maintenance"></span>
+          </div>
+        </div>
+        <div class="request-detail-item crs-operator-summary">
           <div class="request-detail-label"><i class="bi bi-building"></i> Aircraft Operator / CAMO</div>
           <div class="request-detail-value"><?= Html::encode($operatorName) ?></div>
         </div>
-        <div class="request-detail-item wide">
-          <div class="request-detail-label"><i class="bi bi-airplane"></i> Aircraft</div>
-          <div class="request-detail-value"><?= Html::encode($aircraftName) ?></div>
-        </div>
-        <div class="request-detail-item">
-          <div class="request-detail-label"><i class="bi bi-card-text"></i> Registration</div>
-          <div class="request-detail-value"><?= Html::encode($request->aircraft_registration ?: 'N/A') ?></div>
-        </div>
-        <div class="request-detail-item">
-          <div class="request-detail-label"><i class="bi bi-upc-scan"></i> Serial Number</div>
-          <div class="request-detail-value"><?= Html::encode($request->serial_number ?: 'N/A') ?></div>
-        </div>
-        <div class="request-detail-item wide">
+        <div class="request-detail-item crs-location-summary">
           <div class="request-detail-label"><i class="bi bi-geo-alt"></i> Maintenance Location</div>
           <div class="request-detail-value"><?= Html::encode($request->location ?: 'N/A') ?></div>
         </div>
+        <div class="request-detail-item crs-schedule-summary">
+          <div class="request-detail-label"><i class="bi bi-calendar-event"></i> ETA / ETD</div>
+          <div class="request-detail-value crs-schedule-value">
+            <span><small>ETA</small><?= Html::encode($formatOperationalDate($request->eta)) ?></span>
+            <span><small>ETD</small><?= Html::encode($formatOperationalDate($request->etd)) ?></span>
+          </div>
+        </div>
+        <div class="request-detail-item crs-priority-summary">
+          <div class="request-detail-label"><i class="bi bi-broadcast-pin"></i> Operational Priority</div>
+          <div class="request-detail-value"><?= Html::encode($request->getOperationalPriorityLabel()) ?></div>
+        </div>
+        <div class="request-detail-item crs-status-summary">
+          <div class="request-detail-label"><i class="bi bi-activity"></i> Status</div>
+          <div class="request-detail-value"><?= Html::encode($requestStatusText) ?></div>
+        </div>
+        <div class="request-detail-item crs-report-summary">
+          <div class="request-detail-label"><i class="bi bi-file-earmark-medical"></i> CRS Reports</div>
+          <div class="request-detail-value"><?= Html::encode((string) $reportCount) ?></div>
+        </div>
       </div>
-      <div class="request-date-grid">
-        <div class="request-detail-item">
-          <div class="request-detail-label"><i class="bi bi-calendar-event"></i> ETA</div>
-          <div class="request-detail-value"><?= Html::encode($formatOperationalDate($request->eta)) ?></div>
-        </div>
-        <div class="request-detail-item">
-          <div class="request-detail-label"><i class="bi bi-calendar-check"></i> ETD</div>
-          <div class="request-detail-value"><?= Html::encode($formatOperationalDate($request->etd)) ?></div>
-        </div>
+      <div class="section-title crs-request-info-title">
+        <i class="bi bi-info-circle"></i> Request Informations
       </div>
       <?= Html::textarea('request_details_display', $request->request_details ?: 'No request information available.', [
         'class' => 'request-info-readonly',
         'readonly' => true,
         'aria-label' => 'Request information',
       ]) ?>
+      </section>
 
+      <section class="crs-reports-panel">
       <!-- CRS table -->
-      <div class="section-title"><i class="bi bi-wrench-adjustable-circle"></i> Maintenance Release &amp; Repair Reports</div>
+      <div class="section-title">
+        <i class="bi bi-wrench-adjustable-circle"></i>
+        Maintenance Release &amp; Repair Reports
+        <span class="crs-section-count"><?= Html::encode((string) $reportCount) ?></span>
+      </div>
       <div class="table-wrap">
         <div class="table-responsive-pro">
           <table class="req-table">
@@ -682,6 +743,21 @@ JS);
                   $attachmentUrl = $attachmentName
                     ? Yii::getAlias('@web/uploads/') . ltrim($report->CRS_attachment, '/')
                     : null;
+                  $attachmentExtension = strtolower(pathinfo((string) $attachmentName, PATHINFO_EXTENSION));
+                  $attachmentIsImage = in_array($attachmentExtension, ['jpg', 'jpeg', 'png', 'gif', 'webp', 'bmp', 'svg'], true);
+                  $attachmentIconMap = [
+                    'pdf' => 'bi-file-earmark-pdf-fill',
+                    'doc' => 'bi-file-earmark-word-fill',
+                    'docx' => 'bi-file-earmark-word-fill',
+                    'xls' => 'bi-file-earmark-excel-fill',
+                    'xlsx' => 'bi-file-earmark-excel-fill',
+                    'zip' => 'bi-file-earmark-zip-fill',
+                    'rar' => 'bi-file-earmark-zip-fill',
+                  ];
+                  $attachmentIcon = $attachmentIconMap[$attachmentExtension] ?? 'bi-file-earmark-fill';
+                  $attachmentPreview = $attachmentIsImage && $attachmentUrl
+                    ? Html::img($attachmentUrl, ['class' => 'crs-attachment-thumbnail', 'alt' => '', 'loading' => 'lazy'])
+                    : '<span class="crs-attachment-icon"><i class="bi ' . Html::encode($attachmentIcon) . '"></i></span>';
 
                   if ($report->quote_approved == 1) {
                     $reportStatus = 'Accepted';
@@ -706,10 +782,12 @@ JS);
                   <td data-label="CRS Attachment">
                     <?php if ($attachmentUrl): ?>
                       <?= Html::a(
-                        '<i class="bi bi-download"></i> Download',
+                        $attachmentPreview
+                        . '<span class="crs-attachment-copy"><strong>' . Html::encode($attachmentName) . '</strong><small>' . Html::encode(strtoupper($attachmentExtension ?: 'FILE')) . '</small></span>'
+                        . '<i class="bi bi-box-arrow-up-right crs-attachment-open"></i>',
                         $attachmentUrl,
                         [
-                          'class' => 'btn-action btn-download-crs',
+                          'class' => 'crs-attachment-card',
                           'target' => '_blank',
                           'rel' => 'noopener',
                           'data-pjax' => '0',
@@ -759,7 +837,7 @@ JS);
 
                         <div class="crs-document-box">
                           <div class="crs-document-name">
-                            <i class="bi <?= $attachmentUrl ? 'bi-file-earmark-pdf' : 'bi-file-earmark-x' ?> me-2"></i>
+                            <i class="bi <?= $attachmentUrl ? Html::encode($attachmentIcon) : 'bi-file-earmark-x' ?> me-2"></i>
                             <?= Html::encode($attachmentName ?: 'No CRS attachment available') ?>
                           </div>
                           <?php if ($attachmentUrl): ?>
@@ -779,21 +857,35 @@ JS);
                           <?php ActiveForm::begin([
                             'method' => 'post',
                             'action' => ['view-reports', 'id' => $encodedRequestId],
-                            'options' => ['class' => 'js-crs-decision-form', 'data-decision' => 'yes'],
+                            'options' => [
+                              'class' => 'js-crs-decision-form',
+                              'data-decision' => 'yes',
+                              'data-report-id' => $report->repair_report_id,
+                            ],
                           ]); ?>
                             <?= Html::hiddenInput('report_id', $report->repair_report_id) ?>
                             <?= Html::hiddenInput('approve', 'yes') ?>
-                            <?= Html::submitButton('<i class="bi bi-check-circle-fill"></i> Accept CRS', ['class' => 'btn-action btn-accept-crs']) ?>
+                            <?= Html::button('<i class="bi bi-check-circle-fill"></i> Accept CRS', [
+                              'type' => 'button',
+                              'class' => 'btn-action btn-accept-crs js-crs-decision-button',
+                            ]) ?>
                           <?php ActiveForm::end(); ?>
 
                           <?php ActiveForm::begin([
                             'method' => 'post',
                             'action' => ['view-reports', 'id' => $encodedRequestId],
-                            'options' => ['class' => 'js-crs-decision-form', 'data-decision' => 'no'],
+                            'options' => [
+                              'class' => 'js-crs-decision-form',
+                              'data-decision' => 'no',
+                              'data-report-id' => $report->repair_report_id,
+                            ],
                           ]); ?>
                             <?= Html::hiddenInput('report_id', $report->repair_report_id) ?>
                             <?= Html::hiddenInput('approve', 'no') ?>
-                            <?= Html::submitButton('<i class="bi bi-arrow-repeat"></i> Request Change', ['class' => 'btn-action btn-change-crs']) ?>
+                            <?= Html::button('<i class="bi bi-arrow-repeat"></i> Request Change', [
+                              'type' => 'button',
+                              'class' => 'btn-action btn-change-crs js-crs-decision-button',
+                            ]) ?>
                           <?php ActiveForm::end(); ?>
                         <?php endif; ?>
 
@@ -818,6 +910,7 @@ JS);
           </table>
         </div>
       </div>
+      </section>
 
     </div>
   </div>

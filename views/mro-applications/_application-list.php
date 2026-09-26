@@ -2,6 +2,7 @@
 
 use app\components\UrlIdHelper;
 use app\models\AoRequestsApplications;
+use app\models\RequestChange;
 use yii\helpers\Html;
 use yii\widgets\LinkPager;
 
@@ -55,6 +56,15 @@ use yii\widgets\LinkPager;
                                         ->one();
 
                                     $hasPo = $aoRequestApplication && !empty($aoRequestApplication->po);
+
+                                    /* Le statut d'avenant complète le statut de travail sans le remplacer. */
+                                    $latestChange = RequestChange::find()
+                                        ->where([
+                                            'request_id' => $request->request_id,
+                                            'mro_request_apply_id' => $mroRequestApplication->id,
+                                        ])
+                                        ->orderBy(['version' => SORT_DESC, 'id' => SORT_DESC])
+                                        ->one();
 
                                     // Check report for this exact MRO application.
                                     $report = \app\models\RepairReport::find()
@@ -152,6 +162,13 @@ use yii\widgets\LinkPager;
                                         </span>
                                     </td>
 <td data-label="Status">
+    <?php if ($latestChange): ?>
+        <?= Html::a(
+            '<i class="bi bi-arrow-repeat"></i> ' . Html::encode($latestChange->getStatusLabel()),
+            ['/request-changes/view', 'id' => UrlIdHelper::encode($latestChange->id)],
+            ['class' => 'status-badge status-update_request', 'style' => 'margin-bottom:6px']
+        ) ?><br>
+    <?php endif; ?>
     <?php if ($status === 'answered'): ?>
 
         <?= Html::a(
@@ -297,6 +314,18 @@ use yii\widgets\LinkPager;
                 'data-bs-toggle' => 'tooltip',
             ]
         ) ?>
+
+        <?php if ($latestChange): ?>
+            <?= Html::a(
+                '<i class="bi bi-arrow-repeat"></i>',
+                ['/request-changes/view', 'id' => UrlIdHelper::encode($latestChange->id)],
+                [
+                    'class' => 'action-btn btn-update-request',
+                    'title' => 'Open change order',
+                    'data-bs-toggle' => 'tooltip',
+                ]
+            ) ?>
+        <?php endif; ?>
 
         <!-- Accept PO -->
         <?php if ($status === 'po_loaded' && $hasPo): ?>
@@ -487,4 +516,3 @@ use yii\widgets\LinkPager;
     </div>
 </main>
 <?= $this->render('../shared/_request-details-modal') ?>
-

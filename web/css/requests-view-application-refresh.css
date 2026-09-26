@@ -1,0 +1,260 @@
+/* MRO application detail aligned with request reports, presentation only. */
+body .request-application-page {
+  --app-blue: #0878f9;
+  --app-navy: #0b2443;
+  --app-border: #dce7f3;
+  --app-muted: #71839a;
+  min-height: 100vh !important;
+  padding: 22px 24px 36px !important;
+  background: #f3f7fc !important;
+}
+
+body .request-application-page .application-shell {
+  max-width: 1580px !important;
+  margin: 0 auto !important;
+}
+
+body .request-application-page .request-application-header {
+  display: flex !important;
+  align-items: flex-start !important;
+  justify-content: space-between !important;
+  gap: 18px !important;
+  padding: 18px 20px 15px !important;
+  margin-bottom: 14px !important;
+  border: 1px solid var(--app-border) !important;
+  border-radius: 14px !important;
+  background: #fff !important;
+  box-shadow: 0 8px 28px rgba(25, 72, 121, .07) !important;
+}
+
+body .request-application-page .request-application-header-copy { min-width: 0; flex: 1 1 560px; }
+body .request-application-page .request-application-heading { display: flex; align-items: center; flex-wrap: wrap; gap: 9px; }
+
+body .request-application-page .request-application-back {
+  display: inline-grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 8px;
+  color: #25374e !important;
+  text-decoration: none !important;
+}
+
+body .request-application-page .request-application-back:hover { color: var(--app-blue) !important; background: #eef5fd; }
+
+body .request-application-page .application-header h1 {
+  margin: 0 !important;
+  color: var(--app-navy) !important;
+  font-size: clamp(21px, 2vw, 28px) !important;
+  font-weight: 800 !important;
+  letter-spacing: -.025em;
+}
+
+body .request-application-page .application-subtitle {
+  margin: 7px 0 0 39px !important;
+  color: var(--app-muted) !important;
+  font-size: 12px !important;
+}
+
+body .request-application-page .request-application-priority,
+body .request-application-page .request-application-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  min-height: 25px;
+  padding: 5px 8px;
+  border-radius: 7px;
+  font-size: 11px;
+  font-weight: 800;
+}
+
+body .request-application-page .request-application-priority { color: #9a5c00; border: 1px solid #ffda82; background: #fff8e7; }
+body .request-application-page .request-application-status { color: #05608e; border: 1px solid #b6dff5; background: #e8f6ff; }
+body .request-application-page .request-application-status .bi-circle-fill { font-size: 6px; }
+
+body .request-application-page .application-actions {
+  display: flex !important;
+  flex: 0 1 600px;
+  justify-content: flex-end !important;
+  gap: 7px !important;
+}
+
+body .request-application-page .application-action {
+  min-height: 38px !important;
+  padding: 8px 11px !important;
+  border-radius: 7px !important;
+  font-size: 11px !important;
+  box-shadow: none !important;
+}
+
+body .request-application-page .request-application-dates {
+  display: flex;
+  flex-basis: 100%;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 2px;
+  color: #8291a5;
+  font-size: 10px;
+}
+
+body .request-application-page .request-application-dates strong { color: #5e7088; }
+
+body .request-application-page .application-card {
+  padding: 14px !important;
+  border: 1px solid var(--app-border) !important;
+  border-radius: 10px !important;
+  background: #fff !important;
+  box-shadow: 0 3px 12px rgba(31, 78, 121, .035) !important;
+}
+
+body .request-application-page .request-overview-card { margin-bottom: 14px; }
+
+body .request-application-page .section-title {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin: 0 0 10px !important;
+  color: var(--app-navy) !important;
+  font-size: 13px !important;
+  font-weight: 800 !important;
+}
+
+body .request-application-page .section-title i { color: var(--app-blue) !important; }
+
+body .request-application-page .request-overview-grid {
+  display: grid;
+  grid-template-columns: minmax(250px, 1.18fr) repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+body .request-application-page .request-overview-item {
+  min-width: 0;
+  min-height: 100px;
+  padding: 14px;
+  border: 1px solid var(--app-border);
+  border-radius: 10px;
+  background: #fff;
+  box-shadow: 0 3px 12px rgba(31, 78, 121, .035);
+}
+
+body .request-application-page .request-aircraft-summary { grid-column: 1; grid-row: 1 / span 2; min-height: 218px; }
+body .request-application-page .request-mro-summary { grid-column: 2; grid-row: 1; }
+body .request-application-page .request-location-summary { grid-column: 3; grid-row: 1; }
+body .request-application-page .request-schedule-summary { grid-column: 4; grid-row: 1; }
+body .request-application-page .request-price-summary { grid-column: 2; grid-row: 2; }
+body .request-application-page .request-priority-summary { grid-column: 3; grid-row: 2; }
+body .request-application-page .request-status-summary { grid-column: 4; grid-row: 2; }
+
+body .request-application-page .request-overview-item .detail-label {
+  color: #61758f !important;
+  font-size: 10px !important;
+  font-weight: 800 !important;
+}
+
+body .request-application-page .request-overview-item .detail-label i {
+  display: inline-grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  margin-right: 5px;
+  border-radius: 8px;
+  color: var(--app-blue);
+  background: #eaf4ff;
+}
+
+body .request-application-page .request-overview-item .detail-value {
+  margin-top: 12px;
+  color: var(--app-navy) !important;
+  font-size: 13px !important;
+  font-weight: 800 !important;
+}
+
+body .request-application-page .request-aircraft-value { display: flex; height: calc(100% - 42px); flex-direction: column; }
+body .request-application-page .request-aircraft-value strong { color: var(--app-navy); font-size: 15px; }
+body .request-application-page .request-aircraft-value > span:not(.request-aircraft-image) { margin-top: 3px; color: #8192a7; font-size: 10px; font-weight: 700; }
+
+body .request-application-page .request-aircraft-image {
+  display: block;
+  flex: 1;
+  min-height: 105px;
+  margin-top: 10px;
+  border-radius: 8px;
+  background-image: linear-gradient(180deg, rgba(5, 33, 62, .06), rgba(5, 33, 62, .2)), url('../img/home-carousel/global-network.jpg');
+  background-position: center 48%;
+  background-size: cover;
+}
+
+body .request-application-page .request-schedule-value { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 12px; }
+body .request-application-page .request-schedule-value span { display: flex; min-width: 0; flex-direction: column; gap: 3px; color: #253b57; font-size: 11px; line-height: 1.3; }
+body .request-application-page .request-schedule-value small { color: var(--app-blue); font-size: 9px; font-weight: 800; }
+
+body .request-application-page .request-information-title { margin-top: 14px !important; }
+body .request-application-page .request-information-readonly,
+body .request-application-page .readonly-description {
+  width: 100% !important;
+  min-height: 100px !important;
+  padding: 12px !important;
+  border: 1px solid var(--app-border) !important;
+  border-radius: 8px !important;
+  color: #40546e !important;
+  background: #f9fbfe !important;
+  line-height: 1.6 !important;
+  resize: none !important;
+}
+
+body .request-application-page .application-grid {
+  display: grid !important;
+  grid-template-columns: minmax(0, 2fr) minmax(280px, .8fr) !important;
+  align-items: start;
+  gap: 14px !important;
+}
+
+body .request-application-page .side-stack { display: block !important; }
+body .request-application-page .side-stack .application-card:last-child { display: none !important; }
+
+body .request-application-page .detail-box {
+  border-color: var(--app-border) !important;
+  border-radius: 8px !important;
+  background: #f9fbfe !important;
+}
+
+body .request-application-page .attachment-card { border-color: var(--app-border) !important; border-radius: 8px !important; background: #f7faff !important; }
+body .request-application-page .attachment-name { display: flex; min-width: 0; align-items: center; gap: 9px; }
+
+body .request-application-page .application-attachment-thumbnail,
+body .request-application-page .application-attachment-icon {
+  flex: 0 0 44px;
+  width: 44px;
+  height: 44px;
+  border-radius: 8px;
+}
+
+body .request-application-page .application-attachment-thumbnail { display: block; border: 1px solid #dce7f3; object-fit: cover; }
+body .request-application-page .application-attachment-icon { display: inline-grid; place-items: center; color: #e53545; background: #fff0f1; font-size: 21px; }
+body .request-application-page .application-attachment-copy { display: flex; min-width: 0; flex-direction: column; gap: 2px; }
+body .request-application-page .application-attachment-copy strong { overflow: hidden; color: #304a68; font-size: 11px; text-overflow: ellipsis; white-space: nowrap; }
+body .request-application-page .application-attachment-copy small { color: #8a99ab; font-size: 9px; font-weight: 800; }
+
+@media (max-width: 1000px) {
+  body .request-application-page .request-overview-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  body .request-application-page .request-aircraft-summary,
+  body .request-application-page .request-mro-summary,
+  body .request-application-page .request-location-summary,
+  body .request-application-page .request-schedule-summary,
+  body .request-application-page .request-price-summary,
+  body .request-application-page .request-priority-summary,
+  body .request-application-page .request-status-summary { grid-column: auto; grid-row: auto; }
+  body .request-application-page .request-aircraft-summary { grid-row: span 2; }
+  body .request-application-page .application-grid { grid-template-columns: 1fr !important; }
+}
+
+@media (max-width: 700px) {
+  body .request-application-page { padding: 12px !important; }
+  body .request-application-page .request-application-header { flex-direction: column; height: auto !important; min-height: 0 !important; padding: 15px !important; }
+  body .request-application-page .request-application-header-copy { width: 100%; min-height: 0; flex: 0 1 auto; }
+  body .request-application-page .application-subtitle { margin-left: 0 !important; }
+  body .request-application-page .application-actions { width: 100%; justify-content: flex-start !important; }
+  body .request-application-page .request-application-dates { align-items: flex-start; }
+  body .request-application-page .request-overview-grid { grid-template-columns: 1fr; }
+  body .request-application-page .request-aircraft-summary { grid-row: auto; }
+}

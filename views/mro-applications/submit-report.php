@@ -30,6 +30,7 @@ $this->registerJsFile(
 $requestId = $request ? $request->request_id : 'N/A';
 $requestAircraft = $request ? $request->aircraft : null;
 $requestOperator = $request ? $request->aO : null;
+$destinationAirport = $request ? $request->getDestinationAirport()->one() : null;
 
 $operatorName = $requestOperator
     ? ($requestOperator->company_name
@@ -52,6 +53,17 @@ $maintenanceLocation = $request && $request->location ? $request->location : 'N/
 $requestStatus = $request && $request->status
     ? ucwords(str_replace('_', ' ', $request->status))
     : 'N/A';
+$requestStatusKey = (string) ($request->status ?? '');
+$requestStatusClass = 'request-status-' . preg_replace('/[^a-zA-Z0-9_-]/', '', $requestStatusKey);
+$operationalPriority = (string) ($request->operational_priority ?? 'routine');
+$operationalPriorityLabel = $request && method_exists($request, 'getOperationalPriorityLabel')
+    ? $request->getOperationalPriorityLabel()
+    : ucfirst($operationalPriority);
+$operationalPriorityIcons = [
+    'aog' => 'bi-exclamation-octagon',
+    'urgent' => 'bi-lightning-charge',
+    'routine' => 'bi-calendar-check',
+];
 $requestDetails = $request && $request->request_details ? $request->request_details : 'No request details available.';
 
 $formatOperationalDate = static function ($value) {
@@ -65,6 +77,18 @@ $formatOperationalDate = static function ($value) {
 
 $etaText = $formatOperationalDate($request ? $request->eta : null);
 $etdText = $formatOperationalDate($request ? $request->etd : null);
+$requestCreatedAt = $request && $request->hasAttribute('created_at')
+    ? $formatOperationalDate($request->created_at)
+    : 'N/A';
+$requestUpdatedAt = $request && $request->hasAttribute('updated_at')
+    ? $formatOperationalDate($request->updated_at)
+    : 'N/A';
+$airportName = $destinationAirport->airport_name ?? 'N/A';
+$airportIcao = $destinationAirport->icao ?? 'N/A';
+
+$this->registerCssFile(
+    Yii::$app->request->baseUrl . '/css/mro-submit-report-refresh.css?v=20260926-2'
+);
 
 /*
  * Professional SaaS design inspired by View PO.
@@ -1349,18 +1373,22 @@ CSS);
         <!-- Header -->
         <section class="crs-header-card">
             <div class="crs-header-top">
-                <div>
-                    <div class="crs-eyebrow">
-                        <i class="bi bi-shield-check"></i>
-                        Aircraft Maintenance Release
-                    </div>
-
+                <div class="crs-header-copy">
                     <div class="crs-title-row">
-                        <span class="crs-title-icon">
-                            <i class="bi bi-file-earmark-medical"></i>
-                        </span>
-
+                        <?= Html::a('<i class="bi bi-arrow-left"></i>', ['index'], [
+                            'class' => 'crs-back-link',
+                            'aria-label' => 'Back to MRO applications',
+                            'title' => 'Back to MRO applications',
+                        ]) ?>
                         <h1 class="crs-title"><?= Html::encode($this->title) ?></h1>
+                        <span class="priority-badge priority-<?= Html::encode($operationalPriority) ?>">
+                            <i class="bi <?= Html::encode($operationalPriorityIcons[$operationalPriority] ?? 'bi-calendar-check') ?>"></i>
+                            <?= Html::encode($operationalPriorityLabel) ?>
+                        </span>
+                        <span class="request-status-badge <?= Html::encode($requestStatusClass) ?>">
+                            <i class="bi bi-circle-fill"></i>
+                            <?= Html::encode($requestStatus) ?>
+                        </span>
                     </div>
 
                     <p class="crs-subtitle">
@@ -1368,9 +1396,15 @@ CSS);
                     </p>
                 </div>
 
-                <div class="crs-request-pill">
-                    <i class="bi bi-hash"></i>
-                    Request ID: <?= Html::encode($requestId) ?>
+                <div class="crs-header-side">
+                    <div class="crs-request-pill">
+                        <i class="bi bi-hash"></i>
+                        Request <?= Html::encode($requestId) ?>
+                    </div>
+                    <div class="crs-header-dates">
+                        <span>Created: <strong><?= Html::encode($requestCreatedAt) ?></strong></span>
+                        <span>Last updated: <strong><?= Html::encode($requestUpdatedAt) ?></strong></span>
+                    </div>
                 </div>
             </div>
         </section>
@@ -1448,30 +1482,74 @@ CSS);
         </section>
 
         <!-- SUBMIT REPORT REQUEST DETAILS 2026: read-only context for the MRO release decision. -->
-        <section class="crs-request-details-card" aria-label="Current request details">
+        <section class="crs-request-details-card request-overview-card" aria-label="Current request details">
             <div class="crs-request-details-head">
-                <h2 class="crs-request-details-title"><i class="bi bi-airplane-engines"></i> Current Request Details</h2>
-                <span class="crs-request-status"><i class="bi bi-circle-fill"></i> <?= Html::encode($requestStatus) ?></span>
+                <div>
+                    <h2 class="crs-request-details-title"><i class="bi bi-info-circle"></i> Request Overview</h2>
+                    <p class="request-overview-caption">Read-only operational context for the Certificate of Release to Service.</p>
+                </div>
             </div>
 
-            <div class="crs-request-grid">
-                <div class="crs-request-item"><div class="crs-request-label"><i class="bi bi-building"></i> AO / CAMO</div><div class="crs-request-value" title="<?= Html::encode($operatorName) ?>"><?= Html::encode($operatorName) ?></div></div>
-                <div class="crs-request-item"><div class="crs-request-label"><i class="bi bi-airplane"></i> Aircraft</div><div class="crs-request-value" title="<?= Html::encode($aircraftName) ?>"><?= Html::encode($aircraftName) ?></div></div>
-                <div class="crs-request-item"><div class="crs-request-label"><i class="bi bi-card-text"></i> Registration</div><div class="crs-request-value"><?= Html::encode($registration) ?></div></div>
-                <div class="crs-request-item"><div class="crs-request-label"><i class="bi bi-upc-scan"></i> Serial Number</div><div class="crs-request-value"><?= Html::encode($serialNumber) ?></div></div>
-                <div class="crs-request-item"><div class="crs-request-label"><i class="bi bi-geo-alt"></i> Maintenance Location</div><div class="crs-request-value" title="<?= Html::encode($maintenanceLocation) ?>"><?= Html::encode($maintenanceLocation) ?></div></div>
+            <div class="report-request-grid">
+                <article class="report-summary-item report-aircraft-item">
+                    <div class="report-summary-label"><i class="bi bi-airplane"></i>Aircraft</div>
+                    <div class="report-summary-value"><?= Html::encode($aircraftName) ?></div>
+                    <div class="report-aircraft-reference">
+                        <span><?= Html::encode($registration) ?></span>
+                        <span>MSN <?= Html::encode($serialNumber) ?></span>
+                    </div>
+                    <div class="report-aircraft-image" role="img" aria-label="Aircraft maintenance network"></div>
+                </article>
+
+                <article class="report-summary-item">
+                    <div class="report-summary-label"><i class="bi bi-building"></i>AO / CAMO</div>
+                    <div class="report-summary-value"><?= Html::encode($operatorName) ?></div>
+                </article>
+
+                <article class="report-summary-item">
+                    <div class="report-summary-label"><i class="bi bi-geo-alt"></i>Maintenance Location</div>
+                    <div class="report-summary-value"><?= Html::encode($maintenanceLocation !== 'N/A' ? $maintenanceLocation : $airportName) ?></div>
+                    <div class="report-summary-secondary"><?= Html::encode(trim($airportIcao . ' · ' . $airportName, ' ·')) ?></div>
+                </article>
+
+                <article class="report-summary-item">
+                    <div class="report-summary-label"><i class="bi bi-calendar2-week"></i>ETA / ETD</div>
+                    <div class="report-schedule">
+                        <span><small>ETA</small><strong><?= Html::encode($etaText) ?></strong></span>
+                        <span><small>ETD</small><strong><?= Html::encode($etdText) ?></strong></span>
+                    </div>
+                </article>
+
+                <article class="report-summary-item">
+                    <div class="report-summary-label"><i class="bi bi-broadcast-pin"></i>Operational Priority</div>
+                    <div>
+                        <span class="priority-badge priority-<?= Html::encode($operationalPriority) ?>">
+                            <i class="bi <?= Html::encode($operationalPriorityIcons[$operationalPriority] ?? 'bi-calendar-check') ?>"></i>
+                            <?= Html::encode($operationalPriorityLabel) ?>
+                        </span>
+                    </div>
+                </article>
+
+                <article class="report-summary-item">
+                    <div class="report-summary-label"><i class="bi bi-activity"></i>Request Status</div>
+                    <div>
+                        <span class="request-status-badge <?= Html::encode($requestStatusClass) ?>">
+                            <i class="bi bi-circle-fill"></i>
+                            <?= Html::encode($requestStatus) ?>
+                        </span>
+                    </div>
+                </article>
+
+                <article class="report-summary-item">
+                    <div class="report-summary-label"><i class="bi bi-shield-check"></i>Current Step</div>
+                    <div class="report-summary-value">MRO Report</div>
+                </article>
             </div>
 
-            <div class="crs-request-dates">
-                <div class="crs-request-item"><div class="crs-request-label"><i class="bi bi-calendar-event"></i> ETA</div><div class="crs-request-value"><?= Html::encode($etaText) ?></div></div>
-                <div class="crs-request-item"><div class="crs-request-label"><i class="bi bi-calendar-check"></i> ETD</div><div class="crs-request-value"><?= Html::encode($etdText) ?></div></div>
-            </div>
-
-            <?= Html::textarea('request_details_display', $requestDetails, [
-                'class' => 'crs-request-details-text',
-                'readonly' => true,
-                'aria-label' => 'Request information',
-            ]) ?>
+            <article class="report-request-information">
+                <div class="report-summary-label"><i class="bi bi-file-text"></i>Request Informations</div>
+                <div class="report-request-text"><?= nl2br(Html::encode($requestDetails)) ?></div>
+            </article>
         </section>
 
         <!-- CRS form -->
@@ -1552,25 +1630,15 @@ CSS);
                                     </span>
 
                                     <span class="crs-upload-content">
-                                        <span class="crs-upload-kicker">
-                                            <i class="bi bi-airplane-engines"></i>
-                                            Aircraft maintenance document
-                                        </span>
-                                        <span class="crs-upload-title">Drag and drop the CRS file here</span>
+                                        <span class="crs-upload-title">Drag and drop your document here</span>
                                         <span class="crs-upload-text" id="crs-upload-help">
-                                            Or browse your device to attach the approved Certificate of Release to Service.
-                                        </span>
-
-                                        <span class="crs-upload-meta">
-                                            <span><i class="bi bi-file-earmark-pdf"></i> PDF</span>
-                                            <span><i class="bi bi-image"></i> PNG / JPG</span>
-                                            <span><i class="bi bi-shield-check"></i> Clear readable copy</span>
+                                            or browse your device to select the approved CRS file (PDF, PNG or JPG)
                                         </span>
                                     </span>
 
                                     <span class="crs-upload-action">
-                                        Browse file
-                                        <i class="bi bi-arrow-up-right"></i>
+                                        <i class="bi bi-folder2-open"></i>
+                                        Browse files
                                     </span>
                                 </label>
 

@@ -23,6 +23,27 @@ $aircraftName = $aircraft
     ? trim(($aircraft->manufacturer ?: '') . ' ' . ($aircraft->model ?: ''))
     : 'Aircraft deleted';
 $aircraftName = $aircraftName !== '' ? $aircraftName : 'N/A';
+$mro = $report->getMro();
+$mroName = $mro
+    ? ($mro->company_name ?: $mro->username ?: 'N/A')
+    : 'N/A';
+$destinationAirport = method_exists($request, 'getDestinationAirport')
+    ? $request->getDestinationAirport()->one()
+    : null;
+$airportName = $destinationAirport
+    ? trim((string) ($destinationAirport->icao ?? '') . ' - ' . (string) ($destinationAirport->airport_name ?? ''), ' -')
+    : 'N/A';
+$priorityClass = strtolower((string) ($request->operational_priority ?? 'routine'));
+$priorityText = method_exists($request, 'getOperationalPriorityLabel')
+    ? $request->getOperationalPriorityLabel()
+    : ucfirst($priorityClass);
+$priorityIcons = [
+    'aog' => 'bi-exclamation-octagon',
+    'urgent' => 'bi-lightning-charge',
+    'routine' => 'bi-calendar-check',
+];
+$requestStatusText = ucwords(str_replace('_', ' ', (string) $request->status));
+$requestStatusClass = 'status-' . preg_replace('/[^a-zA-Z0-9_-]/', '', strtolower((string) $request->status));
 $formatOperationalDate = static function ($value) {
     if (empty($value)) {
         return 'N/A';
@@ -30,10 +51,19 @@ $formatOperationalDate = static function ($value) {
     $timestamp = strtotime($value);
     return $timestamp ? date('d M Y H:i', $timestamp) : $value;
 };
+$requestCreatedAt = $request->hasAttribute('created_at')
+    ? $formatOperationalDate($request->created_at)
+    : 'N/A';
+$requestUpdatedAt = $request->hasAttribute('updated_at')
+    ? $formatOperationalDate($request->updated_at)
+    : 'N/A';
 
 $this->registerCssFile(
     'https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css',
     ['position' => View::POS_HEAD]
+);
+$this->registerCssFile(
+    Yii::$app->request->baseUrl . '/css/mro-view-answer-refresh.css?v=20260926-7'
 );
 $this->registerJsFile(
     'https://cdn.jsdelivr.net/npm/sweetalert2@11',
@@ -697,15 +727,36 @@ $this->registerJsFile(
 </style>
 
 <!-- SHARED FORM SYSTEM: presentation only; feedback scoring rules remain unchanged. -->
-<div class="feedback-page can-form-page">
+<div class="feedback-page can-form-page answer-view-page feedback-view-page">
 
-    <div class="feedback-header">
-        <!-- FEEDBACK REVIEW 2026: visual marker for the evaluation page title. -->
-        <h1 class="feedback-title"><i class="bi bi-star-half"></i><?= Html::encode($this->title) ?></h1>
-        <p class="feedback-subtitle">
-            Please rate the MRO service quality and share your feedback.
-        </p>
-    </div>
+    <header class="page-header-card">
+        <div class="answer-header-copy">
+            <div class="answer-title-row">
+                <?= Html::a('<i class="bi bi-arrow-left"></i>', ['view-reports', 'id' => $encodedRequestId], [
+                    'class' => 'answer-back-link',
+                    'aria-label' => 'Back to CRS reports',
+                    'title' => 'Back to CRS reports',
+                ]) ?>
+                <h1 class="dash-title fw-bold"><?= Html::encode($this->title) ?></h1>
+                <span class="answer-priority priority-<?= Html::encode($priorityClass) ?>">
+                    <i class="bi <?= Html::encode($priorityIcons[$priorityClass] ?? 'bi-calendar-check') ?>"></i>
+                    <?= Html::encode($priorityText) ?>
+                </span>
+                <span class="answer-request-status <?= Html::encode($requestStatusClass) ?>">
+                    <i class="bi bi-circle-fill"></i>
+                    <?= Html::encode($requestStatusText) ?>
+                </span>
+            </div>
+            <div class="subtitle-text">Please rate the MRO service quality and share your feedback.</div>
+        </div>
+
+        <div class="answer-header-side">
+            <div class="answer-header-dates">
+                <span>Created: <strong><?= Html::encode($requestCreatedAt) ?></strong></span>
+                <span>Last updated: <strong><?= Html::encode($requestUpdatedAt) ?></strong></span>
+            </div>
+        </div>
+    </header>
 
     <!-- FEEDBACK REVIEW 2026: AO Feedback is active; Request Closed remains pending until submission. -->
     <?php
@@ -750,49 +801,73 @@ $this->registerJsFile(
         </div>
     </section>
 
-    <!-- FEEDBACK REVIEW 2026: operational request details shown once before evaluation. -->
-    <section class="request-context-card">
-        <div class="request-context-head">
-            <h2 class="request-context-title"><i class="bi bi-airplane-engines"></i> Current Request Details</h2>
-            <span class="request-context-id"><i class="bi bi-hash"></i> Request <?= Html::encode($request->request_id) ?></span>
+    <!-- Shared request context; scoring and feedback fields remain unchanged below. -->
+    <section class="answer-request-overview" aria-labelledby="feedback-request-overview-title">
+        <div class="answer-overview-head">
+            <div>
+                <h2 id="feedback-request-overview-title"><i class="bi bi-info-circle"></i>Request Overview</h2>
+                <p>Read-only operational context for the completed maintenance service.</p>
+            </div>
+            <span class="answer-request-id"><i class="bi bi-hash"></i><?= Html::encode($request->request_id) ?></span>
         </div>
-        <div class="request-context-grid">
-            <div class="request-context-item wide">
-                <div class="request-context-label"><i class="bi bi-building"></i> Aircraft Operator / CAMO</div>
-                <div class="request-context-value"><?= Html::encode($operatorName) ?></div>
-            </div>
-            <div class="request-context-item wide">
-                <div class="request-context-label"><i class="bi bi-airplane"></i> Aircraft</div>
-                <div class="request-context-value"><?= Html::encode($aircraftName) ?></div>
-            </div>
-            <div class="request-context-item">
-                <div class="request-context-label"><i class="bi bi-card-text"></i> Registration</div>
-                <div class="request-context-value"><?= Html::encode($request->aircraft_registration ?: 'N/A') ?></div>
-            </div>
-            <div class="request-context-item">
-                <div class="request-context-label"><i class="bi bi-upc-scan"></i> Serial Number</div>
-                <div class="request-context-value"><?= Html::encode($request->serial_number ?: 'N/A') ?></div>
-            </div>
-            <div class="request-context-item wide">
-                <div class="request-context-label"><i class="bi bi-geo-alt"></i> Maintenance Location</div>
-                <div class="request-context-value"><?= Html::encode($request->location ?: 'N/A') ?></div>
-            </div>
+
+        <div class="answer-summary-grid">
+            <article class="answer-summary-item answer-aircraft-item">
+                <div class="answer-summary-label"><i class="bi bi-airplane"></i>Aircraft</div>
+                <div class="answer-summary-value"><?= Html::encode($aircraftName) ?></div>
+                <div class="answer-aircraft-reference">
+                    <span><?= Html::encode($request->aircraft_registration ?: 'N/A') ?></span>
+                    <span>MSN <?= Html::encode($request->serial_number ?: 'N/A') ?></span>
+                </div>
+                <div class="answer-aircraft-image" role="img" aria-label="Aircraft maintenance network"></div>
+            </article>
+
+            <article class="answer-summary-item">
+                <div class="answer-summary-label"><i class="bi bi-tools"></i>MRO Service Provider</div>
+                <div class="answer-summary-value"><?= Html::encode($mroName) ?></div>
+                <div class="answer-summary-secondary">Evaluated by <?= Html::encode($operatorName) ?></div>
+            </article>
+
+            <article class="answer-summary-item">
+                <div class="answer-summary-label"><i class="bi bi-geo-alt"></i>Maintenance Location</div>
+                <div class="answer-summary-value"><?= Html::encode($request->location ?: 'N/A') ?></div>
+                <div class="answer-summary-secondary"><?= Html::encode($airportName) ?></div>
+            </article>
+
+            <article class="answer-summary-item">
+                <div class="answer-summary-label"><i class="bi bi-calendar2-week"></i>ETA / ETD</div>
+                <div class="answer-schedule">
+                    <span><small>ETA</small><strong><?= Html::encode($formatOperationalDate($request->eta)) ?></strong></span>
+                    <span><small>ETD</small><strong><?= Html::encode($formatOperationalDate($request->etd)) ?></strong></span>
+                </div>
+            </article>
+
+            <article class="answer-summary-item">
+                <div class="answer-summary-label"><i class="bi bi-broadcast-pin"></i>Operational Priority</div>
+                <span class="answer-priority priority-<?= Html::encode($priorityClass) ?>">
+                    <i class="bi <?= Html::encode($priorityIcons[$priorityClass] ?? 'bi-calendar-check') ?>"></i>
+                    <?= Html::encode($priorityText) ?>
+                </span>
+            </article>
+
+            <article class="answer-summary-item">
+                <div class="answer-summary-label"><i class="bi bi-file-earmark-medical"></i>CRS Report</div>
+                <div class="answer-summary-value answer-quote-value">#<?= Html::encode($report->repair_report_id) ?></div>
+            </article>
+
+            <article class="answer-summary-item">
+                <div class="answer-summary-label"><i class="bi bi-activity"></i>Request Status</div>
+                <span class="answer-request-status <?= Html::encode($requestStatusClass) ?>">
+                    <i class="bi bi-circle-fill"></i>
+                    <?= Html::encode($requestStatusText) ?>
+                </span>
+            </article>
         </div>
-        <div class="request-context-dates">
-            <div class="request-context-item">
-                <div class="request-context-label"><i class="bi bi-calendar-event"></i> ETA</div>
-                <div class="request-context-value"><?= Html::encode($formatOperationalDate($request->eta)) ?></div>
-            </div>
-            <div class="request-context-item">
-                <div class="request-context-label"><i class="bi bi-calendar-check"></i> ETD</div>
-                <div class="request-context-value"><?= Html::encode($formatOperationalDate($request->etd)) ?></div>
-            </div>
-        </div>
-        <?= Html::textarea('request_details_display', $request->request_details ?: 'No request information available.', [
-            'class' => 'request-context-text',
-            'readonly' => true,
-            'aria-label' => 'Request information',
-        ]) ?>
+
+        <article class="answer-request-information">
+            <div class="answer-summary-label"><i class="bi bi-file-text"></i>Request Informations</div>
+            <div class="answer-request-text"><?= nl2br(Html::encode($request->request_details ?: 'No request information available.')) ?></div>
+        </article>
     </section>
 
     <div class="feedback-card">
@@ -950,10 +1025,11 @@ $this->registerJsFile(
             </div>
 
             <div class="feedback-actions">
-                <?= Html::submitButton(
+                <?= Html::button(
                     '<span class="spinner"></span><i class="bi bi-send-fill submit-icon"></i><span class="btn-text">Submit Feedback</span>',
                     [
-                        'class' => 'btn btn-submit-feedback',
+                        'type' => 'button',
+                        'class' => 'btn btn-submit-feedback js-feedback-confirm',
                         'id' => 'submit-feedback-btn',
                     ]
                 ) ?>
@@ -1056,44 +1132,46 @@ $(document).ready(function() {
         );
     });
 
-    // FEEDBACK REVIEW 2026: confirmation is always displayed before validation and final submission.
-    $('#feedback-form').on('submit', function(e) {
-        var form = this;
-        e.preventDefault();
+    function submitConfirmedFeedback(form) {
+        if (!validateRatings()) {
+            return;
+        }
 
-        function validateAndSubmit() {
-            if (!validateRatings()) {
-                return;
-            }
+        form.dataset.confirmed = '1';
+        $('#submit-feedback-btn').addClass('is-loading');
+        $('#submit-feedback-btn .btn-text').text('Submitting...');
+        $('#submit-feedback-btn').prop('disabled', true);
 
-            $('#submit-feedback-btn').addClass('is-loading');
-            $('#submit-feedback-btn .btn-text').text('Submitting...');
-            $('#submit-feedback-btn').prop('disabled', true);
+        // Keep the same POST payload and CSRF field generated by ActiveForm.
+        HTMLFormElement.prototype.submit.call(form);
+    }
 
-            // Native submit avoids reopening the confirmation after the user has approved it.
-            form.submit();
+    function confirmFeedbackSubmission(form) {
+        if (!form || form.dataset.confirmed === '1' || form.dataset.dialogOpen === '1') {
+            return;
         }
 
         if (typeof Swal === 'undefined') {
             if (window.confirm('Submit this feedback?')) {
-                validateAndSubmit();
+                submitConfirmedFeedback(form);
             }
-            return false;
+            return;
         }
 
+        form.dataset.dialogOpen = '1';
         Swal.fire({
             title: 'Submit feedback?',
-            html: '<strong>Please confirm that the ratings and comments are final.</strong>',
+            html: '<strong>Please confirm that the ratings and comments are final.</strong><br>The feedback will be shared with the MRO.',
             icon: 'question',
             showCancelButton: true,
             reverseButtons: true,
             focusCancel: true,
             allowOutsideClick: false,
-            confirmButtonText: '<i class="bi bi-send-fill"></i> Submit Feedback',
-            cancelButtonText: '<i class="bi bi-arrow-counterclockwise"></i> Review',
+            allowEscapeKey: true,
+            confirmButtonText: '<i class="bi bi-send-fill"></i> Yes, submit feedback',
+            cancelButtonText: '<i class="bi bi-x-lg"></i> Cancel',
             buttonsStyling: false,
             customClass: {
-                // SHARED FORM CONFIRMATION: feedback values are still submitted only after confirmation.
                 popup: 'feedback-confirm-popup can-form-swal',
                 title: 'feedback-confirm-title',
                 htmlContainer: 'feedback-confirm-message',
@@ -1101,13 +1179,34 @@ $(document).ready(function() {
                 cancelButton: 'feedback-swal-cancel'
             }
         }).then(function(result) {
+            delete form.dataset.dialogOpen;
             if (result.isConfirmed) {
-                validateAndSubmit();
+                submitConfirmedFeedback(form);
             }
         });
+    }
 
-        return false;
-    });
+    /* Direct click interception prevents ActiveForm from posting before SweetAlert. */
+    document.addEventListener('click', function(event) {
+        var button = event.target.closest('.js-feedback-confirm');
+        if (!button) {
+            return;
+        }
+        event.preventDefault();
+        event.stopPropagation();
+        confirmFeedbackSubmission(document.getElementById('feedback-form'));
+    }, true);
+
+    /* Keyboard/programmatic submit fallback uses the same confirmation. */
+    document.addEventListener('submit', function(event) {
+        var form = event.target.closest('#feedback-form');
+        if (!form || form.dataset.confirmed === '1') {
+            return;
+        }
+        event.preventDefault();
+        event.stopImmediatePropagation();
+        confirmFeedbackSubmission(form);
+    }, true);
 
 });
 JS;

@@ -37,6 +37,7 @@ $this->registerCssFile(
     'https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css',
     ['position' => View::POS_HEAD]
 );
+$this->registerCssFile(Url::to('@web/css/requests-update-refresh.css') . '?v=20260926-2');
 
 /**
  * Register SweetAlert2 CSS and JS.
@@ -1259,7 +1260,7 @@ CSS);
 ?>
 
 <!-- SHARED FORM SYSTEM: presentation only; request update rules remain unchanged. -->
-<main class="dash-content create-page can-form-page">
+<main class="dash-content create-page can-form-page can-update-page">
     <div class="container-fluid">
 
         <!-- Page header -->
@@ -1279,10 +1280,17 @@ CSS);
 
             <div class="header-actions">
                 <?= Html::a(
-                    '<i class="bi bi-arrow-left-circle"></i> Back to Requests',
+                    '<i class="bi bi-x-lg"></i> Cancel',
                     $backUrl,
                     ['class' => 'btn-page-action btn-back']
                 ) ?>
+                <?= Html::button('<i class="bi bi-check-circle"></i> Update Request', [
+                    'type' => 'submit',
+                    'form' => 'update-request-form',
+                    'class' => 'btn-page-action btn-header-update',
+                    'id' => 'header-submit-button',
+                    'disabled' => true,
+                ]) ?>
             </div>
         </div>
 
@@ -1298,22 +1306,6 @@ CSS);
             <div class="alert alert-danger">
                 <i class="bi bi-exclamation-triangle"></i>
                 <?= Html::encode(Yii::$app->session->getFlash('error')) ?>
-            </div>
-        <?php endif; ?>
-
-        <!-- Update progress -->
-        <?php if ($statuss != null): ?>
-            <div class="progress-bar-container">
-                <span class="progress-bar-step step-realized">Create a Request</span>
-                <span class="progress-bar-step step-realized">MRO Quote</span>
-                <span class="progress-bar-step step-realized">PO Loaded</span>
-                <span class="progress-bar-step step-realized">PO Accepted By MRO</span>
-                <span class="progress-bar-step step-realized">Work Started</span>
-                <span class="progress-bar-step step-active">Update Request</span>
-                <span class="progress-bar-step">MRO Quote</span>
-                <span class="progress-bar-step">MRO Report</span>
-                <span class="progress-bar-step">AO Feedback</span>
-                <span class="progress-bar-step">Request Closed</span>
             </div>
         <?php endif; ?>
 
@@ -1343,8 +1335,18 @@ CSS);
                     'enableAjaxValidation' => false,
                 ]); ?>
 
+                <div class="update-request-layout">
+                    <aside class="update-request-steps" aria-label="Request form sections">
+                        <a class="update-request-step is-active" href="#update-step-aircraft"><span class="update-request-step-number">1</span><span><strong>Aircraft Details</strong><small>Aircraft and authority</small></span></a>
+                        <a class="update-request-step" href="#update-step-requirements"><span class="update-request-step-number">2</span><span><strong>Maintenance Requirements</strong><small>Requested maintenance work</small></span></a>
+                        <a class="update-request-step" href="#update-step-priority"><span class="update-request-step-number">3</span><span><strong>Operational Priority</strong><small>Urgency and response</small></span></a>
+                        <a class="update-request-step" href="#update-step-location"><span class="update-request-step-number">4</span><span><strong>Location &amp; Schedule</strong><small>Airport, arrival and departure</small></span></a>
+                        <a class="update-request-step" href="#update-step-attachments"><span class="update-request-step-number">5</span><span><strong>Attachments &amp; Review</strong><small>Documents and final review</small></span></a>
+                    </aside>
+                    <div class="update-request-form-content">
+
                 <!-- Aircraft information -->
-                <div class="form-section aircraft-section">
+                <div class="form-section aircraft-section" id="update-step-aircraft">
                     <h2 class="form-section-title">
                         <i class="bi bi-airplane-engines"></i>
                         Aircraft Information
@@ -1419,8 +1421,23 @@ CSS);
                     </div>
                 </div>
 
+                <div class="form-section requirements-section" id="update-step-requirements">
+                    <h2 class="form-section-title"><i class="bi bi-tools"></i> Maintenance Requirements</h2>
+                    <p class="form-section-subtitle">Update the maintenance work requested for this aircraft.</p>
+                    <div class="form-grid">
+                        <div class="full-width">
+                            <?= $form->field($request, 'request_details')->textarea([
+                                'rows' => 5,
+                                'class' => 'form-control',
+                                'id' => 'request-details',
+                                'placeholder' => 'Describe the requested maintenance work...',
+                            ])->label('Request Details <span class="text-danger">*</span>', ['encode' => false]) ?>
+                        </div>
+                    </div>
+                </div>
+
                 <!-- Maintenance location -->
-                <div class="form-section location-section">
+                <div class="form-section location-section" id="update-step-location">
                     <h2 class="form-section-title">
                         <i class="bi bi-geo-alt"></i>
                         Maintenance Location
@@ -1496,7 +1513,7 @@ CSS);
                     mêmes valeurs et la même présentation que la création. Changer
                     cette information ne déclenche aucune transition de statut.
                 -->
-                <div class="form-section operational-priority-section" data-operational-priority>
+                <div class="form-section operational-priority-section" id="update-step-priority" data-operational-priority>
                     <h2 class="form-section-title">
                         <i class="bi bi-broadcast-pin" aria-hidden="true"></i>
                         Operational Priority
@@ -1630,10 +1647,10 @@ CSS);
                 </div>
 
                 <!-- Request details -->
-                <div class="form-section details-section">
+                <div class="form-section details-section" id="update-step-attachments">
                     <h2 class="form-section-title">
                         <i class="bi bi-file-earmark-text"></i>
-                        Request Details
+                        Attachments &amp; Review
                     </h2>
 
                     <div class="form-grid">
@@ -1654,16 +1671,17 @@ CSS);
                                     'class' => 'custom-file-native',
                                 ]) ?>
 
-                                <div class="custom-file-display">
-                                    <label for="attachment-input" class="custom-file-button">
-                                        <i class="bi bi-upload"></i>
-                                        Choose File
-                                    </label>
-
-                                    <span id="attachment-file-name" class="custom-file-name">
-                                        No file selected
+                                <div class="request-upload-zone" id="attachment-dropzone" role="button" tabindex="0" aria-controls="attachment-input">
+                                    <span class="request-upload-icon"><i class="bi bi-cloud-arrow-up-fill"></i></span>
+                                    <span class="request-upload-title">Drag and drop your document here</span>
+                                    <span class="request-upload-text">or browse your device to replace the current file</span>
+                                    <span class="request-upload-action"><i class="bi bi-folder2-open"></i> Browse files</span>
+                                    <span class="request-selected-file" aria-live="polite">
+                                        <span class="request-selected-name"><i class="bi bi-file-earmark-check"></i><span id="attachment-file-name"></span></span>
+                                        <button type="button" class="request-remove-file" id="remove-attachment-file"><i class="bi bi-x-circle"></i> Remove</button>
                                     </span>
                                 </div>
+                                <div class="request-upload-help">Accepted formats: images, PDF, DOC and DOCX.</div>
                             </div>
 
                             <?php if (!empty($currentAttachmentUrl)): ?>
@@ -1689,15 +1707,6 @@ CSS);
                                     </div>
                                 </div>
                             <?php endif; ?>
-                        </div>
-
-                        <!-- Request details -->
-                        <div class="full-width">
-                            <?= $form->field($request, 'request_details')->textarea([
-                                'rows' => 4,
-                                'class' => 'form-control',
-                                'placeholder' => 'Describe the requested maintenance work...',
-                            ])->label('Request Details <span class="text-danger">*</span>', ['encode' => false]) ?>
                         </div>
 
                     </div>
@@ -1729,6 +1738,9 @@ CSS);
                             'disabled' => true,
                         ]
                     ) ?>
+                </div>
+
+                    </div>
                 </div>
 
                 <?php ActiveForm::end(); ?>
@@ -1857,16 +1869,90 @@ if (aircraftDropdown) {
 
 var form = document.getElementById("update-request-form");
 var submitButton = document.getElementById("submit-button");
+var headerSubmitButton = document.getElementById("header-submit-button");
 var loadingIndicator = document.getElementById("loading-spinner");
 var attachmentInput = document.getElementById("attachment-input");
 var attachmentFileName = document.getElementById("attachment-file-name");
+var attachmentDropzone = document.getElementById("attachment-dropzone");
+var removeAttachmentButton = document.getElementById("remove-attachment-file");
 
-if (attachmentInput && attachmentFileName) {
-    attachmentInput.addEventListener("change", function () {
-        attachmentFileName.textContent = this.files && this.files.length > 0
-            ? this.files[0].name
-            : "No file selected";
+function syncUpdateAttachmentDisplay() {
+    if (!attachmentInput || !attachmentFileName || !attachmentDropzone) {
+        return;
+    }
+
+    var hasFile = attachmentInput.files && attachmentInput.files.length > 0;
+    attachmentFileName.textContent = hasFile ? attachmentInput.files[0].name : "";
+    attachmentDropzone.classList.toggle("has-file", hasFile);
+}
+
+if (attachmentInput && attachmentDropzone) {
+    attachmentInput.addEventListener("change", syncUpdateAttachmentDisplay);
+    attachmentDropzone.addEventListener("click", function (event) {
+        if (!event.target.closest(".request-remove-file")) {
+            attachmentInput.click();
+        }
     });
+    attachmentDropzone.addEventListener("keydown", function (event) {
+        if (event.key === "Enter" || event.key === " ") {
+            event.preventDefault();
+            attachmentInput.click();
+        }
+    });
+    ["dragenter", "dragover"].forEach(function (eventName) {
+        attachmentDropzone.addEventListener(eventName, function (event) {
+            event.preventDefault();
+            attachmentDropzone.classList.add("is-dragover");
+        });
+    });
+    ["dragleave", "dragend", "drop"].forEach(function (eventName) {
+        attachmentDropzone.addEventListener(eventName, function (event) {
+            event.preventDefault();
+            attachmentDropzone.classList.remove("is-dragover");
+        });
+    });
+    attachmentDropzone.addEventListener("drop", function (event) {
+        if (event.dataTransfer && event.dataTransfer.files.length) {
+            attachmentInput.files = event.dataTransfer.files;
+            attachmentInput.dispatchEvent(new Event("change", { bubbles: true }));
+        }
+    });
+}
+
+if (removeAttachmentButton && attachmentInput) {
+    removeAttachmentButton.addEventListener("click", function (event) {
+        event.preventDefault();
+        event.stopPropagation();
+        attachmentInput.value = "";
+        syncUpdateAttachmentDisplay();
+    });
+}
+
+var updateStepLinks = Array.prototype.slice.call(document.querySelectorAll(".update-request-step"));
+var updateStepSections = updateStepLinks.map(function (link) {
+    return document.querySelector(link.getAttribute("href"));
+}).filter(Boolean);
+
+updateStepLinks.forEach(function (link) {
+    link.addEventListener("click", function (event) {
+        var section = document.querySelector(link.getAttribute("href"));
+        if (section) {
+            event.preventDefault();
+            section.scrollIntoView({ behavior: "smooth", block: "start" });
+        }
+    });
+});
+
+if ("IntersectionObserver" in window) {
+    var updateStepObserver = new IntersectionObserver(function (entries) {
+        entries.forEach(function (entry) {
+            if (!entry.isIntersecting) return;
+            updateStepLinks.forEach(function (link) {
+                link.classList.toggle("is-active", link.getAttribute("href") === "#" + entry.target.id);
+            });
+        });
+    }, { rootMargin: "-20% 0px -65% 0px", threshold: 0 });
+    updateStepSections.forEach(function (section) { updateStepObserver.observe(section); });
 }
 
 function parseDateValue(value) {
@@ -2042,6 +2128,24 @@ function validateUpdateForm() {
     if (submitButton) {
         submitButton.disabled = !isValid;
     }
+    if (headerSubmitButton) {
+        headerSubmitButton.disabled = !isValid;
+    }
+
+    var stepValidity = {
+        "update-step-aircraft": !!aircraftValue,
+        "update-step-requirements": !!detailsValue,
+        "update-step-priority": !!selectedPriority && responseIsValid,
+        "update-step-location": !!destinationValue && !!etaValue && !!etdValue
+            && !!parseDateValue(etaValue) && !!parseDateValue(etdValue)
+            && parseDateValue(etdValue) > parseDateValue(etaValue),
+        "update-step-attachments": true
+    };
+
+    updateStepLinks.forEach(function (link) {
+        var sectionId = link.getAttribute("href").replace("#", "");
+        link.classList.toggle("is-complete", stepValidity[sectionId] === true);
+    });
 
     return isValid;
 }
@@ -2109,6 +2213,9 @@ if (typeof jQuery !== "undefined") {
         if (currentForm.data("update-confirmed") === true) {
             if (submitButton) {
                 submitButton.disabled = true;
+            }
+            if (headerSubmitButton) {
+                headerSubmitButton.disabled = true;
             }
 
             if (loadingIndicator) {

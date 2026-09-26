@@ -13,12 +13,16 @@ $this->registerCssFile('https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font
 $this->registerJsFile('https://cdn.jsdelivr.net/npm/sweetalert2@11', [
     'position' => \yii\web\View::POS_HEAD
 ]);
+$this->registerCssFile(
+    Yii::$app->request->baseUrl . '/css/requests-load-po-refresh.css?v=20260926-1'
+);
 
 /* LOAD PO UX 2026: prepare display-only operational context; workflow data remains unchanged. */
 $requestModel = $request ?? $aoRequest->request;
 $selectedApplication = $application ?? $aoRequest->application;
 $selectedMro = $mro ?? ($selectedApplication ? $selectedApplication->mro : null);
 $selectedAircraft = $aircraft ?? ($requestModel ? $requestModel->getAircraft()->one() : null);
+$destinationAirport = $requestModel ? $requestModel->getDestinationAirport()->one() : null;
 $currencyModel = $selectedApplication
     ? Currency::findOne(['code' => $selectedApplication->currency])
     : null;
@@ -32,6 +36,26 @@ $etaLabel = $requestModel && $requestModel->eta ? date('d M Y H:i', strtotime($r
 $etdLabel = $requestModel && $requestModel->etd ? date('d M Y H:i', strtotime($requestModel->etd)) : 'N/A';
 $quoteLabel = $selectedApplication
     ? number_format((float) $selectedApplication->price, 2, '.', ',') . ' ' . $currencyLabel
+    : 'N/A';
+$status = (string) ($requestModel->status ?? '');
+$statusText = $status !== '' ? ucwords(str_replace('_', ' ', $status)) : 'N/A';
+$statusClass = 'request-status-' . preg_replace('/[^a-zA-Z0-9_-]/', '', $status);
+$priority = (string) ($requestModel->operational_priority ?? 'routine');
+$priorityLabel = $requestModel && method_exists($requestModel, 'getOperationalPriorityLabel')
+    ? $requestModel->getOperationalPriorityLabel()
+    : ucfirst($priority);
+$priorityIcons = [
+    'aog' => 'bi-exclamation-octagon',
+    'urgent' => 'bi-lightning-charge',
+    'routine' => 'bi-calendar-check',
+];
+$airportName = $destinationAirport->airport_name ?? 'N/A';
+$airportIcao = $destinationAirport->icao ?? 'N/A';
+$requestCreatedAt = $requestModel && $requestModel->hasAttribute('created_at') && $requestModel->created_at
+    ? date('d M Y H:i', strtotime($requestModel->created_at))
+    : 'N/A';
+$requestUpdatedAt = $requestModel && $requestModel->hasAttribute('updated_at') && $requestModel->updated_at
+    ? date('d M Y H:i', strtotime($requestModel->updated_at))
     : 'N/A';
 $hasMroCertificate = !empty($mroCertificate);
 $hasAircraftCertificate = !empty($mroAircraftCertificate);
@@ -1108,23 +1132,37 @@ CSS);
             <div class="load-po-header">
                 <div class="load-po-title-row">
                     <div class="load-po-title-left">
-                        <div class="load-po-icon">
-                            <i class="bi bi-file-earmark-arrow-up"></i>
-                        </div>
+                        <a href="javascript:void(0);" class="load-po-back-link" onclick="window.history.back();" aria-label="Back" title="Back">
+                            <i class="bi bi-arrow-left"></i>
+                        </a>
 
                         <div>
-                            <h1 class="load-po-title">
-                                <?= Html::encode($this->title) ?>
-                            </h1>
+                            <div class="load-po-heading-line">
+                                <h1 class="load-po-title"><?= Html::encode($this->title) ?></h1>
+                                <span class="priority-badge priority-<?= Html::encode($priority) ?>">
+                                    <i class="bi <?= Html::encode($priorityIcons[$priority] ?? 'bi-calendar-check') ?>"></i>
+                                    <?= Html::encode($priorityLabel) ?>
+                                </span>
+                                <span class="request-status-badge <?= Html::encode($statusClass) ?>">
+                                    <i class="bi bi-circle-fill"></i>
+                                    <?= Html::encode($statusText) ?>
+                                </span>
+                            </div>
                             <div class="load-po-subtitle">
-                                Review the selected MRO, verify compliance documents and upload the final PDF.
+                                Request #<?= Html::encode($requestModel->request_id ?? 'N/A') ?> · Review the selected MRO and upload the final PDF.
                             </div>
                         </div>
                     </div>
 
-                    <div class="po-status-pill">
-                        <i class="bi bi-file-earmark-check"></i>
-                        Step 3 · PO Upload
+                    <div class="load-po-header-side">
+                        <div class="po-status-pill">
+                            <i class="bi bi-file-earmark-check"></i>
+                            Step 3 · PO Upload
+                        </div>
+                        <div class="load-po-header-dates">
+                            <span>Created: <strong><?= Html::encode($requestCreatedAt) ?></strong></span>
+                            <span>Last updated: <strong><?= Html::encode($requestUpdatedAt) ?></strong></span>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -1146,32 +1184,75 @@ CSS);
                     </div>
                 <?php endif; ?>
 
-                <!-- LOAD PO UX 2026: read-only summary of the selected request and MRO quotation. -->
-                <section class="po-context-grid" aria-label="Selected request and quotation summary">
-                    <div class="po-context-item is-highlighted">
-                        <div class="po-context-label"><i class="bi bi-hash"></i> Request</div>
-                        <div class="po-context-value">#<?= Html::encode($requestModel->request_id ?? 'N/A') ?></div>
+                <!-- Read-only context: same visual hierarchy as the Request detail page. -->
+                <section class="load-po-request-overview" aria-labelledby="load-po-overview-title">
+                    <h2 class="load-po-overview-title" id="load-po-overview-title">
+                        <i class="bi bi-info-circle"></i>
+                        Request Overview
+                    </h2>
+
+                    <div class="load-po-summary-grid">
+                        <article class="load-po-summary-item load-po-aircraft-card">
+                            <div class="load-po-summary-label"><i class="bi bi-airplane"></i>Aircraft</div>
+                            <div class="load-po-summary-value"><?= Html::encode($aircraftLabel ?: 'N/A') ?></div>
+                            <div class="load-po-aircraft-reference">
+                                <span><?= Html::encode($selectedAircraft->registration_number ?? 'N/A') ?></span>
+                                <span>MSN <?= Html::encode($selectedAircraft->serial_number ?? 'N/A') ?></span>
+                            </div>
+                            <div class="load-po-aircraft-image" role="img" aria-label="Aircraft maintenance network"></div>
+                        </article>
+
+                        <article class="load-po-summary-item">
+                            <div class="load-po-summary-label"><i class="bi bi-building"></i>Selected MRO</div>
+                            <div class="load-po-summary-value"><?= Html::encode($selectedMro->company_name ?? $selectedMro->username ?? 'N/A') ?></div>
+                        </article>
+
+                        <article class="load-po-summary-item">
+                            <div class="load-po-summary-label"><i class="bi bi-geo-alt"></i>Maintenance Location</div>
+                            <div class="load-po-summary-value"><?= Html::encode($airportName) ?></div>
+                            <div class="load-po-summary-secondary"><?= Html::encode($airportIcao) ?></div>
+                        </article>
+
+                        <article class="load-po-summary-item">
+                            <div class="load-po-summary-label"><i class="bi bi-calendar2-week"></i>ETA / ETD</div>
+                            <div class="load-po-schedule">
+                                <span><small>ETA</small><strong><?= Html::encode($etaLabel) ?></strong></span>
+                                <span><small>ETD</small><strong><?= Html::encode($etdLabel) ?></strong></span>
+                            </div>
+                        </article>
+
+                        <article class="load-po-summary-item">
+                            <div class="load-po-summary-label"><i class="bi bi-broadcast-pin"></i>Operational Priority</div>
+                            <div>
+                                <span class="priority-badge priority-<?= Html::encode($priority) ?>">
+                                    <i class="bi <?= Html::encode($priorityIcons[$priority] ?? 'bi-calendar-check') ?>"></i>
+                                    <?= Html::encode($priorityLabel) ?>
+                                </span>
+                            </div>
+                        </article>
+
+                        <article class="load-po-summary-item">
+                            <div class="load-po-summary-label"><i class="bi bi-cash-stack"></i>Selected Quote</div>
+                            <div class="load-po-summary-value quote-summary-value"><?= Html::encode($quoteLabel) ?></div>
+                        </article>
+
+                        <article class="load-po-summary-item">
+                            <div class="load-po-summary-label"><i class="bi bi-activity"></i>Request Status</div>
+                            <div>
+                                <span class="request-status-badge <?= Html::encode($statusClass) ?>">
+                                    <i class="bi bi-circle-fill"></i>
+                                    <?= Html::encode($statusText) ?>
+                                </span>
+                            </div>
+                        </article>
                     </div>
-                    <div class="po-context-item">
-                        <div class="po-context-label"><i class="bi bi-building"></i> Selected MRO</div>
-                        <div class="po-context-value"><?= Html::encode($selectedMro->company_name ?? $selectedMro->username ?? 'N/A') ?></div>
-                    </div>
-                    <div class="po-context-item">
-                        <div class="po-context-label"><i class="bi bi-airplane"></i> Aircraft</div>
-                        <div class="po-context-value"><?= Html::encode($aircraftLabel ?: 'N/A') ?></div>
-                    </div>
-                    <div class="po-context-item">
-                        <div class="po-context-label"><i class="bi bi-card-text"></i> Registration</div>
-                        <div class="po-context-value"><?= Html::encode($selectedAircraft->registration_number ?? 'N/A') ?></div>
-                    </div>
-                    <div class="po-context-item">
-                        <div class="po-context-label"><i class="bi bi-calendar-range"></i> ETA / ETD</div>
-                        <div class="po-context-value"><?= Html::encode($etaLabel) ?><br><?= Html::encode($etdLabel) ?></div>
-                    </div>
-                    <div class="po-context-item is-highlighted">
-                        <div class="po-context-label"><i class="bi bi-cash-stack"></i> Selected Quote</div>
-                        <div class="po-context-value"><?= Html::encode($quoteLabel) ?></div>
-                    </div>
+
+                    <article class="load-po-request-information">
+                        <div class="load-po-summary-label"><i class="bi bi-file-text"></i>Request Informations</div>
+                        <div class="load-po-request-text">
+                            <?= nl2br(Html::encode($requestModel->request_details ?: 'No additional information provided.')) ?>
+                        </div>
+                    </article>
                 </section>
 
                 <!-- Multi-step progress bar -->
@@ -1226,11 +1307,15 @@ CSS);
                                     <!-- LOAD PO DRAG DROP 2026: click, keyboard and drag/drop use the same native input. -->
                                     <div class="custom-file-display po-drop-zone" id="po-file-display"
                                          role="button" tabindex="0" aria-labelledby="po-drop-title po-file-name">
+                                        <div class="drop-zone-icon" aria-hidden="true">
+                                            <i class="bi bi-cloud-arrow-up-fill"></i>
+                                        </div>
+                                        <div class="drop-zone-title" id="po-drop-title">Drag and drop your document here</div>
+                                        <div class="drop-zone-text">or browse your device to select the approved PDF</div>
                                         <label for="po-input" class="custom-file-button">
-                                            <i class="bi bi-upload"></i>
+                                            <i class="bi bi-folder2-open"></i>
+                                            Browse files
                                         </label>
-                                        <div class="drop-zone-title" id="po-drop-title">Drop the approved PO here</div>
-                                        <div class="drop-zone-text">or click to select a PDF</div>
                                         <span id="po-file-name" class="custom-file-name">
                                             No file chosen
                                         </span>

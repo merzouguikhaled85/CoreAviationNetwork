@@ -1,0 +1,620 @@
+/*
+ * Request creation redesign.
+ * Presentation only: fields, validation, submission and request rules stay in
+ * the existing Yii view, model and controller.
+ */
+
+body .can-form-page.create-request-page {
+    padding: 18px 20px 30px !important;
+    background: #f3f7fb !important;
+}
+
+body .can-form-page.create-request-page > .container-fluid {
+    width: 100% !important;
+    max-width: none !important;
+    overflow: visible !important;
+}
+
+body .can-form-page.create-request-page .create-request-card {
+    width: 100% !important;
+    max-width: none !important;
+    margin: 0 !important;
+    border: 0 !important;
+    border-radius: 0 !important;
+    background: transparent !important;
+    box-shadow: none !important;
+    overflow: visible !important;
+}
+
+body .can-form-page.create-request-page .create-request-card::before {
+    display: none;
+}
+
+body .can-form-page.create-request-page .create-request-header {
+    position: relative;
+    z-index: 3;
+    padding: 14px 18px !important;
+    border: 1px solid #dce6f0 !important;
+    border-radius: 10px !important;
+    background: #fff !important;
+    box-shadow: 0 8px 24px rgba(16, 35, 63, .06) !important;
+}
+
+body .can-form-page.create-request-page .create-request-header-top {
+    align-items: center;
+}
+
+body .can-form-page.create-request-page .create-request-title-row {
+    gap: 0;
+}
+
+body .can-form-page.create-request-page .create-request-icon {
+    display: none;
+}
+
+body .can-form-page.create-request-page .create-request-title {
+    color: #10233f !important;
+    font-size: 24px !important;
+    font-weight: 750 !important;
+    line-height: 1.15;
+}
+
+body .can-form-page.create-request-page .create-request-subtitle {
+    margin-top: 3px;
+    color: #75869b !important;
+    font-size: 12px !important;
+}
+
+body .can-form-page.create-request-page .create-request-header-actions {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 9px;
+    flex-wrap: wrap;
+}
+
+body .can-form-page.create-request-page .btn-create-cancel,
+body .can-form-page.create-request-page .btn-create-request-submit {
+    width: auto !important;
+    min-width: 0 !important;
+    min-height: 38px !important;
+    margin: 0;
+    padding: 8px 14px !important;
+    border-radius: 7px !important;
+    font-size: 12px !important;
+    font-weight: 650 !important;
+    line-height: 1.2;
+    text-decoration: none !important;
+    box-shadow: none !important;
+}
+
+body .can-form-page.create-request-page .btn-create-cancel {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid #d8e2ed;
+    color: #354b66 !important;
+    background: #f8fafc;
+}
+
+body .can-form-page.create-request-page .btn-create-cancel:hover {
+    border-color: #b8c9dc;
+    background: #f0f5fa;
+}
+
+body .can-form-page.create-request-page .btn-create-request-submit {
+    border: 1px solid #0d6efd !important;
+    color: #fff !important;
+    background: #0d6efd !important;
+}
+
+body .can-form-page.create-request-page .btn-create-request-submit:hover:not(:disabled) {
+    background: #075ed8 !important;
+    transform: translateY(-1px);
+}
+
+body .can-form-page.create-request-page .btn-create-request-submit:disabled {
+    color: #fff !important;
+    background: #76adf6 !important;
+    opacity: .68 !important;
+}
+
+body .can-form-page.create-request-page .create-request-body {
+    width: 100% !important;
+    max-width: none !important;
+    padding: 14px 0 0 !important;
+    overflow: visible !important;
+}
+
+body .can-form-page.create-request-page #create-request-form {
+    overflow: visible !important;
+}
+
+body .can-form-page.create-request-page .create-request-layout {
+    display: grid;
+    grid-template-columns: 220px minmax(0, 1fr);
+    align-items: start;
+    gap: 16px;
+}
+
+body .can-form-page.create-request-page .create-request-steps {
+    position: sticky;
+    top: 102px;
+    display: grid;
+    gap: 0;
+    padding: 10px 6px;
+}
+
+body .can-form-page.create-request-page .create-request-step {
+    position: relative;
+    min-width: 0;
+    min-height: 72px;
+    display: grid;
+    grid-template-columns: 30px minmax(0, 1fr);
+    align-items: start;
+    gap: 10px;
+    padding: 8px 6px;
+    color: #4b6079;
+    text-decoration: none;
+}
+
+body .can-form-page.create-request-page .create-request-step:not(:last-child)::after {
+    content: "";
+    position: absolute;
+    top: 38px;
+    bottom: -10px;
+    left: 20px;
+    width: 1px;
+    background: #cbd8e6;
+}
+
+body .can-form-page.create-request-page .create-request-step-number {
+    position: relative;
+    z-index: 1;
+    width: 28px;
+    height: 28px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid #aebfd1;
+    border-radius: 50%;
+    color: #314b68;
+    background: #fff;
+    font-size: 12px;
+    font-weight: 750;
+}
+
+body .can-form-page.create-request-page .create-request-step strong {
+    display: block;
+    margin-top: 1px;
+    color: #263b55;
+    font-size: 12px;
+    font-weight: 700;
+    line-height: 1.3;
+}
+
+body .can-form-page.create-request-page .create-request-step small {
+    display: block;
+    margin-top: 3px;
+    color: #8190a3;
+    font-size: 10px;
+    line-height: 1.35;
+}
+
+body .can-form-page.create-request-page .create-request-step.is-active {
+    color: #0d6efd;
+}
+
+body .can-form-page.create-request-page .create-request-step.is-active .create-request-step-number {
+    border-color: #0d6efd;
+    color: #fff;
+    background: #0d6efd;
+    box-shadow: 0 5px 12px rgba(13, 110, 253, .22);
+}
+
+body .can-form-page.create-request-page .create-request-step.is-active strong {
+    color: #0d6efd;
+}
+
+body .can-form-page.create-request-page .create-request-step.is-complete .create-request-step-number {
+    border-color: #20a464;
+    color: transparent;
+    background: #20a464;
+    box-shadow: 0 5px 12px rgba(32, 164, 100, .18);
+    font-size: 0;
+}
+
+body .can-form-page.create-request-page .create-request-step.is-complete .create-request-step-number::after {
+    content: "\F26A";
+    color: #fff;
+    font-family: "bootstrap-icons";
+    font-size: 13px;
+    line-height: 1;
+}
+
+body .can-form-page.create-request-page .create-request-step.is-complete strong {
+    color: #16834a;
+}
+
+body .can-form-page.create-request-page .create-request-step.is-complete small {
+    color: #5e8e73;
+}
+
+body .can-form-page.create-request-page .create-request-step.is-complete:not(:last-child)::after {
+    background: #75c79a;
+}
+
+body .can-form-page.create-request-page .create-request-form-content {
+    min-width: 0;
+}
+
+body .can-form-page.create-request-page .form-section {
+    width: 100% !important;
+    margin: 0 0 12px !important;
+    padding: 16px 18px !important;
+    scroll-margin-top: 100px;
+    border: 1px solid #dce6f0 !important;
+    border-radius: 9px !important;
+    background: #fff !important;
+    box-shadow: 0 5px 16px rgba(16, 35, 63, .045) !important;
+    overflow: visible !important;
+}
+
+body .can-form-page.create-request-page .form-section-title {
+    margin: 0 0 4px !important;
+    color: #152b47 !important;
+    font-size: 14px !important;
+    font-weight: 750 !important;
+    letter-spacing: 0 !important;
+    text-transform: none !important;
+}
+
+body .can-form-page.create-request-page .form-section-title i {
+    width: 27px;
+    height: 27px;
+    border-radius: 7px;
+    color: #0d6efd;
+    background: #edf5ff;
+    font-size: 13px;
+}
+
+body .can-form-page.create-request-page .form-section-subtitle {
+    margin: 0 0 13px !important;
+    padding-left: 36px;
+    color: #7c8da2 !important;
+    font-size: 10.5px !important;
+    font-weight: 450 !important;
+}
+
+body .can-form-page.create-request-page .form-grid {
+    gap: 12px 14px !important;
+}
+
+body .can-form-page.create-request-page .location-schedule-location {
+    margin-bottom: 12px;
+}
+
+body .can-form-page.create-request-page .form-group,
+body .can-form-page.create-request-page [class*="field-"] {
+    margin-bottom: 0 !important;
+}
+
+body .can-form-page.create-request-page .control-label,
+body .can-form-page.create-request-page label.control-label {
+    margin-bottom: 5px !important;
+    color: #293e58 !important;
+    font-size: 10.5px !important;
+    font-weight: 700 !important;
+    letter-spacing: 0 !important;
+    text-transform: none !important;
+}
+
+body .can-form-page.create-request-page :is(
+    input.form-control,
+    select.form-control,
+    textarea.form-control
+) {
+    min-height: 38px !important;
+    height: 38px;
+    padding: 8px 10px !important;
+    border: 1px solid #d4dfeb !important;
+    border-radius: 7px !important;
+    color: #233b57 !important;
+    background: #fff !important;
+    font-size: 12px !important;
+    font-weight: 450 !important;
+}
+
+body .can-form-page.create-request-page textarea.form-control {
+    height: auto !important;
+    min-height: 94px !important;
+}
+
+body .can-form-page.create-request-page :is(
+    input.form-control,
+    select.form-control,
+    textarea.form-control
+):focus {
+    border-color: #6caaff !important;
+    box-shadow: 0 0 0 3px rgba(13, 110, 253, .10) !important;
+}
+
+body .can-form-page.create-request-page .form-control:disabled,
+body .can-form-page.create-request-page .form-control[readonly] {
+    color: #65758a !important;
+    background: #f5f8fb !important;
+}
+
+body .can-form-page.create-request-page :is(
+    .select2-container--default .select2-selection--single,
+    .select2-container--krajee .select2-selection,
+    .select2-container--krajee-bs5 .select2-selection
+) {
+    min-height: 38px !important;
+    height: 38px !important;
+    border-radius: 7px !important;
+}
+
+body .can-form-page.create-request-page :is(
+    .select2-container--default .select2-selection--single .select2-selection__rendered,
+    .select2-container--krajee .select2-selection__rendered,
+    .select2-container--krajee-bs5 .select2-selection__rendered
+) {
+    line-height: 36px !important;
+    font-size: 12px !important;
+}
+
+body .can-form-page.create-request-page :is(
+    .select2-container--default .select2-selection--single .select2-selection__arrow,
+    .select2-container--krajee .select2-selection__arrow,
+    .select2-container--krajee-bs5 .select2-selection__arrow
+) {
+    height: 36px !important;
+}
+
+body .can-form-page.create-request-page :is(.input-group-addon, .input-group-text) {
+    min-width: 38px;
+    min-height: 38px;
+}
+
+body .can-form-page.create-request-page .operational-priority-list {
+    gap: 10px;
+}
+
+body .can-form-page.create-request-page .operational-priority-card {
+    min-height: 70px;
+    padding: 10px 11px;
+    border-radius: 8px;
+}
+
+body .can-form-page.create-request-page .operational-priority-icon {
+    width: 31px;
+    height: 31px;
+    flex-basis: 31px;
+    border-radius: 8px;
+    font-size: 14px;
+}
+
+body .can-form-page.create-request-page .operational-priority-name {
+    font-size: 11.5px;
+}
+
+body .can-form-page.create-request-page .operational-priority-description {
+    font-size: 9.5px;
+}
+
+body .can-form-page.create-request-page .operational-response-panel {
+    padding: 12px;
+    border-radius: 8px;
+}
+
+body .can-form-page.create-request-page .custom-file-display {
+    min-height: 40px;
+    border-radius: 8px !important;
+}
+
+body .can-form-page.create-request-page .custom-file-button {
+    height: 40px;
+    padding: 0 14px;
+    font-size: 11px;
+}
+
+body .can-form-page.create-request-page .custom-file-name {
+    font-size: 11px;
+    font-weight: 500;
+}
+
+body .can-form-page.create-request-page .help-block {
+    margin-top: 4px;
+    font-size: 10px;
+}
+
+body .can-form-page.create-request-page .operational-priority-field.has-error .operational-priority-card {
+    border-color: #ef9aa4;
+    background: #fffafa;
+}
+
+body .can-form-page.create-request-page .request-upload-zone {
+    min-height: 138px;
+    padding: 18px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    border: 1.5px dashed #8dbbea;
+    border-radius: 10px;
+    color: #475569;
+    background: #f8fbff;
+    text-align: center;
+    cursor: pointer;
+    transition: border-color .18s ease, background .18s ease, box-shadow .18s ease;
+}
+
+body .can-form-page.create-request-page .request-upload-zone:hover,
+body .can-form-page.create-request-page .request-upload-zone:focus,
+body .can-form-page.create-request-page .request-upload-zone.is-dragover {
+    border-color: #0d6efd;
+    outline: 0;
+    background: #edf5ff;
+    box-shadow: 0 0 0 3px rgba(13, 110, 253, .09);
+}
+
+body .can-form-page.create-request-page .request-upload-zone.has-file {
+    border-style: solid;
+    border-color: #20a464;
+    background: #f1fbf6;
+}
+
+body .can-form-page.create-request-page .request-upload-icon {
+    width: 40px;
+    height: 40px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 10px;
+    color: #0d6efd;
+    background: #dbeafe;
+    font-size: 19px;
+}
+
+body .can-form-page.create-request-page .request-upload-title {
+    color: #1e3653;
+    font-size: 12.5px;
+    font-weight: 750;
+}
+
+body .can-form-page.create-request-page .request-upload-text,
+body .can-form-page.create-request-page .request-upload-help {
+    color: #718298;
+    font-size: 10.5px;
+}
+
+body .can-form-page.create-request-page .request-upload-action {
+    margin-top: 2px;
+    padding: 6px 11px;
+    border: 1px solid #b6d4fe;
+    border-radius: 7px;
+    color: #164d8f;
+    background: #fff;
+    font-size: 10.5px;
+    font-weight: 700;
+}
+
+body .can-form-page.create-request-page .request-selected-file {
+    display: none;
+    width: min(100%, 620px);
+    margin-top: 6px;
+    padding: 8px 9px;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    border: 1px solid #a7dfbf;
+    border-radius: 8px;
+    color: #275b41;
+    background: #fff;
+    font-size: 11px;
+    font-weight: 650;
+}
+
+body .can-form-page.create-request-page .request-upload-zone.has-file .request-selected-file {
+    display: flex;
+}
+
+body .can-form-page.create-request-page .request-selected-name {
+    min-width: 0;
+    overflow-wrap: anywhere;
+    text-align: left;
+}
+
+body .can-form-page.create-request-page .request-remove-file {
+    width: auto !important;
+    min-width: 0 !important;
+    flex: 0 0 auto;
+    padding: 4px 8px !important;
+    border: 1px solid #fecaca;
+    border-radius: 6px;
+    color: #c72f43;
+    background: #fff;
+    font-size: 10px;
+    font-weight: 700;
+}
+
+body .can-form-page.create-request-page .request-upload-help {
+    margin-top: 5px;
+}
+
+@media (max-width: 992px) {
+    body .can-form-page.create-request-page {
+        padding: 12px !important;
+    }
+
+    body .can-form-page.create-request-page .create-request-header {
+        padding: 14px !important;
+    }
+
+    body .can-form-page.create-request-page .create-request-layout {
+        grid-template-columns: 1fr;
+        gap: 12px;
+    }
+
+    body .can-form-page.create-request-page .create-request-steps {
+        position: static;
+        grid-template-columns: repeat(5, minmax(130px, 1fr));
+        overflow-x: auto;
+        padding: 4px 0 8px;
+    }
+
+    body .can-form-page.create-request-page .create-request-step {
+        min-height: 60px;
+        grid-template-columns: 26px minmax(95px, 1fr);
+        padding: 6px;
+    }
+
+    body .can-form-page.create-request-page .create-request-step:not(:last-child)::after {
+        display: none;
+    }
+
+    body .can-form-page.create-request-page .create-request-step-number {
+        width: 25px;
+        height: 25px;
+    }
+}
+
+@media (max-width: 767.98px) {
+    body .can-form-page.create-request-page .create-request-header-top {
+        align-items: stretch;
+    }
+
+    body .can-form-page.create-request-page .create-request-header-actions {
+        width: 100%;
+        justify-content: stretch;
+    }
+
+    body .can-form-page.create-request-page .btn-create-cancel,
+    body .can-form-page.create-request-page .btn-create-request-submit {
+        flex: 1 1 140px;
+    }
+
+    body .can-form-page.create-request-page .create-request-body {
+        padding: 12px 0 0 !important;
+    }
+
+    body .can-form-page.create-request-page .form-section {
+        padding: 14px !important;
+    }
+
+    body .can-form-page.create-request-page .form-section-subtitle {
+        padding-left: 0;
+    }
+}
+
+@media (max-width: 420px) {
+    body .can-form-page.create-request-page {
+        padding: 8px !important;
+    }
+
+    body .can-form-page.create-request-page .create-request-title {
+        font-size: 21px !important;
+    }
+}

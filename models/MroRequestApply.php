@@ -97,4 +97,10 @@ class MroRequestApply extends ActiveRecord
     {
         return $this->hasOne(Requests::className(), ['request_id' => 'request_id']);
     }
+
+    /** Retourne tous les avenants négociés avec ce MRO pour cette candidature. */
+    public function getRequestChanges()
+    {
+        return $this->hasMany(RequestChange::class, ['mro_request_apply_id' => 'id']);
+    }
 }

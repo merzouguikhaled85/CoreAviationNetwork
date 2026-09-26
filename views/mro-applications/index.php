@@ -24,6 +24,7 @@ $availableHistoryYears = $historyYears ?? [];
 
 /* Bootstrap Icons */
 $this->registerCssFile('https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css');
+$this->registerCssFile(Url::to('@web/css/requests-list-refresh.css') . '?v=20260926-7');
 
 /* SweetAlert2 */
 $this->registerJsFile('https://cdn.jsdelivr.net/npm/sweetalert2@11', [
@@ -1052,25 +1053,27 @@ JS, \yii\web\View::POS_READY);
 
         <!-- Page header: same request structure -->
         <div class="page-header-card">
-            <div class="header-title-group">
-                <div class="header-icon">
-                    <i class="bi bi-clipboard-check"></i>
+            <div class="page-header-copy">
+                <div class="page-eyebrow">
+                    <i class="bi bi-airplane"></i>
+                    Maintenance operations
                 </div>
-
-                <div>
-                    <h1 class="dash-title"><?= Html::encode($this->title) ?></h1>
-                    <div class="subtitle-text">
-                        Manage and track your maintenance requests.
-                    </div>
+                <h1 class="dash-title"><?= Html::encode($this->title) ?></h1>
+                <div class="subtitle-text">
+                    <?= $isClosedHistory
+                        ? 'Review completed maintenance requests and their operational history.'
+                        : 'Manage assigned maintenance requests, documents and workflow actions from one workspace.' ?>
                 </div>
             </div>
 
             <?php if ($title === 'New requests'): ?>
-                <?= Html::a(
-                    '<i class="bi bi-plus-circle"></i> Add Request',
-                    ['create'],
-                    ['class' => 'btn btn-outline-success btn-add-request']
-                ) ?>
+                <div class="page-header-actions">
+                    <?= Html::a(
+                        '<i class="bi bi-plus-circle"></i> Add Request',
+                        ['create'],
+                        ['class' => 'btn btn-add-request']
+                    ) ?>
+                </div>
             <?php endif; ?>
         </div>
 
@@ -1096,7 +1099,7 @@ JS, \yii\web\View::POS_READY);
             </div>
         <?php endif; ?>
 
-
+        <section class="requests-list-surface" aria-label="<?= Html::encode($this->title) ?> list">
         <!-- Search and reset filter -->
         <div class="search-filter-card">
             <?php
@@ -1191,3 +1194,6 @@ JS, \yii\web\View::POS_READY);
                 'pagination' => $pagination,
             ]) ?>
         </div>
+        </section>
+    </div>
+</main>

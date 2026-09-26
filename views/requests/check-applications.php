@@ -5,9 +5,51 @@ use yii\helpers\Html;
 use app\components\UrlIdHelper;
 
 
-$this->title = 'My Replies';
+$aircraft = $request->getAircraft()->one();
+$operator = method_exists($request, 'getAO') ? $request->getAO()->one() : null;
+$destinationAirport = $request->getDestinationAirport()->one();
+
+$this->title = 'Request #' . ($request->request_id ?? 'N/A') . ' applications';
+
+$status = (string) ($request->status ?? '');
+$statusText = $status !== '' ? ucwords(str_replace('_', ' ', $status)) : 'N/A';
+$statusClass = 'status-' . preg_replace('/[^a-zA-Z0-9_-]/', '', $status);
+$priority = (string) ($request->operational_priority ?? 'routine');
+$priorityLabel = method_exists($request, 'getOperationalPriorityLabel')
+    ? $request->getOperationalPriorityLabel()
+    : ucfirst($priority);
+$priorityIcons = [
+    'aog' => 'bi-exclamation-octagon',
+    'urgent' => 'bi-lightning-charge',
+    'routine' => 'bi-calendar-check',
+];
+
+$formatRequestDate = static function ($value) {
+    if (empty($value) || strtotime((string) $value) === false) {
+        return 'N/A';
+    }
+
+    return date('d M Y H:i', strtotime((string) $value));
+};
+
+$etaText = $formatRequestDate($request->eta ?? null);
+$etdText = $formatRequestDate($request->etd ?? null);
+$createdAtText = $request->hasAttribute('created_at')
+    ? $formatRequestDate($request->created_at)
+    : 'N/A';
+$updatedAtText = $request->hasAttribute('updated_at')
+    ? $formatRequestDate($request->updated_at)
+    : 'N/A';
+$aircraftName = $aircraft
+    ? trim(($aircraft->manufacturer ?? '') . ' ' . ($aircraft->model ?? ''))
+    : 'Aircraft unavailable';
+$operatorName = $operator->company_name ?? $operator->username ?? 'N/A';
+$airportName = $destinationAirport->airport_name ?? 'N/A';
+$airportIcao = $destinationAirport->icao ?? 'N/A';
+$applicationCount = count($applications);
 
 $this->registerCssFile('https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css');
+$this->registerCssFile(Yii::$app->request->baseUrl . '/css/requests-check-applications-refresh.css?v=20260926-1');
 
 $this->registerJsFile('https://cdn.jsdelivr.net/npm/sweetalert2@11', [
     'position' => \yii\web\View::POS_HEAD
@@ -632,6 +674,19 @@ JS, \yii\web\View::POS_READY);
                             Review MRO replies, compare quotes, download attachments and manage actions.
                         </div>
                     </div>
+
+                    <div class="request-header-summary">
+                        <span class="overview-priority priority-<?= Html::encode($priority) ?>">
+                            <i class="bi <?= Html::encode($priorityIcons[$priority] ?? 'bi-calendar-check') ?>"></i>
+                            <?= Html::encode($priorityLabel) ?>
+                        </span>
+                        <span class="overview-status <?= Html::encode($statusClass) ?>">
+                            <i class="bi bi-circle-fill"></i>
+                            <?= Html::encode($statusText) ?>
+                        </span>
+                        <small>Created: <strong><?= Html::encode($createdAtText) ?></strong></small>
+                        <small>Last updated: <strong><?= Html::encode($updatedAtText) ?></strong></small>
+                    </div>
                 </div>
             </div>
 
@@ -650,6 +705,100 @@ JS, \yii\web\View::POS_READY);
                         <?= Yii::$app->session->getFlash('error') ?>
                     </div>
                 <?php endif; ?>
+
+                <section class="applications-request-overview" aria-labelledby="request-overview-title">
+                    <h2 class="overview-section-title" id="request-overview-title">
+                        <i class="bi bi-info-circle"></i>
+                        Request Overview
+                    </h2>
+
+                    <div class="applications-request-grid">
+                        <article class="overview-card overview-aircraft-card">
+                            <div class="overview-label">
+                                <i class="bi bi-airplane"></i>
+                                Aircraft
+                            </div>
+                            <div class="overview-main-value"><?= Html::encode($aircraftName ?: 'N/A') ?></div>
+                            <div class="aircraft-identifiers">
+                                <span><?= Html::encode($aircraft->registration_number ?? 'N/A') ?></span>
+                                <span>MSN <?= Html::encode($aircraft->serial_number ?? 'N/A') ?></span>
+                            </div>
+                            <div class="overview-aircraft-image" role="img" aria-label="Aircraft maintenance network"></div>
+                        </article>
+
+                        <article class="overview-card">
+                            <div class="overview-label">
+                                <i class="bi bi-building"></i>
+                                Operator
+                            </div>
+                            <div class="overview-main-value"><?= Html::encode($operatorName) ?></div>
+                        </article>
+
+                        <article class="overview-card">
+                            <div class="overview-label">
+                                <i class="bi bi-geo-alt"></i>
+                                Maintenance Location
+                            </div>
+                            <div class="overview-main-value"><?= Html::encode($airportName) ?></div>
+                            <div class="overview-secondary-value"><?= Html::encode($airportIcao) ?></div>
+                        </article>
+
+                        <article class="overview-card">
+                            <div class="overview-label">
+                                <i class="bi bi-calendar2-week"></i>
+                                ETA / ETD
+                            </div>
+                            <div class="schedule-pair">
+                                <span><small>ETA</small><strong><?= Html::encode($etaText) ?></strong></span>
+                                <span><small>ETD</small><strong><?= Html::encode($etdText) ?></strong></span>
+                            </div>
+                        </article>
+
+                        <article class="overview-card">
+                            <div class="overview-label">
+                                <i class="bi bi-broadcast-pin"></i>
+                                Operational Priority
+                            </div>
+                            <div>
+                                <span class="overview-priority priority-<?= Html::encode($priority) ?>">
+                                    <i class="bi <?= Html::encode($priorityIcons[$priority] ?? 'bi-calendar-check') ?>"></i>
+                                    <?= Html::encode($priorityLabel) ?>
+                                </span>
+                            </div>
+                        </article>
+
+                        <article class="overview-card">
+                            <div class="overview-label">
+                                <i class="bi bi-activity"></i>
+                                Status
+                            </div>
+                            <div>
+                                <span class="overview-status <?= Html::encode($statusClass) ?>">
+                                    <i class="bi bi-circle-fill"></i>
+                                    <?= Html::encode($statusText) ?>
+                                </span>
+                            </div>
+                        </article>
+
+                        <article class="overview-card">
+                            <div class="overview-label">
+                                <i class="bi bi-inboxes"></i>
+                                MRO Applications
+                            </div>
+                            <div class="overview-main-value"><?= Html::encode((string) $applicationCount) ?></div>
+                        </article>
+                    </div>
+
+                    <article class="request-information-card">
+                        <div class="overview-label">
+                            <i class="bi bi-file-text"></i>
+                            Request Informations
+                        </div>
+                        <div class="request-information-text">
+                            <?= nl2br(Html::encode($request->request_details ?: 'No additional information provided.')) ?>
+                        </div>
+                    </article>
+                </section>
 
                 <div class="table-wrapper">
 

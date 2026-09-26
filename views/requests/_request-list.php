@@ -2,6 +2,7 @@
 
 use app\components\UrlIdHelper;
 use app\models\AoRequestsApplications;
+use app\models\RequestChange;
 use app\models\Requests;
 use yii\helpers\Html;
 use yii\widgets\LinkPager;
@@ -87,6 +88,17 @@ use yii\widgets\LinkPager;
                                         ->where(['request_id' => $request->request_id])
                                         ->orderBy(['id' => SORT_DESC])
                                         ->one();
+
+                                    /*
+                                     * L'AVENANT possède son propre statut : il est affiché à côté du
+                                     * statut opérationnel sans modifier la Request ni son classement.
+                                     */
+                                    $latestChange = RequestChange::find()
+                                        ->where(['request_id' => $request->request_id])
+                                        ->orderBy(['version' => SORT_DESC, 'id' => SORT_DESC])
+                                        ->one();
+                                    $hasActiveChange = $latestChange
+                                        && in_array($latestChange->status, RequestChange::activeStatuses(), true);
 
                                     // Check report
                                     $report = \app\models\RepairReport::find()
@@ -187,6 +199,13 @@ use yii\widgets\LinkPager;
                                     </td>
 
                                     <td data-label="Status">
+                                        <?php if ($latestChange): ?>
+                                            <?= Html::a(
+                                                '<i class="bi bi-arrow-repeat"></i> ' . Html::encode($latestChange->getStatusLabel()),
+                                                ['/request-changes/view', 'id' => UrlIdHelper::encode($latestChange->id)],
+                                                ['class' => 'status-badge status-update_request', 'style' => 'margin-bottom:6px']
+                                            ) ?><br>
+                                        <?php endif; ?>
                                         <?php if ($request->status === 'answered'): ?>
                                             <?= Html::a(
                                                 '<i class="bi bi-reply-all"></i> Answered',
@@ -253,7 +272,7 @@ use yii\widgets\LinkPager;
                                             ) ?>
 
                                             <!-- Update request button -->
-                                            <?php if (in_array($request->status, ['work_accepted', 'work_started'])): ?>
+                                            <?php if (in_array($request->status, ['work_accepted', 'work_started'], true) && !$hasActiveChange): ?>
                                                 <?= Html::a(
                                                     '<i class="bi bi-pencil-square"></i>',
                                                     ['update-request', 'id' => $encodedId],
@@ -261,6 +280,16 @@ use yii\widgets\LinkPager;
                                                         'class' => 'action-btn btn-update-request',
                                                         'title' => 'Update Request',
                                                         'data-bs-toggle' => 'tooltip'
+                                                    ]
+                                                ) ?>
+                                            <?php elseif ($hasActiveChange): ?>
+                                                <?= Html::a(
+                                                    '<i class="bi bi-arrow-repeat"></i>',
+                                                    ['/request-changes/view', 'id' => UrlIdHelper::encode($latestChange->id)],
+                                                    [
+                                                        'class' => 'action-btn btn-update-request',
+                                                        'title' => 'Track current change order',
+                                                        'data-bs-toggle' => 'tooltip',
                                                     ]
                                                 ) ?>
                                             <?php endif; ?>
@@ -345,6 +374,15 @@ use yii\widgets\LinkPager;
 
             <!-- Pagination -->
             <div class="pagination-container">
+                <?php
+                    $visibleFrom = $pagination->totalCount > 0 ? $pagination->offset + 1 : 0;
+                    $visibleTo = min($pagination->offset + $pagination->limit, $pagination->totalCount);
+                ?>
+                <div class="pagination-summary">
+                    Showing <?= Html::encode((string) $visibleFrom) ?> to
+                    <?= Html::encode((string) $visibleTo) ?> of
+                    <?= Html::encode((string) $pagination->totalCount) ?> requests
+                </div>
                 <?= LinkPager::widget([
                     'pagination' => $pagination,
                 ]) ?>

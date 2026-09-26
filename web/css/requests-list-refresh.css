@@ -1,0 +1,543 @@
+/*
+ * CAN request-list refresh.
+ * Visual overrides only; workflow and server-side behavior remain unchanged.
+ */
+
+:root {
+    --request-blue: #0d6efd;
+    --request-ink: #10233f;
+    --request-muted: #687990;
+    --request-line: #dfe8f2;
+    --request-canvas: #f3f7fb;
+}
+
+body .requests-page.can-list-page {
+    min-height: 100vh;
+    padding: 0 0 30px;
+    background: var(--request-canvas);
+    overflow: visible;
+}
+
+body .requests-page .container-fluid {
+    overflow: visible;
+    width: 100%;
+    max-width: none;
+}
+
+body .requests-page .page-header-card {
+    position: relative;
+    min-height: 148px;
+    width: 100%;
+    max-width: none;
+    margin: 0;
+    padding: 24px 24px 54px;
+    border: 0;
+    border-radius: 0;
+    overflow: hidden;
+    box-shadow: none;
+    color: #fff;
+    background:
+        linear-gradient(90deg, rgba(3, 22, 39, .84) 0%, rgba(4, 36, 63, .68) 42%, rgba(5, 36, 62, .22) 100%),
+        url("../img/home-carousel/global-network.jpg") center 48% / cover no-repeat;
+}
+
+body .requests-page .page-header-card::after {
+    content: "";
+    position: absolute;
+    inset: auto 0 0;
+    height: 42px;
+    background: linear-gradient(180deg, transparent, rgba(3, 22, 39, .18));
+    pointer-events: none;
+}
+
+body .requests-page .page-header-copy,
+body .requests-page .page-header-actions {
+    position: relative;
+    z-index: 1;
+}
+
+body .requests-page .page-eyebrow {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    margin-bottom: 7px;
+    color: #9dc9ff;
+    font-size: 11px;
+    font-weight: 800;
+    letter-spacing: .1em;
+    text-transform: uppercase;
+}
+
+body .requests-page .dash-title {
+    color: #fff;
+    font-size: clamp(26px, 2.3vw, 36px);
+    line-height: 1.08;
+    letter-spacing: -.025em;
+}
+
+body .requests-page .subtitle-text {
+    max-width: 620px;
+    margin-top: 7px;
+    color: rgba(255, 255, 255, .82);
+    font-size: 13px;
+}
+
+body .requests-page .btn-add-request {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    min-height: 42px;
+    padding: 10px 18px;
+    border: 1px solid #2386ff;
+    border-radius: 8px;
+    background: linear-gradient(135deg, #1783ff, #0867e8);
+    color: #fff !important;
+    box-shadow: 0 10px 24px rgba(0, 103, 232, .28);
+}
+
+body .requests-page .btn-add-request:hover {
+    border-color: #53a0ff;
+    background: linear-gradient(135deg, #2b8fff, #0758d3);
+    transform: translateY(-1px);
+}
+
+body .requests-page .requests-list-surface {
+    position: relative;
+    z-index: 2;
+    margin: -30px 18px 0;
+    border: 1px solid var(--request-line);
+    border-radius: 12px;
+    background: #fff;
+    box-shadow: 0 16px 38px rgba(16, 35, 63, .10);
+    overflow: hidden;
+}
+
+body .requests-page .search-filter-card {
+    margin: 0;
+    padding: 12px;
+    border: 0;
+    border-bottom: 1px solid var(--request-line);
+    border-radius: 0;
+    background: #fff;
+    box-shadow: none;
+}
+
+body .requests-page .search-filter-form {
+    flex-wrap: nowrap;
+    gap: 10px;
+}
+
+body .requests-page .search-input-wrap {
+    flex: 1 1 auto;
+    min-width: 280px;
+}
+
+body .requests-page .search-input,
+body .requests-page .priority-filter-select {
+    height: 40px;
+    border-color: #d7e2ee;
+    border-radius: 7px;
+    background-color: #fff;
+    color: var(--request-ink);
+    box-shadow: none;
+    font-size: 12px;
+}
+
+body .requests-page .search-input:focus,
+body .requests-page .priority-filter-select:focus {
+    border-color: #6eacff;
+    box-shadow: 0 0 0 3px rgba(13, 110, 253, .10);
+}
+
+body .requests-page .priority-filter-wrap {
+    position: relative;
+    flex: 0 0 190px;
+}
+
+body .requests-page .priority-filter-wrap > i {
+    position: absolute;
+    z-index: 2;
+    top: 50%;
+    left: 12px;
+    color: #6b7e96;
+    transform: translateY(-50%);
+    pointer-events: none;
+}
+
+body .requests-page .priority-filter-select {
+    padding-left: 34px;
+}
+
+body .requests-page .btn-search,
+body .requests-page .btn-reset {
+    height: 40px;
+    min-width: 92px;
+    padding: 8px 15px;
+    border-radius: 7px;
+    font-size: 12px;
+    box-shadow: none;
+}
+
+body .requests-page .btn-reset {
+    order: 3;
+    border: 1px solid #d7e2ee;
+    background: #fff;
+    color: #40536d !important;
+}
+
+body .requests-page .btn-search {
+    order: 4;
+    border-color: var(--request-blue);
+    background: var(--request-blue);
+}
+
+body .requests-page .search-result-text {
+    margin: 10px 2px 0;
+    color: var(--request-muted);
+    font-size: 12px;
+}
+
+body .requests-page .content-card {
+    padding: 8px 8px 0;
+    border: 0;
+    border-radius: 0;
+    box-shadow: none;
+    overflow: visible;
+}
+
+body .requests-page .table-responsive-custom {
+    overflow-x: auto;
+    border: 1px solid #e3ebf4;
+    border-radius: 8px;
+    scrollbar-width: thin;
+    scrollbar-color: #b9c8d9 transparent;
+}
+
+body .requests-page .requests-table {
+    min-width: 1180px;
+    table-layout: auto;
+}
+
+body .requests-page .requests-table thead th {
+    height: 42px;
+    padding: 10px 9px;
+    border-bottom: 1px solid #e1eaf3;
+    background: linear-gradient(180deg, #f8fbfe, #f3f7fb);
+    color: #233a58;
+    font-size: 10px;
+    font-weight: 800;
+    letter-spacing: .01em;
+    text-transform: none;
+}
+
+body .requests-page .requests-table tbody td {
+    height: 58px;
+    padding: 10px 9px;
+    border-top: 1px solid #edf2f7;
+    color: #31445d;
+    font-size: 11.5px;
+    line-height: 1.35;
+}
+
+body .requests-page .requests-table tbody tr:first-child td {
+    border-top: 0;
+}
+
+body .requests-page .requests-table tbody tr:hover {
+    background: #f5f9ff;
+}
+
+body .requests-page .request-link {
+    color: #0b63ce;
+    font-weight: 750;
+}
+
+body .requests-page .status-badge,
+body .requests-page .operational-priority-badge {
+    min-height: 24px;
+    padding: 5px 8px;
+    border-radius: 6px;
+    box-shadow: inset 0 0 0 1px rgba(15, 23, 42, .035);
+    font-size: 10px;
+    font-weight: 750;
+}
+
+body .requests-page .operational-priority-display {
+    align-items: flex-start;
+    gap: 5px;
+}
+
+body .requests-page .operational-priority-deadline {
+    color: #687990;
+    font-size: 9.5px;
+    font-weight: 650;
+}
+
+body .requests-page .operational-priority-deadline.is-overdue {
+    color: #e11d48;
+}
+
+body .requests-page .action-buttons {
+    gap: 6px;
+}
+
+body .requests-page .action-btn {
+    width: 30px;
+    min-width: 30px;
+    height: 30px;
+    border: 1px solid #d8e3ef;
+    border-radius: 7px;
+    background: #fff;
+    color: #164d8f !important;
+    box-shadow: none;
+}
+
+body .requests-page .action-btn:hover {
+    border-color: #8ebcff;
+    background: #edf5ff;
+    color: #0758d3 !important;
+    box-shadow: 0 5px 12px rgba(24, 83, 150, .12);
+}
+
+body .requests-page .btn-delete {
+    color: #d92d4f !important;
+}
+
+body .requests-page .btn-delete:hover {
+    border-color: #f1a7b5;
+    background: #fff1f4;
+    color: #bd1638 !important;
+}
+
+body .requests-page .pagination-container {
+    justify-content: space-between;
+    align-items: center;
+    gap: 16px;
+    min-height: 54px;
+    margin-top: 0;
+    padding: 10px 4px;
+    color: var(--request-muted);
+    font-size: 11px;
+}
+
+body .requests-page .pagination-summary {
+    white-space: nowrap;
+}
+
+body .requests-page .pagination {
+    margin-left: auto;
+    gap: 5px;
+}
+
+body .requests-page .pagination li a,
+body .requests-page .pagination li span {
+    min-width: 31px;
+    height: 31px;
+    padding: 5px 9px;
+    border-color: #dfe8f2;
+    border-radius: 7px;
+    font-size: 11px;
+}
+
+body .requests-page .pagination .active a,
+body .requests-page .pagination .active span {
+    border-color: var(--request-blue);
+    background: var(--request-blue);
+}
+
+/*
+ * The shared list system intentionally uses !important declarations.
+ * These scoped overrides keep the new request-list composition local to this
+ * page while leaving every other CAN list untouched.
+ */
+body .can-list-page.requests-page {
+    padding: 0 0 30px !important;
+    background: var(--request-canvas) !important;
+}
+
+body .can-list-page.requests-page > .container-fluid {
+    width: 100% !important;
+    max-width: none !important;
+}
+
+body .can-list-page.requests-page .page-header-card {
+    min-height: 148px;
+    width: 100%;
+    max-width: none !important;
+    margin: 0 !important;
+    padding: 24px 24px 54px !important;
+    border: 0 !important;
+    border-radius: 0 !important;
+    background:
+        linear-gradient(90deg, rgba(3, 22, 39, .84) 0%, rgba(4, 36, 63, .68) 42%, rgba(5, 36, 62, .22) 100%),
+        url("../img/home-carousel/global-network.jpg") center 48% / cover no-repeat !important;
+    box-shadow: none !important;
+}
+
+body .can-list-page.requests-page .page-eyebrow,
+body .can-list-page.requests-page .dash-title,
+body .can-list-page.requests-page .subtitle-text {
+    color: #fff !important;
+}
+
+body .can-list-page.requests-page .search-filter-card {
+    margin: 0 !important;
+    padding: 12px !important;
+    border: 0 !important;
+    border-bottom: 1px solid var(--request-line) !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
+}
+
+body .can-list-page.requests-page .search-input,
+body .can-list-page.requests-page .priority-filter-select {
+    min-height: 40px !important;
+    height: 40px;
+    border: 1px solid #d7e2ee !important;
+    border-radius: 7px !important;
+}
+
+body .can-list-page.requests-page .btn-search,
+body .can-list-page.requests-page .btn-reset {
+    min-height: 40px !important;
+    height: 40px;
+    padding: 8px 15px !important;
+    border-radius: 7px !important;
+}
+
+body .can-list-page.requests-page .content-card {
+    overflow: visible;
+    padding: 8px 8px 0 !important;
+    border: 0 !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
+}
+
+body .can-list-page.requests-page .table-responsive-custom {
+    border-radius: 8px !important;
+}
+
+body .can-list-page.requests-page thead th {
+    height: 42px;
+    padding: 10px 9px !important;
+    background: linear-gradient(180deg, #f8fbfe, #f3f7fb) !important;
+    font-size: 10px !important;
+    letter-spacing: .01em;
+    text-transform: none;
+}
+
+body .can-list-page.requests-page tbody td {
+    height: 58px;
+    padding: 10px 9px !important;
+    font-size: 11.5px;
+}
+
+body .can-list-page.requests-page .action-buttons {
+    flex-wrap: nowrap;
+    gap: 6px !important;
+}
+
+body .can-list-page.requests-page .action-btn {
+    display: inline-flex !important;
+    width: 30px !important;
+    min-width: 30px;
+    height: 30px !important;
+    border: 1px solid #d8e3ef !important;
+    border-radius: 7px !important;
+    background: #fff !important;
+    color: #164d8f !important;
+    box-shadow: none !important;
+}
+
+body .can-list-page.requests-page .action-btn:hover {
+    border-color: #8ebcff !important;
+    background: #edf5ff !important;
+    color: #0758d3 !important;
+    box-shadow: 0 5px 12px rgba(24, 83, 150, .12) !important;
+    filter: none;
+}
+
+body .can-list-page.requests-page .action-btn.btn-delete {
+    border-color: #f1c6ce !important;
+    background: #fff !important;
+    color: #d92d4f !important;
+}
+
+body .can-list-page.requests-page .action-btn.btn-delete:hover {
+    border-color: #f1a7b5 !important;
+    background: #fff1f4 !important;
+    color: #bd1638 !important;
+}
+
+@media (max-width: 992px) {
+    body .requests-page.can-list-page {
+        padding: 0 0 22px !important;
+    }
+
+    body .requests-page .page-header-card {
+        min-height: 142px;
+        margin: 0 !important;
+        padding: 20px 18px 48px !important;
+    }
+
+    body .requests-page .requests-list-surface {
+        margin: -25px 12px 0;
+    }
+
+    body .requests-page .search-filter-form {
+        flex-wrap: wrap;
+    }
+
+    body .requests-page .search-input-wrap {
+        flex-basis: 100%;
+    }
+
+    body .requests-page .priority-filter-wrap {
+        flex: 1 1 180px;
+    }
+
+    body .requests-page .requests-table {
+        min-width: 0;
+    }
+
+    body .requests-page .requests-table tbody tr {
+        border-radius: 10px;
+        box-shadow: none;
+    }
+
+    body .requests-page .requests-table tbody td {
+        height: auto;
+        font-size: 12px;
+    }
+}
+
+@media (max-width: 576px) {
+    body .requests-page .page-header-card {
+        align-items: flex-start;
+    }
+
+    body .requests-page .page-header-actions,
+    body .requests-page .btn-add-request {
+        width: 100%;
+    }
+
+    body .requests-page .btn-add-request {
+        justify-content: center;
+    }
+
+    body .requests-page .priority-filter-wrap,
+    body .requests-page .btn-search,
+    body .requests-page .btn-reset {
+        flex: 1 1 100%;
+        width: 100%;
+    }
+
+    body .requests-page .pagination-container {
+        flex-direction: column;
+        align-items: center;
+    }
+
+    body .requests-page .pagination {
+        margin-left: 0;
+    }
+}

@@ -1,0 +1,336 @@
+/* Responsive request context for the change-order workflow. */
+body .change-view-page {
+    --summary-blue: #0f6fec;
+    --summary-navy: #0b2342;
+    --summary-border: #d9e5f2;
+    --summary-muted: #6b7f99;
+}
+
+body .change-view-page .change-view-shell {
+    max-width: 1580px;
+}
+
+body .change-view-page .change-view-header {
+    align-items: center;
+    border-radius: 14px;
+}
+
+body .change-view-page .change-header-copy {
+    min-width: 0;
+}
+
+body .change-view-page .change-title-row {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+body .change-view-page .change-back-link {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 34px;
+    height: 34px;
+    flex: 0 0 34px;
+    border-radius: 9px;
+    color: var(--summary-navy);
+    text-decoration: none;
+    transition: background-color .18s ease, color .18s ease;
+}
+
+body .change-view-page .change-back-link:hover {
+    color: var(--summary-blue);
+    background: #edf6ff;
+}
+
+body .change-view-page .change-view-title {
+    min-width: 0;
+    font-size: clamp(22px, 2vw, 29px);
+}
+
+body .change-view-page .version-badge,
+body .change-view-page .change-status {
+    padding: 6px 9px;
+    border-radius: 7px;
+    font-size: 10px;
+}
+
+body .change-view-page .change-status .bi-circle-fill {
+    font-size: 6px;
+}
+
+body .change-view-page .change-header-dates {
+    display: flex;
+    flex: 0 0 auto;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 3px;
+    color: var(--summary-muted);
+    font-size: 10px;
+    line-height: 1.35;
+}
+
+body .change-view-page .change-header-dates strong {
+    color: #38516e;
+}
+
+body .change-view-page .request-overview-card {
+    border-radius: 14px;
+}
+
+body .change-view-page .request-summary-grid {
+    display: grid;
+    grid-template-columns: 1.2fr repeat(3, minmax(0, 1fr));
+    grid-template-rows: repeat(2, minmax(106px, auto));
+    gap: 11px;
+}
+
+body .change-view-page .request-summary-item,
+body .change-view-page .request-information-panel {
+    min-width: 0;
+    padding: 14px;
+    border: 1px solid var(--summary-border);
+    border-radius: 11px;
+    background: #fff;
+    box-shadow: 0 5px 14px rgba(15, 50, 97, .045);
+}
+
+body .change-view-page .aircraft-summary-item {
+    grid-row: 1 / span 2;
+    display: flex;
+    flex-direction: column;
+}
+
+body .change-view-page .request-summary-item .item-label,
+body .change-view-page .request-information-panel .item-label {
+    margin-bottom: 9px;
+}
+
+body .change-view-page .request-summary-item .item-label .bi,
+body .change-view-page .request-information-panel .item-label .bi {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    border-radius: 8px;
+    color: var(--summary-blue);
+    background: #edf6ff;
+}
+
+body .change-view-page .summary-main-value {
+    overflow-wrap: anywhere;
+    color: #0d1f37;
+    font-size: 14px;
+    font-weight: 800;
+    line-height: 1.35;
+}
+
+body .change-view-page .summary-secondary-value,
+body .change-view-page .aircraft-reference {
+    margin-top: 4px;
+    color: var(--summary-muted);
+    font-size: 11px;
+}
+
+body .change-view-page .aircraft-reference {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px 12px;
+}
+
+body .change-view-page .aircraft-summary-image {
+    min-height: 90px;
+    margin-top: 12px;
+    flex: 1 1 auto;
+    border-radius: 8px;
+    background:
+        linear-gradient(90deg, rgba(4, 28, 55, .18), rgba(4, 28, 55, .02)),
+        url('../img/home-carousel/global-network.jpg') center 55% / cover no-repeat;
+}
+
+body .change-view-page .summary-schedule {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+}
+
+body .change-view-page .summary-schedule span {
+    display: flex;
+    min-width: 0;
+    flex-direction: column;
+    gap: 3px;
+}
+
+body .change-view-page .summary-schedule small {
+    color: var(--summary-blue);
+    font-size: 9px;
+    font-weight: 800;
+}
+
+body .change-view-page .summary-schedule strong {
+    overflow-wrap: anywhere;
+    color: #17324f;
+    font-size: 11px;
+    line-height: 1.35;
+}
+
+body .change-view-page .priority-badge,
+body .change-view-page .request-status-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    max-width: 100%;
+    padding: 5px 9px;
+    border: 1px solid #c7def7;
+    border-radius: 7px;
+    color: #075fb8;
+    background: #edf7ff;
+    font-size: 11px;
+    font-weight: 800;
+}
+
+body .change-view-page .priority-badge.priority-aog {
+    border-color: #fecaca;
+    color: #c81e1e;
+    background: #fff1f2;
+}
+
+body .change-view-page .priority-badge.priority-urgent {
+    border-color: #fbd38d;
+    color: #ad5700;
+    background: #fff9e8;
+}
+
+body .change-view-page .request-status-badge .bi {
+    font-size: 6px;
+}
+
+body .change-view-page .request-status-badge.request-status-closed,
+body .change-view-page .request-status-badge.request-status-work_completed,
+body .change-view-page .request-status-badge.request-status-answered {
+    border-color: #bbf7d0;
+    color: #15803d;
+    background: #ecfdf3;
+}
+
+body .change-view-page .request-status-badge.request-status-cancelled,
+body .change-view-page .request-status-badge.request-status-canceled,
+body .change-view-page .request-status-badge.request-status-overdue {
+    border-color: #fecaca;
+    color: #c81e1e;
+    background: #fff1f2;
+}
+
+body .change-view-page .request-information-panel {
+    margin-top: 11px;
+}
+
+body .change-view-page .request-information-panel .current-description-text {
+    min-height: 56px;
+    padding: 12px 14px;
+    border: 1px dashed #c7d9ed;
+    border-radius: 8px;
+    background: #fbfdff;
+}
+
+body .change-view-page .history-table {
+    min-width: 700px;
+}
+
+@media (max-width: 1100px) {
+    body .change-view-page .request-summary-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        grid-template-rows: auto;
+    }
+
+    body .change-view-page .aircraft-summary-item {
+        grid-row: auto;
+        grid-column: 1 / -1;
+    }
+
+    body .change-view-page .aircraft-summary-image {
+        min-height: 160px;
+    }
+}
+
+@media (max-width: 820px) {
+    body .change-view-page {
+        padding: 14px;
+    }
+
+    body .change-view-page .change-view-header {
+        align-items: flex-start;
+        flex-direction: column;
+    }
+
+    body .change-view-page .change-header-dates {
+        align-items: flex-start;
+    }
+}
+
+@media (max-width: 620px) {
+    body .change-view-page {
+        padding: 8px;
+    }
+
+    body .change-view-page .change-view-header,
+    body .change-view-page .change-view-card {
+        padding: 14px;
+        border-radius: 11px;
+    }
+
+    body .change-view-page .change-view-eyebrow {
+        padding-left: 42px;
+    }
+
+    body .change-view-page .change-title-row {
+        align-items: flex-start;
+    }
+
+    body .change-view-page .change-view-title {
+        width: calc(100% - 42px);
+        font-size: 21px;
+        line-height: 1.25;
+    }
+
+    body .change-view-page .version-badge {
+        margin-left: 42px;
+    }
+
+    body .change-view-page .request-summary-grid {
+        grid-template-columns: 1fr;
+    }
+
+    body .change-view-page .aircraft-summary-item {
+        grid-column: auto;
+    }
+
+    body .change-view-page .aircraft-summary-image {
+        min-height: 125px;
+    }
+
+    body .change-view-page .summary-schedule {
+        grid-template-columns: 1fr;
+    }
+
+    body .change-view-page .section-header {
+        gap: 8px;
+    }
+
+    body .change-view-page .document-panel-head {
+        align-items: flex-start;
+        flex-direction: column;
+    }
+
+    body .change-view-page .change-view-button,
+    body .change-view-page .inline-action-form {
+        width: 100%;
+    }
+
+    body .change-view-page .history-wrap {
+        border-radius: 9px;
+        -webkit-overflow-scrolling: touch;
+    }
+}

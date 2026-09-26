@@ -267,6 +267,33 @@ $requestDetails = $requestModel->request_details
     ?? $requestModel->description
     ?? null;
 
+/* Shared read-only request context used by the detail-page presentation. */
+$destinationAirport = $requestModel && method_exists($requestModel, 'getDestinationAirport')
+    ? $requestModel->getDestinationAirport()->one()
+    : null;
+$aoProfile = $requestModel && method_exists($requestModel, 'getAO')
+    ? $requestModel->getAO()->one()
+    : null;
+$operatorName = $getSafeAttribute($aoProfile, ['company_name', 'username'], 'N/A');
+$airportName = $getSafeAttribute($destinationAirport, ['airport_name', 'name'], 'N/A');
+$airportIcao = $getSafeAttribute($destinationAirport, ['icao', 'icao_code'], 'N/A');
+$operationalPriority = strtolower((string) $getSafeAttribute($requestModel, ['operational_priority'], 'routine'));
+$operationalPriorityLabel = $requestModel && method_exists($requestModel, 'getOperationalPriorityLabel')
+    ? $requestModel->getOperationalPriorityLabel()
+    : ucfirst($operationalPriority);
+$operationalPriorityIcons = [
+    'aog' => 'bi-exclamation-octagon',
+    'urgent' => 'bi-lightning-charge',
+    'routine' => 'bi-calendar-check',
+];
+$formatRequestDate = static function ($value) {
+    return !empty($value) && strtotime((string) $value)
+        ? date('d M Y H:i', strtotime((string) $value))
+        : 'N/A';
+};
+$requestCreatedAt = $formatRequestDate($getSafeAttribute($requestModel, ['created_at', 'createdAt'], null));
+$requestUpdatedAt = $formatRequestDate($getSafeAttribute($requestModel, ['updated_at', 'updatedAt'], null));
+
 /**
  * Safe back URL.
  */
@@ -1395,27 +1422,40 @@ body {
     }
 }
 CSS);
+$this->registerCssFile(
+    Yii::$app->request->baseUrl . '/css/mro-view-answer-refresh.css?v=20260926-2'
+);
 ?>
 
 <!-- SHARED DETAIL SYSTEM: presentation only; PO workflow remains unchanged. -->
-<main class="dash-content requests-page can-detail-page">
+<main class="dash-content requests-page can-detail-page answer-view-page po-view-page">
     <div class="container-fluid">
 
         <!-- Page header -->
         <div class="page-header-card">
-            <div>
-                <h1 class="dash-title fw-bold">
-                    <span style="color: var(--bs-info);">
-                        <i class="bi bi-file-earmark-check"></i>
+            <div class="answer-header-copy">
+                <div class="answer-title-row">
+                    <?= Html::a('<i class="bi bi-arrow-left"></i>', $backUrl, [
+                        'class' => 'answer-back-link',
+                        'aria-label' => 'Back to applied requests',
+                        'title' => 'Back to applied requests',
+                    ]) ?>
+                    <h1 class="dash-title fw-bold"><?= Html::encode($this->title) ?></h1>
+                    <span class="answer-priority priority-<?= Html::encode($operationalPriority) ?>">
+                        <i class="bi <?= Html::encode($operationalPriorityIcons[$operationalPriority] ?? 'bi-calendar-check') ?>"></i>
+                        <?= Html::encode($operationalPriorityLabel) ?>
                     </span>
-                    <?= Html::encode($this->title) ?>
-                </h1>
-
+                    <span class="answer-request-status <?= Html::encode($statusClass) ?>">
+                        <i class="bi bi-circle-fill"></i>
+                        <?= Html::encode($statusText) ?>
+                    </span>
+                </div>
                 <div class="subtitle-text">
                     Purchase Orders linked to this application and its maintenance request.
                 </div>
             </div>
 
+            <div class="answer-header-side">
             <div class="header-actions">
                 <!-- VIEW PO ACTIONS 2026: same actions and status rules as /mro-applications. -->
                 <div class="header-action-group workflow-actions">
@@ -1529,42 +1569,79 @@ CSS);
                 ) ?>
                 </div>
             </div>
+                <div class="answer-header-dates">
+                    <span>Created: <strong><?= Html::encode($requestCreatedAt) ?></strong></span>
+                    <span>Last updated: <strong><?= Html::encode($requestUpdatedAt) ?></strong></span>
+                </div>
+            </div>
         </div>
 
-        <!-- Compact operational request summary -->
-        <section class="request-summary-strip" aria-label="Current request summary">
-            <div class="detail-item">
-                <div class="detail-label"><i class="bi bi-hash"></i> Request ID</div>
-                <div class="detail-value"><span class="request-id-badge">#<?= Html::encode($requestId) ?></span></div>
+        <!-- Request context aligned with the other detail pages. -->
+        <section class="answer-request-overview" aria-labelledby="po-overview-title">
+            <div class="answer-overview-head">
+                <div>
+                    <h2 id="po-overview-title"><i class="bi bi-info-circle"></i> Request Overview</h2>
+                    <p>Read-only operational context for these Purchase Orders.</p>
+                </div>
+                <span class="answer-request-id"><i class="bi bi-hash"></i><?= Html::encode($requestId) ?></span>
             </div>
-            <div class="detail-item">
-                <div class="detail-label"><i class="bi bi-activity"></i> Status</div>
-                <div class="detail-value"><span class="status-badge <?= Html::encode($statusClass) ?>"><i class="bi bi-circle-fill"></i> <?= Html::encode($statusText) ?></span></div>
+
+            <div class="answer-summary-grid">
+                <article class="answer-summary-item answer-aircraft-item">
+                    <div class="answer-summary-label"><i class="bi bi-airplane"></i>Aircraft</div>
+                    <div class="answer-summary-value"><?= Html::encode($aircraftName ?: 'Aircraft deleted') ?></div>
+                    <div class="answer-aircraft-reference">
+                        <span><?= Html::encode($aircraftRegistration) ?></span>
+                        <span>MSN <?= Html::encode($serialNumber) ?></span>
+                    </div>
+                    <div class="answer-aircraft-image" role="img" aria-label="Aircraft maintenance network"></div>
+                </article>
+
+                <article class="answer-summary-item">
+                    <div class="answer-summary-label"><i class="bi bi-building"></i>AO / CAMO</div>
+                    <div class="answer-summary-value"><?= Html::encode($operatorName) ?></div>
+                </article>
+
+                <article class="answer-summary-item">
+                    <div class="answer-summary-label"><i class="bi bi-geo-alt"></i>Maintenance Location</div>
+                    <div class="answer-summary-value"><?= Html::encode($locationText !== 'N/A' ? $locationText : $airportName) ?></div>
+                    <div class="answer-summary-secondary"><?= Html::encode(trim($airportIcao . ' · ' . $airportName, ' ·')) ?></div>
+                </article>
+
+                <article class="answer-summary-item">
+                    <div class="answer-summary-label"><i class="bi bi-calendar2-week"></i>ETA / ETD</div>
+                    <div class="answer-schedule">
+                        <span><small>ETA</small><strong><?= Html::encode($etaText) ?></strong></span>
+                        <span><small>ETD</small><strong><?= Html::encode($etdText) ?></strong></span>
+                    </div>
+                </article>
+
+                <article class="answer-summary-item">
+                    <div class="answer-summary-label"><i class="bi bi-broadcast-pin"></i>Operational Priority</div>
+                    <span class="answer-priority priority-<?= Html::encode($operationalPriority) ?>">
+                        <i class="bi <?= Html::encode($operationalPriorityIcons[$operationalPriority] ?? 'bi-calendar-check') ?>"></i>
+                        <?= Html::encode($operationalPriorityLabel) ?>
+                    </span>
+                </article>
+
+                <article class="answer-summary-item">
+                    <div class="answer-summary-label"><i class="bi bi-file-earmark-check"></i>Purchase Orders</div>
+                    <div class="answer-summary-value answer-quote-value"><?= Html::encode($purchaseOrderCount) ?></div>
+                </article>
+
+                <article class="answer-summary-item">
+                    <div class="answer-summary-label"><i class="bi bi-activity"></i>Request Status</div>
+                    <span class="answer-request-status <?= Html::encode($statusClass) ?>">
+                        <i class="bi bi-circle-fill"></i>
+                        <?= Html::encode($statusText) ?>
+                    </span>
+                </article>
             </div>
-            <div class="detail-item">
-                <div class="detail-label"><i class="bi bi-airplane-engines"></i> Aircraft</div>
-                <div class="detail-value"><span class="aircraft-badge"><i class="bi bi-airplane"></i> <?= Html::encode($aircraftName ?: 'N/A') ?></span></div>
-            </div>
-            <div class="detail-item">
-                <div class="detail-label"><i class="bi bi-card-text"></i> Registration</div>
-                <div class="detail-value"><span class="registration-badge"><i class="bi bi-card-heading"></i> <?= Html::encode($aircraftRegistration) ?></span></div>
-            </div>
-            <div class="detail-item">
-                <div class="detail-label"><i class="bi bi-upc-scan"></i> Serial Number</div>
-                <div class="detail-value"><span class="serial-badge"><i class="bi bi-upc"></i> <?= Html::encode($serialNumber) ?></span></div>
-            </div>
-            <div class="detail-item">
-                <div class="detail-label"><i class="bi bi-geo-alt"></i> Maintenance Location</div>
-                <div class="detail-value"><span class="location-badge"><i class="bi bi-pin-map"></i> <?= Html::encode($locationText) ?></span></div>
-            </div>
-            <div class="detail-item">
-                <div class="detail-label"><i class="bi bi-calendar-event"></i> ETA</div>
-                <div class="detail-value"><span class="date-badge"><i class="bi bi-calendar-event"></i> <?= Html::encode($etaText) ?></span></div>
-            </div>
-            <div class="detail-item">
-                <div class="detail-label"><i class="bi bi-calendar-check"></i> ETD</div>
-                <div class="detail-value"><span class="date-badge"><i class="bi bi-calendar-check"></i> <?= Html::encode($etdText) ?></span></div>
-            </div>
+
+            <article class="answer-request-information">
+                <div class="answer-summary-label"><i class="bi bi-file-text"></i>Request Informations</div>
+                <div class="answer-request-text"><?= nl2br(Html::encode(!empty($requestDetails) ? $requestDetails : 'No request details available')) ?></div>
+            </article>
         </section>
 
         <div class="view-grid">
@@ -1640,7 +1717,7 @@ CSS);
                 <?php endif; ?>
 
                 <!-- VIEW PO REQUEST INFO 2026: always displayed; no collapsible control. -->
-                <section class="request-details-accordion">
+                <section class="request-details-accordion request-details-only">
                     <div class="request-details-heading"><i class="bi bi-info-circle"></i> Request Informations</div>
                     <div class="request-details-content">
                         <?= Html::textarea(

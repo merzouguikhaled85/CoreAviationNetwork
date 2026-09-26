@@ -32,6 +32,7 @@ if (!array_key_exists($priorityFilter, Requests::getOperationalPriorityOptions()
 
 // Bootstrap Icons.
 $this->registerCssFile('https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css');
+$this->registerCssFile(Url::to('@web/css/mro-requests-banner-refresh.css') . '?v=20260926-2');
 
 // Custom page design: same CSS/HTML structure used by the request pages.
 $this->registerCss(<<<CSS
@@ -757,17 +758,14 @@ JS, \yii\web\View::POS_READY);
 
         <!-- Page header: same request structure -->
         <div class="page-header-card">
-            <div class="header-title-group">
-                <div class="header-icon">
-                    <i class="bi bi-airplane-engines"></i>
+            <div class="page-header-copy">
+                <div class="page-eyebrow">
+                    <i class="bi bi-airplane"></i>
+                    Maintenance operations
                 </div>
-
-                <div>
-                    <h1 class="dash-title"><?= Html::encode($this->title) ?></h1>
-                    <div class="subtitle-text">
-                        Incoming AOG / maintenance requests with operator, aircraft, ETA / ETD,
-                        maintenance location and quick actions for your MRO.
-                    </div>
+                <h1 class="dash-title"><?= Html::encode($this->title) ?></h1>
+                <div class="subtitle-text">
+                    Incoming AOG and maintenance requests with the operational context your MRO needs.
                 </div>
             </div>
         </div>

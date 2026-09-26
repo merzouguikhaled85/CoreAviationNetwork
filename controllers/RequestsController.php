@@ -3376,39 +3376,24 @@ Yii::$app->runAction('notification/save-notification', [
 
     public function actionUpdateRequest($id)
     {
-        // Decode encrypted ID from URL
-    $id = UrlIdHelper::decode($id);
+        $requestId = UrlIdHelper::decodeOrFail($id, 'Invalid request link.');
+        $request = $this->findModel($requestId);
 
-    // If token is invalid, stop request
-    if (!$id) {
-        throw new NotFoundHttpException('Invalid request link.');
-    }
-        
-        $request = $this->findModel($id); // Fetch the request model
-
-        // Update the status to 'update_request'
-        $request->status = Requests::STATUS_UPDATE_REQUEST;
-
-
-$lastMroRequestApply = MroRequestApply::find()
-    ->where(['request_id' => $request->request_id])
-    ->orderBy(['id' => SORT_DESC])  // Assuming 'created_at' is the timestamp column
-    ->one();
-//VarDumper::dump($lastMroRequestApply);die();
-        $mro =  MroProfile::findOne($lastMroRequestApply->mro_id);
-        // Save the updated status
-        if ($request->save()) {
-
-           
-            Yii::$app->session->setFlash('success', 'Request status updated to Update Request successfully.');
-        } else {
-            Yii::$app->session->setFlash('error', 'Failed to update request status.');
+        /*
+         * AVENANT SANS RÉGRESSION DE STATUT : l'ancien flux remplaçait
+         * work_started par update_request puis answered. Le nouveau formulaire
+         * crée une entité RequestChange et laisse la Request opérationnelle intacte.
+         */
+        if (
+            Yii::$app->session->get('user_type') !== 'ao'
+            || (int) $request->ao_id !== (int) Yii::$app->session->get('ao_id')
+        ) {
+            throw new ForbiddenHttpException('You are not allowed to amend this request.');
         }
 
         return $this->redirect([
-            'requests/update',
-            'id' => UrlIdHelper::encode($request->request_id),
-            'status' => $request->status,
+            '/request-changes/create',
+            'requestId' => UrlIdHelper::encode($request->request_id),
         ]);
     }
 

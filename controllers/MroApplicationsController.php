@@ -18,6 +18,7 @@ use yii\web\Controller;
 use app\models\MroRequestApply;
 use app\models\Requests;
 use app\models\RequestChangeEvent;
+use app\models\RequestChange;
 use yii\helpers\VarDumper;
 use yii\web\NotFoundHttpException;
 use yii\web\UploadedFile;
@@ -426,9 +427,22 @@ class MroApplicationsController extends Controller
         }
 
         if ($mroRequestApplication) {
-            // You can render a view or perform any other necessary actions here
+            /*
+             * DEVIS ACTIF : seul le dernier avenant entièrement accepté peut
+             * remplacer le devis initial dans l'affichage de référence.
+             */
+            $latestAcceptedChange = RequestChange::find()
+                ->where([
+                    'request_id' => (int) $mroRequestApplication->request_id,
+                    'mro_request_apply_id' => (int) $mroRequestApplication->id,
+                    'status' => RequestChange::STATUS_COMPLETED,
+                ])
+                ->orderBy(['version' => SORT_DESC, 'id' => SORT_DESC])
+                ->one();
+
             return $this->render('view-answer', [
                 'mroRequestApplication' => $mroRequestApplication,
+                'latestAcceptedChange' => $latestAcceptedChange,
             ]);
         } else {
             // Handle the case when the record is not found

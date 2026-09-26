@@ -20,12 +20,13 @@
 
         function selectedPriority() {
             var selected = root.querySelector('.operational-priority-input:checked');
-            return selected ? selected.value : 'routine';
+            return selected ? selected.value : '';
         }
 
         function validResponseWindow(priority) {
             var minutes = Number(responseInput.value);
-            return priority !== 'aog' || (Number.isFinite(minutes) && minutes >= 15 && minutes <= 1440);
+            return priority !== ''
+                && (priority !== 'aog' || (Number.isFinite(minutes) && minutes >= 15 && minutes <= 1440));
         }
 
         function refreshDeadlinePreview(priority) {
@@ -71,7 +72,7 @@
                     : 'Optional for Urgent · from 15 minutes to 24 hours';
             }
 
-            if (priority === 'routine') {
+            if (priority === '' || priority === 'routine') {
                 responseInput.value = '';
             }
 

@@ -12,16 +12,8 @@ use yii\web\JsExpression;
 
 $this->title = 'Create Request';
 
-/*
- * VALEUR VISUELLE INITIALE : un nouvel ActiveRecord n'importe pas toujours la
- * valeur DEFAULT de la base avant sa première sauvegarde. On affiche donc Routine
- * dès l'ouverture ; la règle default du modèle reste l'autorité côté serveur.
- */
-if ($request->operational_priority === null || $request->operational_priority === '') {
-    $request->operational_priority = Requests::PRIORITY_ROUTINE;
-}
-
 $this->registerCssFile('https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css');
+$this->registerCssFile(Url::to('@web/css/requests-create-refresh.css') . '?v=20260926-4');
 
 $this->registerCss(<<<CSS
 :root {
@@ -1138,15 +1130,22 @@ CSS);
                         </div>
                     </div>
 
-                    <div class="create-request-header-badges">
-                        <span class="create-request-badge">
-                            <i class="bi bi-shield-check"></i>
-                            AO Request
-                        </span>
-                        <span class="create-request-badge">
-                            <i class="bi bi-asterisk"></i>
-                            Required fields
-                        </span>
+                    <div class="create-request-header-actions">
+                        <?= Html::a(
+                            'Cancel',
+                            ['index'],
+                            ['class' => 'btn-create-cancel']
+                        ) ?>
+
+                        <?= Html::submitButton(
+                            '<i class="bi bi-check2-circle"></i> Create Request',
+                            [
+                                'class' => 'btn-create-request-submit',
+                                'id' => 'submit-button',
+                                'form' => 'create-request-form',
+                                'disabled' => true,
+                            ]
+                        ) ?>
                     </div>
                 </div>
             </div>
@@ -1167,13 +1166,6 @@ CSS);
                     </div>
                 <?php endif; ?>
 
-                <div class="create-request-note">
-                    <i class="bi bi-info-circle"></i>
-                    <div>
-                        Complete the required fields below. Validation messages appear after interaction, and the submit button activates when the form is ready.
-                    </div>
-                </div>
-
                 <?php $form = ActiveForm::begin([
                     'id' => 'create-request-form',
                     'options' => [
@@ -1183,17 +1175,6 @@ CSS);
                     'enableAjaxValidation' => false,
                 ]); ?>
 
-                <div class="progress-bar-container">
-                    <span class="progress-bar-step step-active">Create a Request</span>
-                    <span class="progress-bar-step">MRO Quote</span>
-                    <span class="progress-bar-step">PO Loaded</span>
-                    <span class="progress-bar-step">PO Accepted By MRO</span>
-                    <span class="progress-bar-step">Work Started</span>
-                    <span class="progress-bar-step">MRO Report</span>
-                    <span class="progress-bar-step">AO Feedback</span>
-                    <span class="progress-bar-step">Request Closed</span>
-                </div>
-
                 <div id="loading-spinner">
                     <div class="spinner-box">
                         <img src="<?= Yii::getAlias('@web/img/spinner.gif') ?>" alt="Loading..." />
@@ -1201,7 +1182,32 @@ CSS);
                     </div>
                 </div>
 
-                <div class="form-section">
+                <div class="create-request-layout">
+                    <aside class="create-request-steps" aria-label="Request form sections">
+                        <a class="create-request-step is-active" href="#step-aircraft">
+                            <span class="create-request-step-number">1</span>
+                            <span><strong>Aircraft Details</strong><small>Aircraft and authority</small></span>
+                        </a>
+                        <a class="create-request-step" href="#step-requirements">
+                            <span class="create-request-step-number">2</span>
+                            <span><strong>Maintenance Requirements</strong><small>Requested maintenance work</small></span>
+                        </a>
+                        <a class="create-request-step" href="#step-priority">
+                            <span class="create-request-step-number">3</span>
+                            <span><strong>Operational Priority</strong><small>Urgency and response</small></span>
+                        </a>
+                        <a class="create-request-step" href="#step-location-schedule">
+                            <span class="create-request-step-number">4</span>
+                            <span><strong>Location &amp; Schedule</strong><small>Airport, arrival and departure</small></span>
+                        </a>
+                        <a class="create-request-step" href="#step-attachments">
+                            <span class="create-request-step-number">5</span>
+                            <span><strong>Attachments &amp; Review</strong><small>Optional supporting documents</small></span>
+                        </a>
+                    </aside>
+
+                    <div class="create-request-form-content">
+                <div class="form-section" id="step-aircraft">
                     <h2 class="form-section-title">
                         <i class="bi bi-airplane-engines"></i>
                         Aircraft Information
@@ -1263,52 +1269,23 @@ CSS);
                     </div>
                 </div>
 
-                <div class="form-section">
+                <div class="form-section" id="step-requirements">
                     <h2 class="form-section-title">
-                        <i class="bi bi-geo-alt"></i>
-                        Maintenance Location
+                        <i class="bi bi-tools"></i>
+                        Maintenance Requirements
                     </h2>
                     <p class="form-section-subtitle">
-                        Search by ICAO, airport name or city. Type at least three characters to start searching.
+                        Describe the maintenance work required by the aircraft.
                     </p>
 
                     <div class="form-grid">
-                        <div class="full-width" id="destination-row">
-                            <?= $form->field($request, 'destination')->widget(Select2::class, [
-                                'data' => [],
-                                'options' => [
-                                    'placeholder' => 'Type to search for an airport',
-                                    'id' => 'destination-dropdown',
-                                ],
-                                'pluginOptions' => [
-                                    'allowClear' => false,
-                                    'minimumInputLength' => 3,
-                                    'ajax' => [
-                                        'url' => Url::to(['requests/search-airports']),
-                                        'dataType' => 'json',
-                                        'delay' => 250,
-                                        'data' => new JsExpression('function(params) {
-                                            return {
-                                                term: params.term
-                                            };
-                                        }'),
-                                        'processResults' => new JsExpression('function(data) {
-                                            return {
-                                                results: data
-                                            };
-                                        }'),
-                                    ],
-                                    'escapeMarkup' => new JsExpression('function(markup) {
-                                        return markup;
-                                    }'),
-                                    'templateResult' => new JsExpression('function(data) {
-                                        return data.text;
-                                    }'),
-                                    'templateSelection' => new JsExpression('function(data) {
-                                        return data.text;
-                                    }'),
-                                ],
-                            ])->label("ICAO (Airport) <span class='text-danger'>*</span>") ?>
+                        <div class="full-width">
+                            <?= $form->field($request, 'request_details')->textarea([
+                                'rows' => 5,
+                                'class' => 'form-control',
+                                'id' => 'request-details',
+                                'placeholder' => 'Describe the requested maintenance work...',
+                            ])->label('Request Details<span class="text-danger">*</span>') ?>
                         </div>
                     </div>
                 </div>
@@ -1330,7 +1307,7 @@ CSS);
                     l'urgence attendue par l'opérateur. Ils ne modifient aucun statut
                     métier et n'exécutent aucune transition automatique de la demande.
                 -->
-                <div class="form-section operational-priority-section" data-operational-priority>
+                <div class="form-section operational-priority-section" id="step-priority" data-operational-priority>
                     <h2 class="form-section-title">
                         <i class="bi bi-broadcast-pin" aria-hidden="true"></i>
                         Operational Priority
@@ -1407,14 +1384,54 @@ CSS);
                     </div>
                 </div>
 
-                <div class="form-section">
+                <div class="form-section" id="step-location-schedule">
                     <h2 class="form-section-title">
-                        <i class="bi bi-calendar-event"></i>
-                        Schedule
+                        <i class="bi bi-geo-alt"></i>
+                        Location &amp; Schedule
                     </h2>
                     <p class="form-section-subtitle">
-                        Define the planned arrival and departure window. ETD must be after ETA.
+                        Select the maintenance airport and define the arrival and departure window.
                     </p>
+
+                    <div class="form-grid location-schedule-location">
+                        <div class="full-width" id="destination-row">
+                            <?= $form->field($request, 'destination')->widget(Select2::class, [
+                                'data' => [],
+                                'options' => [
+                                    'placeholder' => 'Type to search for an airport',
+                                    'id' => 'destination-dropdown',
+                                ],
+                                'pluginOptions' => [
+                                    'allowClear' => false,
+                                    'minimumInputLength' => 3,
+                                    'ajax' => [
+                                        'url' => Url::to(['requests/search-airports']),
+                                        'dataType' => 'json',
+                                        'delay' => 250,
+                                        'data' => new JsExpression('function(params) {
+                                            return {
+                                                term: params.term
+                                            };
+                                        }'),
+                                        'processResults' => new JsExpression('function(data) {
+                                            return {
+                                                results: data
+                                            };
+                                        }'),
+                                    ],
+                                    'escapeMarkup' => new JsExpression('function(markup) {
+                                        return markup;
+                                    }'),
+                                    'templateResult' => new JsExpression('function(data) {
+                                        return data.text;
+                                    }'),
+                                    'templateSelection' => new JsExpression('function(data) {
+                                        return data.text;
+                                    }'),
+                                ],
+                            ])->label("ICAO (Airport) <span class='text-danger'>*</span>") ?>
+                        </div>
+                    </div>
 
                     <div class="form-grid">
                         <div>
@@ -1451,13 +1468,13 @@ CSS);
                     </div>
                 </div>
 
-                <div class="form-section">
+                <div class="form-section" id="step-attachments">
                     <h2 class="form-section-title">
-                        <i class="bi bi-file-earmark-text"></i>
-                        Request Details
+                        <i class="bi bi-paperclip"></i>
+                        Attachments &amp; Review
                     </h2>
                     <p class="form-section-subtitle">
-                        Add supporting documents if needed and describe the maintenance work clearly.
+                        Add an optional supporting document, then review the completed request before submission.
                     </p>
 
                     <div class="form-grid">
@@ -1474,27 +1491,38 @@ CSS);
                                     'class' => 'custom-file-native',
                                 ]) ?>
 
-                                <div class="custom-file-display">
-                                    <label for="attachment-input" class="custom-file-button">
-                                        <!-- FILE ACTION ICON: presentation only; native input remains unchanged. -->
-                                        <i class="bi bi-upload" aria-hidden="true"></i>
-                                        Choose file
-                                    </label>
-
-                                    <span id="attachment-file-name" class="custom-file-name">
-                                        No file chosen
+                                <div
+                                    class="request-upload-zone"
+                                    id="attachment-dropzone"
+                                    role="button"
+                                    tabindex="0"
+                                    aria-controls="attachment-input"
+                                    aria-label="Upload a supporting document"
+                                >
+                                    <span class="request-upload-icon">
+                                        <i class="bi bi-cloud-arrow-up-fill" aria-hidden="true"></i>
+                                    </span>
+                                    <span class="request-upload-title">Drag and drop your document here</span>
+                                    <span class="request-upload-text">or browse your device to select one file</span>
+                                    <span class="request-upload-action">
+                                        <i class="bi bi-folder2-open" aria-hidden="true"></i>
+                                        Browse files
+                                    </span>
+                                    <span class="request-selected-file" aria-live="polite">
+                                        <span class="request-selected-name">
+                                            <i class="bi bi-file-earmark-check" aria-hidden="true"></i>
+                                            <span id="attachment-file-name"></span>
+                                        </span>
+                                        <button type="button" class="request-remove-file" id="remove-attachment-file">
+                                            <i class="bi bi-x-circle" aria-hidden="true"></i>
+                                            Remove
+                                        </button>
                                     </span>
                                 </div>
+                                <div class="request-upload-help">
+                                    Accepted formats: images, PDF, DOC and DOCX.
+                                </div>
                             </div>
-                        </div>
-
-                        <div class="full-width">
-                            <?= $form->field($request, 'request_details')->textarea([
-                                'rows' => 6,
-                                'class' => 'form-control',
-                                'id' => 'request-details',
-                                'placeholder' => 'Describe the requested maintenance work...',
-                            ])->label('Request Details<span class="text-danger">*</span>') ?>
                         </div>
                     </div>
                 </div>
@@ -1507,23 +1535,7 @@ CSS);
                     'value' => Yii::$app->session->get('ao_id'),
                 ])->label(false) ?>
 
-                <div class="form-actions">
-                    <?= Html::submitButton(
-                        '<i class="bi bi-check2-circle"></i> Create Request',
-                        [
-                            'class' => 'btn-create-request-submit',
-                            'id' => 'submit-button',
-                            'disabled' => true,
-                        ]
-                    ) ?>
-
-                    <?= Html::a(
-                        '<i class="bi bi-arrow-left"></i> Back to Requests',
-                        ['index'],
-                        [
-                            'class' => 'btn-back-requests',
-                        ]
-                    ) ?>
+                    </div>
                 </div>
 
                 <?php ActiveForm::end(); ?>
@@ -1599,16 +1611,93 @@ if (aircraftDropdown) {
 var form = document.getElementById("create-request-form");
 var submitButton = document.getElementById("submit-button");
 var loadingIndicator = document.getElementById("loading-spinner");
+var createRequestConfirmed = false;
+var createRequestConfirmationPending = false;
 var attachmentInput = document.getElementById("attachment-input");
 var attachmentFileName = document.getElementById("attachment-file-name");
+var attachmentDropzone = document.getElementById("attachment-dropzone");
+var removeAttachmentButton = document.getElementById("remove-attachment-file");
 
-if (attachmentInput && attachmentFileName) {
-    attachmentInput.addEventListener("change", function () {
-        attachmentFileName.textContent = this.files && this.files.length > 0
-            ? this.files[0].name
-            : "No file chosen";
+function refreshAttachmentState() {
+    var hasFile = attachmentInput
+        && attachmentInput.files
+        && attachmentInput.files.length > 0;
+
+    if (attachmentFileName) {
+        attachmentFileName.textContent = hasFile ? attachmentInput.files[0].name : "";
+    }
+
+    if (attachmentDropzone) {
+        attachmentDropzone.classList.toggle("has-file", !!hasFile);
+    }
+}
+
+if (attachmentInput && attachmentDropzone) {
+    attachmentDropzone.addEventListener("click", function (event) {
+        if (
+            removeAttachmentButton
+            && (event.target === removeAttachmentButton || removeAttachmentButton.contains(event.target))
+        ) {
+            return;
+        }
+
+        attachmentInput.click();
+    });
+
+    attachmentDropzone.addEventListener("keydown", function (event) {
+        if (event.key === "Enter" || event.key === " ") {
+            event.preventDefault();
+            attachmentInput.click();
+        }
+    });
+
+    ["dragenter", "dragover"].forEach(function (eventName) {
+        attachmentDropzone.addEventListener(eventName, function (event) {
+            event.preventDefault();
+            event.stopPropagation();
+            attachmentDropzone.classList.add("is-dragover");
+        });
+    });
+
+    ["dragleave", "dragend", "drop"].forEach(function (eventName) {
+        attachmentDropzone.addEventListener(eventName, function (event) {
+            event.preventDefault();
+            event.stopPropagation();
+            attachmentDropzone.classList.remove("is-dragover");
+        });
+    });
+
+    attachmentDropzone.addEventListener("drop", function (event) {
+        var files = event.dataTransfer && event.dataTransfer.files;
+
+        if (!files || !files.length) {
+            return;
+        }
+
+        try {
+            var transfer = new DataTransfer();
+            transfer.items.add(files[0]);
+            attachmentInput.files = transfer.files;
+            attachmentInput.dispatchEvent(new Event("change", {bubbles: true}));
+        } catch (error) {
+            attachmentInput.click();
+        }
+    });
+
+    attachmentInput.addEventListener("change", refreshAttachmentState);
+}
+
+if (removeAttachmentButton && attachmentInput && attachmentDropzone) {
+    removeAttachmentButton.addEventListener("click", function (event) {
+        event.preventDefault();
+        event.stopPropagation();
+        attachmentInput.value = "";
+        attachmentInput.dispatchEvent(new Event("change", {bubbles: true}));
+        attachmentDropzone.focus();
     });
 }
+
+refreshAttachmentState();
 
 // Convert the DateTimePicker value to a JavaScript date safely.
 function parseDateValue(value) {
@@ -1631,7 +1720,9 @@ function getFieldContainer(input) {
         return null;
     }
 
-    var fieldContainer = input.closest(".form-group") || input.closest("[class*='field-']");
+    var fieldContainer = input.closest(".form-group")
+        || input.closest("[class*='field-']")
+        || input.closest(".operational-priority-field");
 
     if (!fieldContainer) {
         fieldContainer = input.parentElement;
@@ -1729,6 +1820,78 @@ function applyFieldState(id, input, isFieldValid, errorMessage, forceShowErrors)
     return false;
 }
 
+var requestStepLinks = Array.prototype.slice.call(
+    document.querySelectorAll(".create-request-step[href^='#step-']")
+);
+var requestStepSections = requestStepLinks.map(function (link) {
+    return document.querySelector(link.getAttribute("href"));
+}).filter(Boolean);
+var requestStepScrollTicking = false;
+
+function setActiveRequestStep(sectionId) {
+    requestStepLinks.forEach(function (link) {
+        link.classList.toggle(
+            "is-active",
+            link.getAttribute("href") === "#" + sectionId
+        );
+    });
+}
+
+function updateRequestStepCompletion(stepStates) {
+    requestStepLinks.forEach(function (link) {
+        var sectionId = link.getAttribute("href").slice(1);
+        link.classList.toggle("is-complete", stepStates[sectionId] === true);
+    });
+}
+
+function refreshActiveRequestStep() {
+    if (!requestStepSections.length) {
+        return;
+    }
+
+    var activationLine = Math.min(180, Math.max(110, window.innerHeight * 0.22));
+    var activeSection = requestStepSections[0];
+
+    requestStepSections.forEach(function (section) {
+        if (section.getBoundingClientRect().top <= activationLine) {
+            activeSection = section;
+        }
+    });
+
+    setActiveRequestStep(activeSection.id);
+}
+
+requestStepLinks.forEach(function (link) {
+    link.addEventListener("click", function (event) {
+        var target = document.querySelector(this.getAttribute("href"));
+
+        if (!target) {
+            return;
+        }
+
+        event.preventDefault();
+        target.scrollIntoView({
+            behavior: "smooth",
+            block: "start"
+        });
+        setActiveRequestStep(target.id);
+    });
+});
+
+window.addEventListener("scroll", function () {
+    if (requestStepScrollTicking) {
+        return;
+    }
+
+    requestStepScrollTicking = true;
+    window.requestAnimationFrame(function () {
+        refreshActiveRequestStep();
+        requestStepScrollTicking = false;
+    });
+}, {passive: true});
+
+window.addEventListener("resize", refreshActiveRequestStep);
+
 // Validate required fields and enable the submit button only when the form is ready.
 function validateCreateForm(forceShowErrors) {
     forceShowErrors = forceShowErrors === true;
@@ -1786,7 +1949,20 @@ function validateCreateForm(forceShowErrors) {
      * contrôlée par Yii côté serveur afin qu'elle ne puisse pas être contournée.
      */
     var selectedPriority = document.querySelector('[name="Requests[operational_priority]"]:checked');
-    var priorityValue = selectedPriority ? selectedPriority.value : "routine";
+    var priorityValue = selectedPriority ? selectedPriority.value : "";
+    var priorityField = document.querySelector(".operational-priority-field");
+    var priorityIsValid = !!selectedPriority;
+
+    if (!applyFieldState(
+        "operational-priority",
+        priorityField,
+        priorityIsValid,
+        "Operational priority is required.",
+        forceShowErrors
+    )) {
+        isValid = false;
+    }
+
     var responseInput = document.getElementById("response-required-minutes");
     var responseValue = responseInput ? responseInput.value.trim() : "";
     var responseMinutes = Number(responseValue);
@@ -1795,7 +1971,8 @@ function validateCreateForm(forceShowErrors) {
         && Number.isFinite(responseMinutes)
         && responseMinutes >= 15
         && responseMinutes <= 1440;
-    var responseIsValid = (priorityValue !== "aog" || responseHasValue)
+    var responseIsValid = priorityIsValid
+        && (priorityValue !== "aog" || responseHasValue)
         && (!responseHasValue || responseIsInRange);
 
     if (!responseIsValid) {
@@ -1816,6 +1993,14 @@ function validateCreateForm(forceShowErrors) {
     if (submitButton) {
         submitButton.disabled = !isValid;
     }
+
+    updateRequestStepCompletion({
+        "step-aircraft": !!aircraftValue,
+        "step-requirements": !!detailsValue,
+        "step-priority": !!selectedPriority && responseIsValid,
+        "step-location-schedule": !!destinationValue && !!etaValue && etdIsValid,
+        "step-attachments": isValid
+    });
 
     return isValid;
 }
@@ -1841,7 +2026,63 @@ requiredFieldIds.forEach(function (id) {
 var operationalPrioritySection = document.querySelector("[data-operational-priority]");
 if (operationalPrioritySection) {
     operationalPrioritySection.addEventListener("can:priority-validity-change", function () {
+        touchedFields["operational-priority"] = true;
         validateCreateForm(false);
+    });
+}
+
+function lockCreateRequestSubmission() {
+    if (submitButton) {
+        submitButton.disabled = true;
+    }
+
+    if (loadingIndicator) {
+        loadingIndicator.style.display = "flex";
+    }
+}
+
+function requestCreateRequestConfirmation() {
+    if (createRequestConfirmationPending) {
+        return;
+    }
+
+    createRequestConfirmationPending = true;
+
+    if (typeof Swal === "undefined") {
+        createRequestConfirmationPending = false;
+
+        if (window.confirm("Create this maintenance request?")) {
+            createRequestConfirmed = true;
+            form.requestSubmit();
+        }
+
+        return;
+    }
+
+    Swal.fire({
+        title: "Create this request?",
+        html: "The maintenance request will be created and made available to eligible MRO partners.<br><strong>Please confirm that the information is correct.</strong>",
+        icon: "question",
+        showCancelButton: true,
+        reverseButtons: true,
+        focusCancel: true,
+        allowOutsideClick: false,
+        confirmButtonText: '<i class="bi bi-check2-circle"></i> Create Request',
+        cancelButtonText: '<i class="bi bi-pencil"></i> Review',
+        buttonsStyling: false,
+        customClass: {
+            popup: "can-form-swal"
+        }
+    }).then(function (result) {
+        createRequestConfirmationPending = false;
+
+        if (!result.isConfirmed) {
+            validateCreateForm(false);
+            return;
+        }
+
+        createRequestConfirmed = true;
+        form.requestSubmit();
     });
 }
 
@@ -1864,14 +2105,13 @@ if (typeof jQuery !== "undefined") {
     jQuery("#create-request-form").on("afterValidate", function () {
         validateCreateForm(true);
     });
-}
 
-if (form) {
-    // Prevent invalid submissions and show the loading overlay only for valid data.
-    form.addEventListener("submit", function (event) {
+    /*
+     * Yii ActiveForm owns the submit lifecycle. Returning false from beforeSubmit
+     * guarantees that no request leaves the page while SweetAlert is open.
+     */
+    jQuery("#create-request-form").on("beforeSubmit", function () {
         if (!validateCreateForm(true)) {
-            event.preventDefault();
-
             if (submitButton) {
                 submitButton.disabled = true;
             }
@@ -1883,14 +2123,12 @@ if (form) {
             return false;
         }
 
-        if (submitButton) {
-            submitButton.disabled = true;
+        if (!createRequestConfirmed) {
+            requestCreateRequestConfirmation();
+            return false;
         }
 
-        if (loadingIndicator) {
-            loadingIndicator.style.display = "flex";
-        }
-
+        lockCreateRequestSubmission();
         return true;
     });
 }
@@ -1898,6 +2136,7 @@ if (form) {
 // Keep the submit button disabled on first load without showing red errors immediately.
 var hasServerSideErrors = form && form.querySelector(".has-error") !== null;
 validateCreateForm(hasServerSideErrors);
+refreshActiveRequestStep();
 JS);
 
 ?>

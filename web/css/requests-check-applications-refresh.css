@@ -1,0 +1,254 @@
+/* Request context added to the MRO applications workflow. */
+body .my-replies-page {
+    --overview-blue: #0f6fec;
+    --overview-navy: #0b2342;
+    --overview-border: #d9e5f2;
+    --overview-muted: #6b7f99;
+}
+
+body .my-replies-page .my-replies-title-row {
+    align-items: center;
+}
+
+body .my-replies-page .request-header-summary {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    flex-wrap: wrap;
+    gap: 8px 10px;
+    margin-left: auto;
+    max-width: 520px;
+}
+
+body .my-replies-page .request-header-summary small {
+    color: var(--overview-muted);
+    font-size: 11px;
+    white-space: nowrap;
+}
+
+body .my-replies-page .request-header-summary strong {
+    color: var(--overview-navy);
+}
+
+body .my-replies-page .applications-request-overview {
+    margin-bottom: 18px;
+}
+
+body .my-replies-page .overview-section-title {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin: 0 0 12px;
+    color: var(--overview-navy);
+    font-size: 16px;
+    font-weight: 800;
+}
+
+body .my-replies-page .overview-section-title i,
+body .my-replies-page .overview-label i {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    border-radius: 8px;
+    color: var(--overview-blue);
+    background: #edf6ff;
+    font-size: 14px;
+}
+
+body .my-replies-page .applications-request-grid {
+    display: grid;
+    grid-template-columns: 1.2fr repeat(3, minmax(0, 1fr));
+    grid-template-rows: repeat(2, minmax(102px, auto));
+    gap: 10px;
+}
+
+body .my-replies-page .overview-card,
+body .my-replies-page .request-information-card {
+    min-width: 0;
+    padding: 14px;
+    border: 1px solid var(--overview-border);
+    border-radius: 10px;
+    background: #fff;
+    box-shadow: 0 5px 14px rgba(15, 50, 97, .055);
+}
+
+body .my-replies-page .overview-aircraft-card {
+    grid-row: 1 / span 2;
+    display: flex;
+    flex-direction: column;
+}
+
+body .my-replies-page .overview-label {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 9px;
+    color: #496582;
+    font-size: 11px;
+    font-weight: 800;
+    letter-spacing: .035em;
+    text-transform: uppercase;
+}
+
+body .my-replies-page .overview-main-value {
+    overflow-wrap: anywhere;
+    color: #0d1f37;
+    font-size: 14px;
+    font-weight: 800;
+    line-height: 1.35;
+}
+
+body .my-replies-page .overview-secondary-value,
+body .my-replies-page .aircraft-identifiers {
+    margin-top: 4px;
+    color: var(--overview-muted);
+    font-size: 11px;
+}
+
+body .my-replies-page .aircraft-identifiers {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px 12px;
+}
+
+body .my-replies-page .overview-aircraft-image {
+    min-height: 86px;
+    margin-top: 12px;
+    flex: 1 1 auto;
+    border-radius: 8px;
+    background:
+        linear-gradient(90deg, rgba(4, 28, 55, .2), rgba(4, 28, 55, .02)),
+        url('../img/home-carousel/global-network.jpg') center 55% / cover no-repeat;
+}
+
+body .my-replies-page .schedule-pair {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+}
+
+body .my-replies-page .schedule-pair span {
+    display: flex;
+    min-width: 0;
+    flex-direction: column;
+    gap: 3px;
+}
+
+body .my-replies-page .schedule-pair small {
+    color: var(--overview-blue);
+    font-size: 9px;
+    font-weight: 800;
+}
+
+body .my-replies-page .schedule-pair strong {
+    overflow-wrap: anywhere;
+    color: #17324f;
+    font-size: 11px;
+    line-height: 1.35;
+}
+
+body .my-replies-page .overview-priority,
+body .my-replies-page .overview-status {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    max-width: 100%;
+    padding: 5px 9px;
+    border: 1px solid #c7def7;
+    border-radius: 7px;
+    color: #075fb8;
+    background: #edf7ff;
+    font-size: 11px;
+    font-weight: 800;
+}
+
+body .my-replies-page .overview-priority.priority-aog {
+    border-color: #fecaca;
+    color: #c81e1e;
+    background: #fff1f2;
+}
+
+body .my-replies-page .overview-priority.priority-urgent {
+    border-color: #fbd38d;
+    color: #ad5700;
+    background: #fff9e8;
+}
+
+body .my-replies-page .overview-status i {
+    font-size: 6px;
+}
+
+body .my-replies-page .overview-status.status-answered,
+body .my-replies-page .overview-status.status-closed,
+body .my-replies-page .overview-status.status-work_completed {
+    border-color: #bbf7d0;
+    color: #15803d;
+    background: #ecfdf3;
+}
+
+body .my-replies-page .overview-status.status-canceled,
+body .my-replies-page .overview-status.status-cancelled,
+body .my-replies-page .overview-status.status-overdue {
+    border-color: #fecaca;
+    color: #c81e1e;
+    background: #fff1f2;
+}
+
+body .my-replies-page .request-information-card {
+    margin-top: 10px;
+}
+
+body .my-replies-page .request-information-text {
+    min-height: 58px;
+    padding: 12px 14px;
+    border: 1px dashed #c7d9ed;
+    border-radius: 8px;
+    color: #324c69;
+    background: #fbfdff;
+    font-size: 13px;
+    line-height: 1.6;
+}
+
+body .my-replies-page .table-wrapper {
+    margin-top: 0;
+}
+
+@media (max-width: 1200px) {
+    body .my-replies-page .applications-request-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        grid-template-rows: auto;
+    }
+
+    body .my-replies-page .overview-aircraft-card {
+        grid-row: auto;
+        grid-column: 1 / -1;
+    }
+
+    body .my-replies-page .overview-aircraft-image {
+        min-height: 150px;
+    }
+}
+
+@media (max-width: 768px) {
+    body .my-replies-page .my-replies-title-row {
+        align-items: flex-start;
+        flex-wrap: wrap;
+    }
+
+    body .my-replies-page .request-header-summary {
+        justify-content: flex-start;
+        width: 100%;
+        max-width: none;
+        margin-left: 0;
+    }
+
+    body .my-replies-page .applications-request-grid {
+        grid-template-columns: 1fr;
+    }
+
+    body .my-replies-page .overview-aircraft-card {
+        grid-column: auto;
+    }
+}

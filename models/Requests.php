@@ -56,12 +56,11 @@ class Requests extends ActiveRecord
             [['request_details', 'attachment','required_certificates'], 'string'],
             [['aircraft_registration', 'location', 'serial_number'], 'string', 'max' => 255],
             /*
-             * PRIORITÉ OPÉRATIONNELLE : « routine » protège les anciennes demandes.
-             * Un AOG exige un délai de réponse compris entre 15 minutes et 24 heures ;
-             * Urgent accepte le même délai de façon facultative, tandis que Routine
-             * ne conserve volontairement aucune échéance.
+             * PRIORITÉ OPÉRATIONNELLE : tout nouvel enregistrement exige un choix
+             * explicite. Les anciennes demandes déjà persistées restent normalisées
+             * vers Routine si elles ne possèdent pas encore cette information.
              */
-            ['operational_priority', 'default', 'value' => self::PRIORITY_ROUTINE],
+            ['operational_priority', 'required'],
             ['operational_priority', 'in', 'range' => array_keys(self::getOperationalPriorityOptions())],
             ['response_required_minutes', 'integer', 'min' => 15, 'max' => 1440],
             ['response_required_minutes', 'required', 'when' => static function (self $model) {
@@ -160,7 +159,7 @@ class Requests extends ActiveRecord
     public function beforeValidate()
     {
         $this->operational_priority = strtolower(trim((string) $this->operational_priority));
-        if ($this->operational_priority === '') {
+        if ($this->operational_priority === '' && !$this->isNewRecord) {
             $this->operational_priority = self::PRIORITY_ROUTINE;
         }
 
@@ -281,8 +280,18 @@ class Requests extends ActiveRecord
         return $this->hasOne(Aircrafts::className(), ['aircraft_id' => 'aircraft_id']);
     }
     public function getMroApplication()
-{
-    return $this->hasOne(MroRequestApply::className(), ['request_id' => 'request_id']);
-}
+    {
+        return $this->hasOne(MroRequestApply::className(), ['request_id' => 'request_id']);
+    }
+
+    /**
+     * AVENANTS MÉTIER : ils restent séparés du statut opérationnel de la Request.
+     * L'ordre décroissant présente immédiatement la version la plus récente.
+     */
+    public function getRequestChanges()
+    {
+        return $this->hasMany(RequestChange::class, ['request_id' => 'request_id'])
+            ->orderBy(['version' => SORT_DESC, 'id' => SORT_DESC]);
+    }
 
 }

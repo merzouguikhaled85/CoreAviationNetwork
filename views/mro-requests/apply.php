@@ -69,9 +69,36 @@ $requestLocationText = $requestDestination
   : ($request->location ?: 'N/A');
 $requestEtaText = $request->eta ? date('d M Y H:i', strtotime($request->eta)) : 'N/A';
 $requestEtdText = $request->etd ? date('d M Y H:i', strtotime($request->etd)) : 'N/A';
+$requestSerialText = $request->serial_number
+  ?? ($requestAircraft->serial_number ?? 'N/A');
+$requestAirportIcao = $requestDestination
+  ? ($requestDestination->icao ?? $requestDestination->icao_code ?? 'N/A')
+  : 'N/A';
+$requestPriority = strtolower((string) ($request->operational_priority ?? 'routine'));
+$requestPriorityLabel = method_exists($request, 'getOperationalPriorityLabel')
+  ? $request->getOperationalPriorityLabel()
+  : ucfirst($requestPriority);
+$requestPriorityIcons = [
+  'aog' => 'bi-exclamation-octagon',
+  'urgent' => 'bi-lightning-charge',
+  'routine' => 'bi-calendar-check',
+];
+$requestStatus = strtolower((string) ($request->status ?? 'created'));
+$requestStatusText = ucwords(str_replace('_', ' ', $requestStatus));
+$requestStatusClass = 'status-' . preg_replace('/[^a-zA-Z0-9_-]/', '', $requestStatus);
+$formatRequestDate = static function ($value) {
+  return !empty($value) && strtotime((string) $value)
+    ? date('d M Y H:i', strtotime((string) $value))
+    : 'N/A';
+};
+$requestCreatedAt = $formatRequestDate($request->created_at ?? null);
+$requestUpdatedAt = $formatRequestDate($request->updated_at ?? null);
+$requestDetailsText = $request->request_details ?? $request->description ?? null;
+$backUrl = Yii::$app->request->referrer ?: ['index'];
 
 // UI icons and confirmation dialogs.
 $this->registerCssFile('https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css');
+$this->registerCssFile(Yii::$app->request->baseUrl . '/css/mro-view-answer-refresh.css?v=20260926-3');
 $this->registerJsFile('https://cdn.jsdelivr.net/npm/sweetalert2@11', ['position' => \yii\web\View::POS_HEAD]);
 
 /* ===========================
@@ -1900,36 +1927,38 @@ CSS);
 </div>
 
 <!-- SHARED FORM SYSTEM: presentation only; quotation submission rules remain unchanged. -->
-<div class="reply-page can-form-page">
+<div class="reply-page can-form-page answer-view-page apply-view-page">
   <div class="reply-shell">
     <div class="reply-card">
 
-      <div class="reply-hero">
-        <div class="hero-top">
-          <div class="simple-header">
-            <div class="simple-header-icon" aria-hidden="true">
-              <i class="bi bi-send-check"></i>
-            </div>
-            <div>
-              <h1 class="reply-title"><?= Html::encode($this->title) ?></h1>
-              <p class="reply-subtitle">
-                Prepare a controlled MRO quotation for aircraft maintenance, including scope, commercial terms, currency, price, and the official quotation attachment.
-              </p>
-
-              <!-- Professional aviation context badges -->
-              <div class="hero-badges" aria-label="Aircraft maintenance workflow context">
-                <span><i class="bi bi-shield-check"></i> Controlled MRO workflow</span>
-                <span><i class="bi bi-file-earmark-lock2"></i> Official quote required</span>
-                <span><i class="bi bi-airplane-engines"></i> Aircraft maintenance</span>
-              </div>
-            </div>
-          </div>
-
-          <div class="hero-actions">
-            <?= Html::a('<i class="bi bi-arrow-left"></i> Back to Request', Yii::$app->request->referrer ?: ['index'], [
-              'class' => 'btn-back-request',
+      <div class="page-header-card">
+        <div class="answer-header-copy">
+          <div class="answer-title-row">
+            <?= Html::a('<i class="bi bi-arrow-left"></i>', $backUrl, [
+              'class' => 'answer-back-link',
+              'aria-label' => 'Back to request',
+              'title' => 'Back to request',
               'encode' => false,
             ]) ?>
+            <h1 class="dash-title fw-bold"><?= Html::encode($this->title) ?></h1>
+            <span class="answer-priority priority-<?= Html::encode($requestPriority) ?>">
+              <i class="bi <?= Html::encode($requestPriorityIcons[$requestPriority] ?? 'bi-calendar-check') ?>"></i>
+              <?= Html::encode($requestPriorityLabel) ?>
+            </span>
+            <span class="answer-request-status <?= Html::encode($requestStatusClass) ?>">
+              <i class="bi bi-circle-fill"></i>
+              <?= Html::encode($requestStatusText) ?>
+            </span>
+          </div>
+          <div class="subtitle-text">
+            Prepare the technical and commercial quotation with its official supporting document.
+          </div>
+        </div>
+
+        <div class="answer-header-side">
+          <div class="answer-header-dates">
+            <span>Created: <strong><?= Html::encode($requestCreatedAt) ?></strong></span>
+            <span>Last updated: <strong><?= Html::encode($requestUpdatedAt) ?></strong></span>
           </div>
         </div>
       </div>
@@ -1951,6 +1980,77 @@ CSS);
             </div>
           <?php endif; ?>
         </div>
+
+        <!-- Shared request context; all values remain read-only. -->
+        <section class="answer-request-overview" aria-labelledby="apply-request-overview-title">
+          <div class="answer-overview-head">
+            <div>
+              <h2 id="apply-request-overview-title"><i class="bi bi-info-circle"></i> Request Overview</h2>
+              <p>Verify the operational request before preparing the MRO quotation.</p>
+            </div>
+            <span class="answer-request-id"><i class="bi bi-hash"></i><?= Html::encode($request->request_id) ?></span>
+          </div>
+
+          <div class="answer-summary-grid">
+            <article class="answer-summary-item answer-aircraft-item">
+              <div class="answer-summary-label"><i class="bi bi-airplane"></i>Aircraft</div>
+              <div class="answer-summary-value"><?= Html::encode($requestAircraftText ?: 'N/A') ?></div>
+              <div class="answer-aircraft-reference">
+                <span><?= Html::encode($request->aircraft_registration ?: 'N/A') ?></span>
+                <span>MSN <?= Html::encode($requestSerialText) ?></span>
+              </div>
+              <div class="answer-aircraft-image" role="img" aria-label="Aircraft maintenance network"></div>
+            </article>
+
+            <article class="answer-summary-item">
+              <div class="answer-summary-label"><i class="bi bi-building"></i>AO / CAMO</div>
+              <div class="answer-summary-value"><?= Html::encode($requestOperatorText) ?></div>
+            </article>
+
+            <article class="answer-summary-item">
+              <div class="answer-summary-label"><i class="bi bi-geo-alt"></i>Maintenance Location</div>
+              <div class="answer-summary-value"><?= Html::encode($requestLocationText) ?></div>
+              <div class="answer-summary-secondary"><?= Html::encode($requestAirportIcao) ?></div>
+            </article>
+
+            <article class="answer-summary-item">
+              <div class="answer-summary-label"><i class="bi bi-calendar2-week"></i>ETA / ETD</div>
+              <div class="answer-schedule">
+                <span><small>ETA</small><strong><?= Html::encode($requestEtaText) ?></strong></span>
+                <span><small>ETD</small><strong><?= Html::encode($requestEtdText) ?></strong></span>
+              </div>
+            </article>
+
+            <article class="answer-summary-item">
+              <div class="answer-summary-label"><i class="bi bi-broadcast-pin"></i>Operational Priority</div>
+              <span class="answer-priority priority-<?= Html::encode($requestPriority) ?>">
+                <i class="bi <?= Html::encode($requestPriorityIcons[$requestPriority] ?? 'bi-calendar-check') ?>"></i>
+                <?= Html::encode($requestPriorityLabel) ?>
+              </span>
+            </article>
+
+            <article class="answer-summary-item">
+              <div class="answer-summary-label"><i class="bi bi-paperclip"></i>Request Document</div>
+              <div class="answer-summary-value"><?= $requestAttachmentUrl !== null ? 'Available' : 'Not attached' ?></div>
+              <?php if ($requestAttachmentUrl !== null): ?>
+                <div class="answer-summary-secondary"><?= Html::encode($requestAttachmentName) ?></div>
+              <?php endif; ?>
+            </article>
+
+            <article class="answer-summary-item">
+              <div class="answer-summary-label"><i class="bi bi-activity"></i>Request Status</div>
+              <span class="answer-request-status <?= Html::encode($requestStatusClass) ?>">
+                <i class="bi bi-circle-fill"></i>
+                <?= Html::encode($requestStatusText) ?>
+              </span>
+            </article>
+          </div>
+
+          <article class="answer-request-information">
+            <div class="answer-summary-label"><i class="bi bi-file-text"></i>Request Informations</div>
+            <div class="answer-request-text"><?= nl2br(Html::encode(!empty($requestDetailsText) ? $requestDetailsText : 'No request details available')) ?></div>
+          </article>
+        </section>
 
         <!-- Operational control strip for a professional aircraft maintenance application -->
         <div class="ops-strip" aria-label="MRO operational controls">
@@ -2270,15 +2370,15 @@ CSS);
               ->all();
             ?>
             <aside class="form-side request-context-side" aria-label="Request overview">
-              <h2 class="section-title">
+              <h2 class="section-title request-details-only">
                 <span><i class="bi bi-clipboard2-check"></i></span>
                 Request overview
               </h2>
-              <p class="request-overview-note">
+              <p class="request-overview-note request-details-only">
                 Verify the operational request data before submitting the quotation.
               </p>
 
-              <div class="request-overview-list">
+              <div class="request-overview-list request-details-only">
                 <div class="summary-row">
                   <span><i class="bi bi-hash"></i> Request ID</span>
                   <strong>#<?= Html::encode($request->request_id) ?></strong>

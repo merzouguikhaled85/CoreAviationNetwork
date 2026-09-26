@@ -1,0 +1,132 @@
+/*
+ * MRO request list banner aligned with the AO /requests list.
+ * Presentation only: filters, pagination and request actions remain unchanged.
+ */
+body .requests-page.can-list-page {
+    min-height: 100vh;
+    padding: 0 0 30px !important;
+    background: #f3f7fb !important;
+    overflow: visible;
+}
+
+body .requests-page.can-list-page > .container-fluid {
+    width: 100%;
+    max-width: none !important;
+    padding-right: 0 !important;
+    padding-left: 0 !important;
+    overflow: visible;
+}
+
+body .requests-page.can-list-page .page-header-card {
+    position: relative;
+    display: flex;
+    align-items: center;
+    min-height: 148px !important;
+    width: 100%;
+    max-width: none !important;
+    margin: 0 !important;
+    padding: 24px 24px 54px !important;
+    border: 0 !important;
+    border-radius: 0 !important;
+    overflow: hidden;
+    color: #fff;
+    background:
+        linear-gradient(90deg, rgba(3, 22, 39, .84) 0%, rgba(4, 36, 63, .68) 42%, rgba(5, 36, 62, .22) 100%),
+        url('../img/home-carousel/global-network.jpg') center 48% / cover no-repeat !important;
+    box-shadow: none !important;
+}
+
+body .requests-page.can-list-page .page-header-card::after {
+    content: '';
+    position: absolute;
+    inset: auto 0 0;
+    height: 42px;
+    background: linear-gradient(180deg, transparent, rgba(3, 22, 39, .18));
+    pointer-events: none;
+}
+
+body .requests-page.can-list-page .page-header-copy {
+    position: relative;
+    z-index: 1;
+}
+
+body .requests-page.can-list-page .page-eyebrow {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    margin-bottom: 7px;
+    color: #9dc9ff;
+    font-size: 11px;
+    font-weight: 800;
+    letter-spacing: .1em;
+    text-transform: uppercase;
+}
+
+body .requests-page.can-list-page .dash-title {
+    margin: 0;
+    color: #fff !important;
+    font-size: clamp(26px, 2.3vw, 36px);
+    font-weight: 800;
+    line-height: 1.08;
+    letter-spacing: -.025em;
+}
+
+body .requests-page.can-list-page .subtitle-text {
+    max-width: 680px;
+    margin-top: 7px;
+    color: rgba(255, 255, 255, .82) !important;
+    font-size: 13px;
+    line-height: 1.5;
+}
+
+/* The filter sits over the lower edge just like /requests. */
+body .requests-page.can-list-page .search-filter-card {
+    position: relative;
+    z-index: 2;
+    margin: -30px 18px 18px !important;
+    border: 1px solid #dfe8f2 !important;
+    border-radius: 12px !important;
+    background: #fff !important;
+    box-shadow: 0 16px 38px rgba(16, 35, 63, .10) !important;
+}
+
+body .requests-page.can-list-page .alert {
+    position: relative;
+    z-index: 3;
+    margin: 12px 18px;
+}
+
+@media (max-width: 900px) {
+    body .requests-page.can-list-page .page-header-card {
+        min-height: 140px !important;
+        padding: 22px 20px 50px !important;
+        background-position: 58% center;
+    }
+}
+
+@media (max-width: 620px) {
+    body .requests-page.can-list-page .page-header-card {
+        min-height: 154px !important;
+        padding: 20px 16px 48px !important;
+        background-position: 64% center;
+    }
+
+    body .requests-page.can-list-page .dash-title {
+        font-size: 27px;
+    }
+
+    body .requests-page.can-list-page .subtitle-text {
+        max-width: 92%;
+        font-size: 12px;
+    }
+
+    body .requests-page.can-list-page .search-filter-card {
+        margin: -26px 10px 14px !important;
+        border-radius: 10px !important;
+    }
+
+    body .requests-page.can-list-page .alert {
+        margin-right: 10px;
+        margin-left: 10px;
+    }
+}

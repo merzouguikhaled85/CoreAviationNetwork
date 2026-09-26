@@ -36,6 +36,7 @@ $totalReports = is_countable($repairReports) ? count($repairReports) : 0;
 $linkedRequest = $request ? $request->request : null;
 $requestAircraft = $linkedRequest ? $linkedRequest->aircraft : null;
 $requestOperator = $linkedRequest ? $linkedRequest->aO : null;
+$destinationAirport = $linkedRequest ? $linkedRequest->getDestinationAirport()->one() : null;
 
 $operatorName = $requestOperator
     ? ($requestOperator->company_name
@@ -56,6 +57,17 @@ $maintenanceLocation = $linkedRequest && $linkedRequest->location ? $linkedReque
 $requestStatus = $linkedRequest && $linkedRequest->status
     ? ucwords(str_replace('_', ' ', $linkedRequest->status))
     : 'N/A';
+$requestStatusKey = (string) ($linkedRequest->status ?? '');
+$requestStatusClass = 'request-status-' . preg_replace('/[^a-zA-Z0-9_-]/', '', $requestStatusKey);
+$operationalPriority = (string) ($linkedRequest->operational_priority ?? 'routine');
+$operationalPriorityLabel = $linkedRequest && method_exists($linkedRequest, 'getOperationalPriorityLabel')
+    ? $linkedRequest->getOperationalPriorityLabel()
+    : ucfirst($operationalPriority);
+$operationalPriorityIcons = [
+    'aog' => 'bi-exclamation-octagon',
+    'urgent' => 'bi-lightning-charge',
+    'routine' => 'bi-calendar-check',
+];
 $requestDetails = $linkedRequest && $linkedRequest->request_details
     ? $linkedRequest->request_details
     : 'No request details available.';
@@ -71,6 +83,18 @@ $formatOperationalDate = static function ($value) {
 
 $etaText = $formatOperationalDate($linkedRequest ? $linkedRequest->eta : null);
 $etdText = $formatOperationalDate($linkedRequest ? $linkedRequest->etd : null);
+$requestCreatedAt = $linkedRequest && $linkedRequest->hasAttribute('created_at')
+    ? $formatOperationalDate($linkedRequest->created_at)
+    : 'N/A';
+$requestUpdatedAt = $linkedRequest && $linkedRequest->hasAttribute('updated_at')
+    ? $formatOperationalDate($linkedRequest->updated_at)
+    : 'N/A';
+$airportName = $destinationAirport->airport_name ?? 'N/A';
+$airportIcao = $destinationAirport->icao ?? 'N/A';
+
+$this->registerCssFile(
+    Yii::$app->request->baseUrl . '/css/mro-view-reports-refresh.css?v=20260926-1'
+);
 
 $this->registerCss(<<<CSS
 .reports-page {
@@ -1266,18 +1290,22 @@ CSS);
         <!-- Header -->
         <section class="reports-header-card">
             <div class="reports-header-top">
-                <div>
-                    <div class="reports-eyebrow">
-                        <i class="bi bi-file-earmark-bar-graph"></i>
-                        Airworthiness Documentation
-                    </div>
-
+                <div class="reports-header-copy">
                     <div class="reports-title-row">
-                        <span class="reports-title-icon">
-                            <i class="bi bi-clipboard2-check"></i>
-                        </span>
-
+                        <?= Html::a('<i class="bi bi-arrow-left"></i>', ['index'], [
+                            'class' => 'reports-back-link',
+                            'aria-label' => 'Back to MRO applications',
+                            'title' => 'Back to MRO applications',
+                        ]) ?>
                         <h1 class="reports-title"><?= Html::encode($this->title) ?></h1>
+                        <span class="priority-badge priority-<?= Html::encode($operationalPriority) ?>">
+                            <i class="bi <?= Html::encode($operationalPriorityIcons[$operationalPriority] ?? 'bi-calendar-check') ?>"></i>
+                            <?= Html::encode($operationalPriorityLabel) ?>
+                        </span>
+                        <span class="request-status-badge <?= Html::encode($requestStatusClass) ?>">
+                            <i class="bi bi-circle-fill"></i>
+                            <?= Html::encode($requestStatus) ?>
+                        </span>
                     </div>
 
                     <p class="reports-subtitle">
@@ -1285,9 +1313,15 @@ CSS);
                     </p>
                 </div>
 
-                <div class="reports-request-pill">
-                    <i class="bi bi-hash"></i>
-                    Maintenance Request: <?= Html::encode($requestId) ?>
+                <div class="reports-header-side">
+                    <div class="reports-request-pill">
+                        <i class="bi bi-hash"></i>
+                        Request <?= Html::encode($requestId) ?>
+                    </div>
+                    <div class="reports-header-dates">
+                        <span>Created: <strong><?= Html::encode($requestCreatedAt) ?></strong></span>
+                        <span>Last updated: <strong><?= Html::encode($requestUpdatedAt) ?></strong></span>
+                    </div>
                 </div>
             </div>
         </section>
@@ -1393,57 +1427,74 @@ CSS);
         </section>
 
         <!-- VIEW REPORTS REQUEST DETAILS 2026: Request ID stays in the header; report count stays in the table. -->
-        <section class="reports-details-card">
+        <section class="reports-details-card request-overview-card">
             <div class="reports-details-head">
-                <h2 class="reports-details-title"><i class="bi bi-airplane-engines"></i> Current Request Details</h2>
-                <span class="reports-request-status"><i class="bi bi-circle-fill"></i> <?= Html::encode($requestStatus) ?></span>
+                <div>
+                    <h2 class="reports-details-title"><i class="bi bi-info-circle"></i> Request Overview</h2>
+                    <p class="reports-overview-caption">Read-only operational context for the maintenance release reports.</p>
+                </div>
             </div>
 
-            <div class="reports-details-grid">
-                <div class="reports-detail-item">
-                    <div class="reports-detail-label">
-                        <i class="bi bi-building"></i>
-                        AO / CAMO
+            <div class="view-reports-summary-grid">
+                <article class="view-reports-summary-item view-reports-aircraft">
+                    <div class="view-reports-summary-label"><i class="bi bi-airplane"></i>Aircraft</div>
+                    <div class="view-reports-summary-value"><?= Html::encode($aircraftName) ?></div>
+                    <div class="view-reports-aircraft-reference">
+                        <span><?= Html::encode($registration) ?></span>
+                        <span>MSN <?= Html::encode($serialNumber) ?></span>
                     </div>
-                    <div class="reports-detail-value" title="<?= Html::encode($operatorName) ?>">
-                        <?= Html::encode($operatorName) ?>
-                    </div>
-                </div>
+                    <div class="view-reports-aircraft-image" role="img" aria-label="Aircraft maintenance network"></div>
+                </article>
 
-                <div class="reports-detail-item">
-                    <div class="reports-detail-label">
-                        <i class="bi bi-airplane"></i>
-                        Aircraft
-                    </div>
-                    <div class="reports-detail-value" title="<?= Html::encode($aircraftName) ?>">
-                        <?= Html::encode($aircraftName) ?>
-                    </div>
-                </div>
+                <article class="view-reports-summary-item">
+                    <div class="view-reports-summary-label"><i class="bi bi-building"></i>AO / CAMO</div>
+                    <div class="view-reports-summary-value"><?= Html::encode($operatorName) ?></div>
+                </article>
 
-                <div class="reports-detail-item">
-                    <div class="reports-detail-label">
-                        <i class="bi bi-card-text"></i>
-                        Registration
-                    </div>
-                    <div class="reports-detail-value">
-                        <?= Html::encode($registration) ?>
-                    </div>
-                </div>
+                <article class="view-reports-summary-item">
+                    <div class="view-reports-summary-label"><i class="bi bi-geo-alt"></i>Maintenance Location</div>
+                    <div class="view-reports-summary-value"><?= Html::encode($maintenanceLocation !== 'N/A' ? $maintenanceLocation : $airportName) ?></div>
+                    <div class="view-reports-summary-secondary"><?= Html::encode(trim($airportIcao . ' · ' . $airportName, ' ·')) ?></div>
+                </article>
 
-                <div class="reports-detail-item"><div class="reports-detail-label"><i class="bi bi-upc-scan"></i> Serial Number</div><div class="reports-detail-value"><?= Html::encode($serialNumber) ?></div></div>
-                <div class="reports-detail-item"><div class="reports-detail-label"><i class="bi bi-geo-alt"></i> Maintenance Location</div><div class="reports-detail-value" title="<?= Html::encode($maintenanceLocation) ?>"><?= Html::encode($maintenanceLocation) ?></div></div>
+                <article class="view-reports-summary-item">
+                    <div class="view-reports-summary-label"><i class="bi bi-calendar2-week"></i>ETA / ETD</div>
+                    <div class="view-reports-schedule">
+                        <span><small>ETA</small><strong><?= Html::encode($etaText) ?></strong></span>
+                        <span><small>ETD</small><strong><?= Html::encode($etdText) ?></strong></span>
+                    </div>
+                </article>
+
+                <article class="view-reports-summary-item">
+                    <div class="view-reports-summary-label"><i class="bi bi-broadcast-pin"></i>Operational Priority</div>
+                    <div>
+                        <span class="priority-badge priority-<?= Html::encode($operationalPriority) ?>">
+                            <i class="bi <?= Html::encode($operationalPriorityIcons[$operationalPriority] ?? 'bi-calendar-check') ?>"></i>
+                            <?= Html::encode($operationalPriorityLabel) ?>
+                        </span>
+                    </div>
+                </article>
+
+                <article class="view-reports-summary-item">
+                    <div class="view-reports-summary-label"><i class="bi bi-activity"></i>Request Status</div>
+                    <div>
+                        <span class="request-status-badge <?= Html::encode($requestStatusClass) ?>">
+                            <i class="bi bi-circle-fill"></i>
+                            <?= Html::encode($requestStatus) ?>
+                        </span>
+                    </div>
+                </article>
+
+                <article class="view-reports-summary-item">
+                    <div class="view-reports-summary-label"><i class="bi bi-clipboard-data"></i>Reports</div>
+                    <div class="view-reports-summary-value"><?= Html::encode((string) $totalReports) ?></div>
+                </article>
             </div>
 
-            <div class="reports-details-dates">
-                <div class="reports-detail-item"><div class="reports-detail-label"><i class="bi bi-calendar-event"></i> ETA</div><div class="reports-detail-value"><?= Html::encode($etaText) ?></div></div>
-                <div class="reports-detail-item"><div class="reports-detail-label"><i class="bi bi-calendar-check"></i> ETD</div><div class="reports-detail-value"><?= Html::encode($etdText) ?></div></div>
-            </div>
-
-            <?= Html::textarea('request_details_display', $requestDetails, [
-                'class' => 'reports-request-info',
-                'readonly' => true,
-                'aria-label' => 'Request information',
-            ]) ?>
+            <article class="view-reports-information">
+                <div class="view-reports-summary-label"><i class="bi bi-file-text"></i>Request Informations</div>
+                <div class="view-reports-information-text"><?= nl2br(Html::encode($requestDetails)) ?></div>
+            </article>
         </section>
 
         <!-- Reports table -->

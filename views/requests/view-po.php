@@ -1,6 +1,7 @@
 <?php
 
 use yii\helpers\Html;
+use yii\helpers\Url;
 use app\components\UrlIdHelper;
 
 $this->title = 'View PO';
@@ -23,8 +24,16 @@ $formatOperationalDate = static function ($value) {
     $timestamp = strtotime($value);
     return $timestamp ? date('d M Y H:i', $timestamp) : $value;
 };
+$poCount = count(array_filter($aoRequestsApplications, static function ($item) {
+    return !empty($item->po);
+}));
+$requestStatusText = ucwords(str_replace('_', ' ', (string) $request->status));
+$requestStatusClass = 'status-' . preg_replace('/[^a-zA-Z0-9_-]/', '', (string) $request->status);
+$requestCreatedAt = $request->hasAttribute('created_at') ? $formatOperationalDate($request->created_at) : 'N/A';
+$requestUpdatedAt = $request->hasAttribute('updated_at') ? $formatOperationalDate($request->updated_at) : 'N/A';
 
 $this->registerCssFile('https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css');
+$this->registerCssFile(Url::to('@web/css/requests-view-po-refresh.css') . '?v=20260926-2');
 
 $this->registerCss("
     html,
@@ -554,82 +563,83 @@ $this->registerCss("
 ?>
 
 <!-- SHARED DETAIL SYSTEM: presentation only; PO access remains unchanged. -->
-<main class="dash-content requests-page can-detail-page">
+<main class="dash-content requests-page can-detail-page po-detail-page">
     <div class="container-fluid">
 
         <!-- Page header -->
-        <div class="page-header-card">
-            <div>
-                <h1 class="dash-title fw-bold">
-                    <span style="color: var(--bs-info);">
-                        <i class="bi bi-file-earmark-text"></i>
+        <header class="page-header-card po-page-header">
+            <div class="po-header-copy">
+                <div class="po-heading-row">
+                    <?= Html::a('<i class="bi bi-arrow-left"></i>', ['view', 'id' => $encodedRequestId], [
+                        'class' => 'po-back-link',
+                        'aria-label' => 'Back to request',
+                        'title' => 'Back to request',
+                    ]) ?>
+                    <h1 class="dash-title">Request #<?= Html::encode($request->request_id) ?></h1>
+                    <?php if ($request->hasAttribute('operational_priority')): ?>
+                        <span class="po-priority-badge priority-<?= Html::encode((string) $request->operational_priority) ?>">
+                            <i class="bi bi-broadcast-pin"></i><?= Html::encode($request->getOperationalPriorityLabel()) ?>
+                        </span>
+                    <?php endif; ?>
+                    <span class="po-status-badge <?= Html::encode($requestStatusClass) ?>">
+                        <i class="bi bi-circle-fill"></i><?= Html::encode($requestStatusText) ?>
                     </span>
-                    <?= Html::encode($this->title) ?>
-                </h1>
+                </div>
+                <div class="subtitle-text">Purchase orders linked to this maintenance request</div>
+            </div>
 
-                <div class="subtitle-text">
-                    View purchase order files linked to this request
+            <div class="po-header-side">
+                <?= Html::a('<i class="bi bi-eye"></i> View Request', ['view', 'id' => $encodedRequestId], [
+                    'class' => 'po-header-action',
+                ]) ?>
+                <div class="po-header-dates">
+                    <span>Created: <strong><?= Html::encode($requestCreatedAt) ?></strong></span>
+                    <span>Last updated: <strong><?= Html::encode($requestUpdatedAt) ?></strong></span>
                 </div>
             </div>
-
-            <div class="header-actions">
-                <?= Html::a(
-                    '<i class="bi bi-arrow-left-circle"></i> Back to Requests',
-                    ['index'],
-                    ['class' => 'btn-back-requests']
-                ) ?>
-            </div>
-        </div>
+        </header>
 
         <!-- REQUEST PO VIEW 2026: full request context shown once, without duplicating the PO data. -->
-        <div class="content-card">
-            <div class="request-detail-head">
-                <h3 class="section-title">
-                    <i class="bi bi-airplane-engines"></i>
-                    Current Request Details
-                </h3>
-                <span class="request-status-pill">
-                    <i class="bi bi-circle-fill"></i>
-                    <?= Html::encode(ucwords(str_replace('_', ' ', (string)$request->status))) ?>
-                </span>
-            </div>
-
+        <div class="content-card po-overview-card">
+            <h3 class="section-title"><i class="bi bi-airplane-engines"></i> Current Request Details</h3>
             <div class="request-detail-grid">
-                <div class="request-detail-item">
-                    <div class="request-detail-label"><i class="bi bi-hash"></i> Request ID</div>
-                    <div class="request-detail-value">#<?= Html::encode($request->request_id) ?></div>
+                <div class="request-detail-item po-aircraft-summary">
+                    <div class="request-detail-label"><i class="bi bi-airplane"></i> Aircraft</div>
+                    <div class="request-detail-value po-aircraft-value">
+                        <strong><?= Html::encode($aircraftName) ?></strong>
+                        <span><?= Html::encode($request->aircraft_registration ?: 'N/A') ?> · MSN <?= Html::encode($request->serial_number ?: 'N/A') ?></span>
+                        <span class="po-aircraft-image" role="img" aria-label="Aircraft maintenance"></span>
+                    </div>
                 </div>
-                <div class="request-detail-item">
-                    <div class="request-detail-label"><i class="bi bi-card-text"></i> Registration</div>
-                    <div class="request-detail-value"><?= Html::encode($request->aircraft_registration ?: 'N/A') ?></div>
-                </div>
-                <div class="request-detail-item wide">
+                <div class="request-detail-item po-operator-summary">
                     <div class="request-detail-label"><i class="bi bi-building"></i> Aircraft Operator / CAMO</div>
                     <div class="request-detail-value"><?= Html::encode($operatorName) ?></div>
                 </div>
-                <div class="request-detail-item wide">
-                    <div class="request-detail-label"><i class="bi bi-airplane"></i> Aircraft</div>
-                    <div class="request-detail-value"><?= Html::encode($aircraftName) ?></div>
-                </div>
-                <div class="request-detail-item">
-                    <div class="request-detail-label"><i class="bi bi-upc-scan"></i> Serial Number</div>
-                    <div class="request-detail-value"><?= Html::encode($request->serial_number ?: 'N/A') ?></div>
-                </div>
-                <div class="request-detail-item">
+                <div class="request-detail-item po-location-summary">
                     <div class="request-detail-label"><i class="bi bi-geo-alt"></i> Maintenance Location</div>
                     <div class="request-detail-value"><?= Html::encode($request->location ?: 'N/A') ?></div>
                 </div>
-            </div>
-            <div class="request-date-grid">
-                <div class="request-detail-item">
-                    <div class="request-detail-label"><i class="bi bi-calendar-event"></i> ETA</div>
-                    <div class="request-detail-value"><?= Html::encode($formatOperationalDate($request->eta)) ?></div>
+                <div class="request-detail-item po-schedule-summary">
+                    <div class="request-detail-label"><i class="bi bi-calendar-event"></i> ETA / ETD</div>
+                    <div class="request-detail-value po-schedule-value">
+                        <span><small>ETA</small><?= Html::encode($formatOperationalDate($request->eta)) ?></span>
+                        <span><small>ETD</small><?= Html::encode($formatOperationalDate($request->etd)) ?></span>
+                    </div>
                 </div>
-                <div class="request-detail-item">
-                    <div class="request-detail-label"><i class="bi bi-calendar-check"></i> ETD</div>
-                    <div class="request-detail-value"><?= Html::encode($formatOperationalDate($request->etd)) ?></div>
+                <div class="request-detail-item po-priority-summary">
+                    <div class="request-detail-label"><i class="bi bi-broadcast-pin"></i> Operational Priority</div>
+                    <div class="request-detail-value"><?= Html::encode($request->getOperationalPriorityLabel()) ?></div>
+                </div>
+                <div class="request-detail-item po-status-summary">
+                    <div class="request-detail-label"><i class="bi bi-activity"></i> Status</div>
+                    <div class="request-detail-value"><?= Html::encode($requestStatusText) ?></div>
+                </div>
+                <div class="request-detail-item po-count-summary">
+                    <div class="request-detail-label"><i class="bi bi-file-earmark-check"></i> PO Documents</div>
+                    <div class="request-detail-value"><?= Html::encode((string) $poCount) ?></div>
                 </div>
             </div>
+            <h3 class="section-title po-request-info-title"><i class="bi bi-info-circle"></i> Request Informations</h3>
             <?= Html::textarea('request_details_display', $request->request_details ?: 'No request information available.', [
                 'class' => 'request-information',
                 'readonly' => true,
@@ -641,7 +651,7 @@ $this->registerCss("
         <div class="content-card">
             <h3 class="section-title">
                 <i class="bi bi-file-earmark-arrow-down"></i>
-                PO Files
+                PO Files <span class="po-section-count"><?= Html::encode((string) $poCount) ?></span>
             </h3>
 
             <div class="table-responsive-custom">
@@ -665,6 +675,17 @@ $this->registerCss("
                                     $poFileName = !empty($aoRequestApplication->po)
                                         ? basename($aoRequestApplication->po)
                                         : null;
+                                    $poExtension = strtolower(pathinfo((string) $poFileName, PATHINFO_EXTENSION));
+                                    $poIsImage = in_array($poExtension, ['jpg', 'jpeg', 'png', 'gif', 'webp', 'bmp', 'svg'], true);
+                                    $poIconMap = [
+                                        'pdf' => 'bi-file-earmark-pdf-fill',
+                                        'doc' => 'bi-file-earmark-word-fill',
+                                        'docx' => 'bi-file-earmark-word-fill',
+                                        'xls' => 'bi-file-earmark-excel-fill',
+                                        'xlsx' => 'bi-file-earmark-excel-fill',
+                                        'zip' => 'bi-file-earmark-zip-fill',
+                                    ];
+                                    $poIcon = $poIconMap[$poExtension] ?? 'bi-file-earmark-fill';
                                 ?>
 
                                 <tr>
@@ -687,8 +708,19 @@ $this->registerCss("
                                             <!-- REQUEST PO DOCUMENT 2026: explicit inline view and encoded download links. -->
                                             <div class="po-document">
                                                 <div class="po-document-name">
-                                                    <i class="bi bi-file-earmark-pdf"></i>
-                                                    <?= Html::encode($poFileName) ?>
+                                                    <?php if ($poIsImage): ?>
+                                                        <?= Html::img(['view-po-document', 'id' => $encodedPoId], [
+                                                            'class' => 'po-document-thumbnail',
+                                                            'alt' => '',
+                                                            'loading' => 'lazy',
+                                                        ]) ?>
+                                                    <?php else: ?>
+                                                        <span class="po-document-icon"><i class="bi <?= Html::encode($poIcon) ?>"></i></span>
+                                                    <?php endif; ?>
+                                                    <span class="po-document-copy">
+                                                        <strong><?= Html::encode($poFileName) ?></strong>
+                                                        <small><?= Html::encode(strtoupper($poExtension ?: 'FILE')) ?></small>
+                                                    </span>
                                                 </div>
                                                 <div class="po-actions">
                                                     <?= Html::a(

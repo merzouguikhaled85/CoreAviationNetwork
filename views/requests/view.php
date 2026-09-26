@@ -74,12 +74,40 @@ $mro = $mroApplication ? $mroApplication->getMro() : null;
 $status = (string) $requestModel->status;
 $statusText = ucwords(str_replace('_', ' ', $status));
 $statusClass = 'status-' . preg_replace('/[^a-zA-Z0-9_-]/', '', $status);
+$operationalPriority = $requestModel->operational_priority ?: Requests::PRIORITY_ROUTINE;
+$operationalPriorityIcons = [
+    Requests::PRIORITY_AOG => 'bi-exclamation-octagon',
+    Requests::PRIORITY_URGENT => 'bi-lightning-charge',
+    Requests::PRIORITY_ROUTINE => 'bi-calendar-check',
+];
+$responseDueTimestamp = !empty($requestModel->response_due_at_utc)
+    ? strtotime($requestModel->response_due_at_utc . ' UTC')
+    : false;
+$responseDeadlineVisible = $responseDueTimestamp !== false
+    && !in_array((string) $requestModel->status, [
+        Requests::STATUS_CLOSED,
+        Requests::STATUS_CANCELLED,
+        'canceled',
+    ], true);
 
 /**
  * Prepare dates safely.
  */
 $etaText = $requestModel->eta ? date('d M Y H:i', strtotime($requestModel->eta)) : 'N/A';
 $etdText = $requestModel->etd ? date('d M Y H:i', strtotime($requestModel->etd)) : 'N/A';
+$formatRequestDate = static function ($value) {
+    if (empty($value) || strtotime((string) $value) === false) {
+        return 'N/A';
+    }
+
+    return date('d M Y H:i', strtotime((string) $value));
+};
+$createdAtText = $requestModel->hasAttribute('created_at')
+    ? $formatRequestDate($requestModel->created_at)
+    : 'N/A';
+$updatedAtText = $requestModel->hasAttribute('updated_at')
+    ? $formatRequestDate($requestModel->updated_at)
+    : 'N/A';
 
 /*
  * HISTORIQUE DE PRIORITÉ : la relation charge uniquement les changements de la
@@ -204,6 +232,48 @@ $getAttachmentName = static function ($url, $fallback) {
 $requestAttachmentName = $getAttachmentName($requestAttachmentUrl, 'No request document');
 $poAttachmentName = $getAttachmentName($poAttachmentUrl, 'No purchase order');
 $crsAttachmentName = $getAttachmentName($crsUrl, 'No CRS document');
+$documentCount = count(array_filter([
+    $requestAttachmentUrl,
+    $poAttachmentUrl,
+    $crsUrl,
+]));
+
+$renderAttachmentPreview = static function ($url) {
+    $path = parse_url((string) $url, PHP_URL_PATH);
+    $extension = strtolower(pathinfo((string) $path, PATHINFO_EXTENSION));
+
+    if (in_array($extension, ['jpg', 'jpeg', 'png', 'gif', 'webp', 'bmp', 'svg'], true)) {
+        return Html::img($url, [
+            'class' => 'attachment-resource-thumbnail',
+            'alt' => '',
+            'loading' => 'lazy',
+        ]);
+    }
+
+    $iconMap = [
+        'pdf' => ['bi-file-earmark-pdf-fill', 'pdf'],
+        'doc' => ['bi-file-earmark-word-fill', 'word'],
+        'docx' => ['bi-file-earmark-word-fill', 'word'],
+        'xls' => ['bi-file-earmark-excel-fill', 'excel'],
+        'xlsx' => ['bi-file-earmark-excel-fill', 'excel'],
+        'csv' => ['bi-file-earmark-spreadsheet-fill', 'excel'],
+        'ppt' => ['bi-file-earmark-slides-fill', 'powerpoint'],
+        'pptx' => ['bi-file-earmark-slides-fill', 'powerpoint'],
+        'mp4' => ['bi-file-earmark-play-fill', 'video'],
+        'mov' => ['bi-file-earmark-play-fill', 'video'],
+        'avi' => ['bi-file-earmark-play-fill', 'video'],
+        'zip' => ['bi-file-earmark-zip-fill', 'archive'],
+        'rar' => ['bi-file-earmark-zip-fill', 'archive'],
+        '7z' => ['bi-file-earmark-zip-fill', 'archive'],
+    ];
+    [$icon, $type] = $iconMap[$extension] ?? ['bi-file-earmark-fill', 'other'];
+
+    return Html::tag(
+        'span',
+        Html::tag('i', '', ['class' => 'bi ' . $icon]),
+        ['class' => 'attachment-resource-icon attachment-type-' . $type]
+    );
+};
 
 /**
  * Prepare National Aviation Authority value safely.
@@ -248,6 +318,7 @@ $backUrl = Yii::$app->request->referrer ?: ['index'];
 $this->registerCssFile(
     'https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css'
 );
+$this->registerCssFile(Url::to('@web/css/requests-view-refresh.css') . '?v=20260926-5');
 
 /**
  * Register SweetAlert2.
@@ -1011,6 +1082,56 @@ if (typeof yii !== 'undefined') {
     };
 }
 JS, \yii\web\View::POS_READY);
+
+$this->registerJs(<<<'JS'
+    const requestPage = document.querySelector('.can-detail-page');
+    const requestTabs = document.querySelectorAll('[data-request-tab]');
+    const detailList = document.querySelector('#request-overview .detail-list');
+    const overviewItems = document.querySelectorAll(
+        '#request-overview .detail-list > :not(.request-documents-card)'
+    );
+    const documentsPanel = document.querySelector('#request-documents');
+    const historyPanel = document.querySelector('#request-activity');
+    const historyDetails = historyPanel?.querySelector('details');
+
+    function activateRequestTab(tabName, updateHash) {
+        const activeTab = ['overview', 'documents', 'history'].includes(tabName)
+            ? tabName
+            : 'overview';
+
+        requestTabs.forEach(function (tab) {
+            const isActive = tab.dataset.requestTab === activeTab;
+            tab.classList.toggle('is-active', isActive);
+            tab.setAttribute('aria-selected', isActive ? 'true' : 'false');
+            tab.setAttribute('tabindex', isActive ? '0' : '-1');
+        });
+
+        overviewItems.forEach(function (item) {
+            item.classList.toggle('is-tab-hidden', activeTab !== 'overview');
+        });
+
+        documentsPanel?.classList.toggle('is-tab-hidden', activeTab !== 'documents');
+        historyPanel?.classList.toggle('is-tab-hidden', activeTab !== 'history');
+        detailList?.classList.toggle('is-tab-hidden', activeTab === 'history');
+        if (historyDetails) {
+            historyDetails.open = activeTab === 'history';
+        }
+        requestPage?.setAttribute('data-active-request-tab', activeTab);
+
+        if (updateHash && window.history.replaceState) {
+            window.history.replaceState(null, '', '#' + activeTab);
+        }
+    }
+
+    requestTabs.forEach(function (tab) {
+        tab.addEventListener('click', function (event) {
+            event.preventDefault();
+            activateRequestTab(tab.dataset.requestTab, true);
+        });
+    });
+
+    activateRequestTab(window.location.hash.replace('#', ''), false);
+JS, \yii\web\View::POS_READY);
 ?>
 
 <!-- SHARED DETAIL SYSTEM: presentation only; request actions and permissions remain local. -->
@@ -1019,13 +1140,23 @@ JS, \yii\web\View::POS_READY);
 
         <!-- Page header -->
         <div class="page-header-card">
-            <div>
-                <h1 class="dash-title fw-bold">
-                    <span style="color: var(--bs-info);">
-                        <i class="bi bi-clipboard2-check"></i>
+            <div class="request-header-copy">
+                <div class="request-heading-row">
+                    <?= Html::a('<i class="bi bi-arrow-left"></i>', $backUrl, [
+                        'class' => 'request-back-link',
+                        'aria-label' => 'Back to requests',
+                        'title' => 'Back to requests',
+                    ]) ?>
+                    <h1 class="dash-title fw-bold"><?= Html::encode($this->title) ?></h1>
+                    <span class="operational-priority-badge priority-<?= Html::encode($operationalPriority) ?>">
+                        <i class="bi <?= Html::encode($operationalPriorityIcons[$operationalPriority] ?? 'bi-calendar-check') ?>"></i>
+                        <?= Html::encode($requestModel->getOperationalPriorityLabel()) ?>
                     </span>
-                    <?= Html::encode($this->title) ?>
-                </h1>
+                    <span class="status-badge <?= Html::encode($statusClass ?: 'status-default') ?>">
+                        <i class="bi bi-circle-fill"></i>
+                        <?= Html::encode($statusText) ?>
+                    </span>
+                </div>
 
                 <div class="subtitle-text">
                     Detailed maintenance request information
@@ -1033,7 +1164,8 @@ JS, \yii\web\View::POS_READY);
 
             </div>
 
-            <div class="header-actions">
+            <div class="request-header-side">
+                <div class="header-actions">
                 <?php if (!Yii::$app->user->isGuest && $userType === 'mro' && $mroApplication): ?>
                     <!-- MRO ROW ACTIONS: same conditional actions as /mro-applications. -->
                     <div class="mro-header-actions" aria-label="MRO application actions">
@@ -1219,12 +1351,6 @@ JS, \yii\web\View::POS_READY);
                     </div>
                 <?php endif; ?>
 
-                <?= Html::a(
-                    '<i class="bi bi-arrow-left-circle"></i> Back to Requests',
-                    $backUrl,
-                    ['class' => 'btn-page-action btn-back']
-                ) ?>
-
                 <?php if (
                     !Yii::$app->user->isGuest
                     && $userType === 'mro'
@@ -1264,6 +1390,12 @@ JS, \yii\web\View::POS_READY);
                         ]
                     ) ?>
                 <?php endif; ?>
+                </div>
+
+                <div class="request-header-dates" aria-label="Request timestamps">
+                    <span>Created: <strong><?= Html::encode($createdAtText) ?></strong></span>
+                    <span>Last updated: <strong><?= Html::encode($updatedAtText) ?></strong></span>
+                </div>
             </div>
         </div>
 
@@ -1289,10 +1421,18 @@ JS, \yii\web\View::POS_READY);
             </div>
         <?php endif; ?>
 
+        <nav class="request-detail-tabs" aria-label="Request detail sections" role="tablist">
+            <a class="is-active" href="#overview" role="tab" aria-selected="true" data-request-tab="overview">Overview</a>
+            <a href="#documents" role="tab" aria-selected="false" data-request-tab="documents">
+                Documents <span class="request-tab-count"><?= Html::encode((string) $documentCount) ?></span>
+            </a>
+            <a href="#history" role="tab" aria-selected="false" data-request-tab="history">Priority History</a>
+        </nav>
+
         <div class="view-grid">
 
             <!-- Main request details -->
-            <div class="content-card">
+            <div class="content-card" id="request-overview">
                 <h2 class="section-title">
                     <i class="bi bi-info-circle text-primary"></i>
                     Request Details
@@ -1301,7 +1441,7 @@ JS, \yii\web\View::POS_READY);
                 <div class="detail-list">
 
                     <!-- Request ID -->
-                    <div class="detail-item">
+                    <div class="detail-item summary-request-id">
                         <div class="detail-label">
                             <i class="bi bi-hash"></i>
                             Request ID
@@ -1314,7 +1454,7 @@ JS, \yii\web\View::POS_READY);
                     </div>
 
                     <!-- Status -->
-                    <div class="detail-item">
+                    <div class="detail-item summary-status">
                         <div class="detail-label">
                             <i class="bi bi-activity"></i>
                             Status
@@ -1332,30 +1472,7 @@ JS, \yii\web\View::POS_READY);
                         statut afin de ne pas laisser penser qu'AOG constitue une
                         étape du workflow. L'échéance demeure explicitement en UTC.
                     -->
-                    <?php
-                        $operationalPriority = $requestModel->operational_priority ?: Requests::PRIORITY_ROUTINE;
-                        $operationalPriorityIcons = [
-                            Requests::PRIORITY_AOG => 'bi-exclamation-octagon',
-                            Requests::PRIORITY_URGENT => 'bi-lightning-charge',
-                            Requests::PRIORITY_ROUTINE => 'bi-calendar-check',
-                        ];
-                        $responseDueTimestamp = !empty($requestModel->response_due_at_utc)
-                            ? strtotime($requestModel->response_due_at_utc . ' UTC')
-                            : false;
-
-                        /*
-                         * COHÉRENCE AVEC LES LISTES : dans un dossier fermé ou annulé, l'échéance de réponse
-                         * demeure disponible en base et dans l'historique, mais le compteur dynamique n'est plus
-                         * affiché. L'utilisateur voit toujours la priorité d'origine sans fausse alerte « overdue ».
-                         */
-                        $responseDeadlineVisible = $responseDueTimestamp !== false
-                            && !in_array((string) $requestModel->status, [
-                                Requests::STATUS_CLOSED,
-                                Requests::STATUS_CANCELLED,
-                                'canceled',
-                            ], true);
-                    ?>
-                    <div class="detail-item">
+                    <div class="detail-item summary-priority">
                         <div class="detail-label">
                             <i class="bi bi-broadcast-pin"></i>
                             Operational Priority
@@ -1384,7 +1501,7 @@ JS, \yii\web\View::POS_READY);
 
                     <!-- AO information for MRO users -->
                     <?php if (!Yii::$app->user->isGuest && $userType === 'mro'): ?>
-                        <div class="detail-item">
+                        <div class="detail-item summary-stakeholder">
                             <div class="detail-label">
                                 <i class="bi bi-building"></i>
                                 Aircraft Operator / CAMO
@@ -1407,7 +1524,7 @@ JS, \yii\web\View::POS_READY);
 
                     <!-- MRO information for AO users -->
                     <?php if (!Yii::$app->user->isGuest && $userType === 'ao'): ?>
-                        <div class="detail-item">
+                        <div class="detail-item summary-stakeholder">
                             <div class="detail-label">
                                 <i class="bi bi-tools"></i>
                                 MRO
@@ -1430,17 +1547,21 @@ JS, \yii\web\View::POS_READY);
                     <?php endif; ?>
 
                     <!-- Aircraft manufacturer -->
-                    <div class="detail-item">
+                    <div class="detail-item summary-aircraft">
                         <div class="detail-label">
                             <i class="bi bi-airplane"></i>
                             Aircraft
                         </div>
                         <div class="detail-value">
                             <?php if ($aircraft): ?>
-                                <span class="aircraft-badge">
-                                    <i class="bi bi-airplane"></i>
-                                    <?= Html::encode($aircraft->manufacturer ?: 'N/A') ?>
+                                <strong class="aircraft-summary-name">
+                                    <?= Html::encode(trim(($aircraft->manufacturer ?: '') . ' ' . ($aircraft->model ?: '')) ?: 'N/A') ?>
+                                </strong>
+                                <span class="aircraft-summary-meta">
+                                    <?= Html::encode($requestModel->aircraft_registration ?: 'N/A') ?>
+                                    · MSN <?= Html::encode($requestModel->serial_number ?: 'N/A') ?>
                                 </span>
+                                <span class="aircraft-summary-image" role="img" aria-label="Aircraft maintenance"></span>
                             <?php else: ?>
                                 <span class="empty-badge">
                                     <i class="bi bi-exclamation-triangle"></i>
@@ -1451,7 +1572,7 @@ JS, \yii\web\View::POS_READY);
                     </div>
 
                     <!-- Aircraft model -->
-                    <div class="detail-item">
+                    <div class="detail-item summary-extra summary-model">
                         <div class="detail-label">
                             <i class="bi bi-airplane-engines"></i>
                             Model
@@ -1472,7 +1593,7 @@ JS, \yii\web\View::POS_READY);
                     </div>
 
                     <!-- Aircraft registration -->
-                    <div class="detail-item">
+                    <div class="detail-item summary-extra summary-registration">
                         <div class="detail-label">
                             <i class="bi bi-card-text"></i>
                             Aircraft Registration
@@ -1486,7 +1607,7 @@ JS, \yii\web\View::POS_READY);
                     </div>
 
                     <!-- Aircraft serial number -->
-                    <div class="detail-item">
+                    <div class="detail-item summary-extra summary-serial">
                         <div class="detail-label">
                             <i class="bi bi-upc-scan"></i>
                             Aircraft Serial Number
@@ -1500,7 +1621,7 @@ JS, \yii\web\View::POS_READY);
                     </div>
 
                     <!-- Maintenance airport ICAO code -->
-                    <div class="detail-item">
+                    <div class="detail-item summary-extra summary-airport">
                         <div class="detail-label">
                             <i class="bi bi-signpost-2"></i>
                             Maintenance Airport ICAO
@@ -1522,21 +1643,19 @@ JS, \yii\web\View::POS_READY);
 
                     <div class="date-row">
                         <!-- ETA -->
-                        <div class="detail-item">
+                        <div class="detail-item summary-schedule">
                             <div class="detail-label">
                                 <i class="bi bi-calendar-event"></i>
                                 ETA
                             </div>
                             <div class="detail-value">
-                                <span class="date-badge">
-                                    <i class="bi bi-calendar-event"></i>
-                                    <?= Html::encode($etaText) ?>
-                                </span>
+                                <span class="schedule-line"><small>ETA</small><?= Html::encode($etaText) ?></span>
+                                <span class="schedule-line"><small>ETD</small><?= Html::encode($etdText) ?></span>
                             </div>
                         </div>
 
                         <!-- ETD -->
-                        <div class="detail-item">
+                        <div class="detail-item summary-extra summary-etd">
                             <div class="detail-label">
                                 <i class="bi bi-calendar-check"></i>
                                 ETD
@@ -1551,7 +1670,7 @@ JS, \yii\web\View::POS_READY);
                     </div>
 
                     <!-- Maintenance location -->
-                    <div class="detail-item">
+                    <div class="detail-item summary-location">
                         <div class="detail-label">
                             <i class="bi bi-geo-alt"></i>
                             Maintenance Location
@@ -1561,11 +1680,12 @@ JS, \yii\web\View::POS_READY);
                                 <i class="bi bi-pin-map"></i>
                                 <?= Html::encode($requestModel->location ?: 'N/A') ?>
                             </span>
+                            <span class="location-icao"><?= Html::encode($airportIcaoText) ?></span>
                         </div>
                     </div>
 
                     <!-- National Aviation Authority -->
-                    <div class="detail-item">
+                    <div class="detail-item summary-authority">
                         <div class="detail-label">
                             <i class="bi bi-shield-check"></i>
                             National Aviation Authority
@@ -1586,7 +1706,7 @@ JS, \yii\web\View::POS_READY);
                     </div>
 
                     <!-- REQUEST RESOURCE DISPLAY 2026: distinguish files from links to application pages. -->
-                    <div class="detail-item full-width">
+                    <div class="detail-item full-width request-documents-card" id="request-documents">
                         <div class="detail-label">
                             <i class="bi bi-paperclip"></i>
                             Documents & Related Pages
@@ -1595,7 +1715,7 @@ JS, \yii\web\View::POS_READY);
                         <div class="attachments-box">
                             <?= $requestAttachmentUrl
                                 ? Html::a(
-                                    '<span class="attachment-resource-icon"><i class="bi bi-file-earmark-text"></i></span>'
+                                    $renderAttachmentPreview($requestAttachmentUrl)
                                     . '<span class="attachment-resource-copy"><span class="attachment-resource-title">Request Attachment</span><span class="attachment-resource-meta">' . Html::encode($requestAttachmentName) . '</span></span>'
                                     . '<span class="attachment-resource-action"><i class="bi bi-box-arrow-up-right"></i></span>',
                                     $requestAttachmentUrl,
@@ -1605,7 +1725,7 @@ JS, \yii\web\View::POS_READY);
 
                             <?= $poAttachmentUrl
                                 ? Html::a(
-                                    '<span class="attachment-resource-icon"><i class="bi bi-file-earmark-check"></i></span>'
+                                    $renderAttachmentPreview($poAttachmentUrl)
                                     . '<span class="attachment-resource-copy"><span class="attachment-resource-title">Purchase Order</span><span class="attachment-resource-meta">' . Html::encode($poAttachmentName) . '</span></span>'
                                     . '<span class="attachment-resource-action"><i class="bi bi-box-arrow-up-right"></i></span>',
                                     $poAttachmentUrl,
@@ -1625,7 +1745,7 @@ JS, \yii\web\View::POS_READY);
 
                             <?= $crsUrl
                                 ? Html::a(
-                                    '<span class="attachment-resource-icon"><i class="bi bi-file-earmark-medical"></i></span>'
+                                    $renderAttachmentPreview($crsUrl)
                                     . '<span class="attachment-resource-copy"><span class="attachment-resource-title">CRS Document</span><span class="attachment-resource-meta">' . Html::encode($crsAttachmentName) . '</span></span>'
                                     . '<span class="attachment-resource-action"><i class="bi bi-box-arrow-up-right"></i></span>',
                                     $crsUrl,
@@ -1636,7 +1756,7 @@ JS, \yii\web\View::POS_READY);
                     </div>
 
                     <!-- Request information -->
-                    <div class="detail-item full-width">
+                    <div class="detail-item full-width request-description-card" id="request-description">
                         <div class="detail-label">
                             <i class="bi bi-info-circle"></i>
                             Request Informations
@@ -1661,11 +1781,13 @@ JS, \yii\web\View::POS_READY);
                     dans la carte principale. Le fragment est replié par défaut et
                     reçoit uniquement les données déjà autorisées de cette demande.
                 -->
-                <?= $this->render('_priority-history', [
-                    'requestModel' => $requestModel,
-                    'priorityHistory' => $priorityHistory,
-                    'operationalPriorityIcons' => $operationalPriorityIcons,
-                ]) ?>
+                <div id="request-activity">
+                    <?= $this->render('_priority-history', [
+                        'requestModel' => $requestModel,
+                        'priorityHistory' => $priorityHistory,
+                        'operationalPriorityIcons' => $operationalPriorityIcons,
+                    ]) ?>
+                </div>
             </div>
 
         </div>

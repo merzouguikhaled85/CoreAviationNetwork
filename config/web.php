@@ -219,6 +219,10 @@ $config = [
                 'mro-applications' => 'mro-applications/index',
                 'mro-applications/<action:\w+>' => 'mro-applications/<action>',
                 'mro-applications/<action:\w+>/<id:\d+>' => 'mro-applications/<action>',
+
+                // AVENANTS : les identifiants signés protègent les décisions et documents contractuels.
+                'request-changes/create/<requestId:[A-Za-z0-9]+>' => 'request-changes/create',
+                'request-changes/<action:[A-Za-z0-9-]+>/<id:[A-Za-z0-9]+>' => 'request-changes/<action>',
                 // MRO airports
                 'mro-airports' => 'mro-airports/index',
                 'mro-airports/view/<id:\d+>' => 'mro-airports/view',

@@ -1,0 +1,371 @@
+/* Request-detail visual language for the MRO maintenance reports page. */
+body .reports-page {
+    --report-blue: #0f6fec;
+    --report-navy: #0b2342;
+    --report-border: #d9e5f2;
+    --report-muted: #6b7f99;
+    padding: 22px 24px 36px;
+    background: #f3f7fb;
+}
+
+body .reports-page .reports-shell {
+    width: 100%;
+    max-width: 1580px;
+}
+
+body .reports-page .reports-header-card,
+body .reports-page .reports-stepper-card,
+body .reports-page .reports-details-card,
+body .reports-page .reports-table-card {
+    border-radius: 14px;
+    box-shadow: 0 12px 30px rgba(15, 35, 63, .065);
+}
+
+body .reports-page .reports-header-card {
+    padding: 21px 24px;
+    margin-bottom: 14px;
+}
+
+body .reports-page .reports-header-card::before {
+    display: none;
+}
+
+body .reports-page .reports-header-top {
+    align-items: center;
+}
+
+body .reports-page .reports-header-copy {
+    min-width: 0;
+}
+
+body .reports-page .reports-title-row {
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+body .reports-page .reports-back-link {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
+    flex: 0 0 36px;
+    border-radius: 9px;
+    color: var(--report-navy);
+    text-decoration: none;
+    transition: color .18s ease, background-color .18s ease;
+}
+
+body .reports-page .reports-back-link:hover {
+    color: var(--report-blue);
+    background: #edf6ff;
+}
+
+body .reports-page .reports-title {
+    font-size: clamp(22px, 2vw, 29px);
+}
+
+body .reports-page .priority-badge,
+body .reports-page .request-status-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    max-width: 100%;
+    padding: 5px 9px;
+    border: 1px solid #c7def7;
+    border-radius: 7px;
+    color: #075fb8;
+    background: #edf7ff;
+    font-size: 10px;
+    font-weight: 850;
+}
+
+body .reports-page .priority-badge.priority-aog {
+    border-color: #fecaca;
+    color: #c81e1e;
+    background: #fff1f2;
+}
+
+body .reports-page .priority-badge.priority-urgent {
+    border-color: #fbd38d;
+    color: #ad5700;
+    background: #fff9e8;
+}
+
+body .reports-page .request-status-badge .bi {
+    font-size: 6px;
+}
+
+body .reports-page .request-status-badge.request-status-closed,
+body .reports-page .request-status-badge.request-status-work_completed,
+body .reports-page .request-status-badge.request-status-report_submitted {
+    border-color: #bbf7d0;
+    color: #15803d;
+    background: #ecfdf3;
+}
+
+body .reports-page .request-status-badge.request-status-cancelled,
+body .reports-page .request-status-badge.request-status-canceled,
+body .reports-page .request-status-badge.request-status-overdue {
+    border-color: #fecaca;
+    color: #c81e1e;
+    background: #fff1f2;
+}
+
+body .reports-page .reports-header-side {
+    display: flex;
+    flex: 0 0 auto;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 6px;
+}
+
+body .reports-page .reports-request-pill {
+    padding: 7px 10px;
+    border: 1px solid #c7def7;
+    border-radius: 7px;
+    color: #075fb8;
+    background: #edf7ff;
+    box-shadow: none;
+    font-size: 11px;
+}
+
+body .reports-page .reports-request-pill i {
+    color: inherit;
+}
+
+body .reports-page .reports-header-dates {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 2px;
+    color: var(--report-muted);
+    font-size: 10px;
+}
+
+body .reports-page .reports-header-dates strong {
+    color: #38516e;
+}
+
+body .reports-page .reports-stepper-card {
+    margin-bottom: 14px;
+}
+
+body .reports-page .reports-details-card {
+    padding: 20px;
+}
+
+body .reports-page .reports-overview-caption {
+    margin: 5px 0 0;
+    color: var(--report-muted);
+    font-size: 12px;
+}
+
+body .reports-page .view-reports-summary-grid {
+    display: grid;
+    grid-template-columns: 1.2fr repeat(3, minmax(0, 1fr));
+    grid-template-rows: repeat(2, minmax(106px, auto));
+    gap: 10px;
+}
+
+body .reports-page .view-reports-summary-item,
+body .reports-page .view-reports-information {
+    min-width: 0;
+    padding: 14px;
+    border: 1px solid var(--report-border);
+    border-radius: 11px;
+    background: #fff;
+    box-shadow: 0 5px 14px rgba(15, 50, 97, .045);
+}
+
+body .reports-page .view-reports-aircraft {
+    grid-row: 1 / span 2;
+    display: flex;
+    flex-direction: column;
+}
+
+body .reports-page .view-reports-summary-label {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 9px;
+    color: #496582;
+    font-size: 10px;
+    font-weight: 900;
+    letter-spacing: .045em;
+    text-transform: uppercase;
+}
+
+body .reports-page .view-reports-summary-label .bi {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    border-radius: 8px;
+    color: var(--report-blue);
+    background: #edf6ff;
+    font-size: 14px;
+}
+
+body .reports-page .view-reports-summary-value {
+    overflow-wrap: anywhere;
+    color: #0d1f37;
+    font-size: 14px;
+    font-weight: 850;
+    line-height: 1.35;
+}
+
+body .reports-page .view-reports-summary-secondary,
+body .reports-page .view-reports-aircraft-reference {
+    margin-top: 4px;
+    color: var(--report-muted);
+    font-size: 11px;
+}
+
+body .reports-page .view-reports-aircraft-reference {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px 12px;
+}
+
+body .reports-page .view-reports-aircraft-image {
+    min-height: 90px;
+    margin-top: 12px;
+    flex: 1 1 auto;
+    border-radius: 8px;
+    background:
+        linear-gradient(90deg, rgba(4, 28, 55, .18), rgba(4, 28, 55, .02)),
+        url('../img/home-carousel/global-network.jpg') center 55% / cover no-repeat;
+}
+
+body .reports-page .view-reports-schedule {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+}
+
+body .reports-page .view-reports-schedule span {
+    display: flex;
+    min-width: 0;
+    flex-direction: column;
+    gap: 3px;
+}
+
+body .reports-page .view-reports-schedule small {
+    color: var(--report-blue);
+    font-size: 9px;
+    font-weight: 900;
+}
+
+body .reports-page .view-reports-schedule strong {
+    overflow-wrap: anywhere;
+    color: #17324f;
+    font-size: 11px;
+    line-height: 1.35;
+}
+
+body .reports-page .view-reports-information {
+    margin-top: 10px;
+}
+
+body .reports-page .view-reports-information-text {
+    min-height: 56px;
+    padding: 12px 14px;
+    border: 1px dashed #c7d9ed;
+    border-radius: 8px;
+    color: #324c69;
+    background: #fbfdff;
+    font-size: 13px;
+    line-height: 1.6;
+}
+
+body .reports-page .reports-table-card {
+    overflow: hidden;
+}
+
+@media (max-width: 1100px) {
+    body .reports-page .view-reports-summary-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        grid-template-rows: auto;
+    }
+
+    body .reports-page .view-reports-aircraft {
+        grid-row: auto;
+        grid-column: 1 / -1;
+    }
+
+    body .reports-page .view-reports-aircraft-image {
+        min-height: 160px;
+    }
+}
+
+@media (max-width: 820px) {
+    body .reports-page {
+        padding: 14px;
+    }
+
+    body .reports-page .reports-header-top {
+        align-items: flex-start;
+        flex-direction: column;
+    }
+
+    body .reports-page .reports-header-side,
+    body .reports-page .reports-header-dates {
+        align-items: flex-start;
+    }
+}
+
+@media (max-width: 620px) {
+    body .reports-page {
+        padding: 7px;
+    }
+
+    body .reports-page .reports-header-card,
+    body .reports-page .reports-stepper-card,
+    body .reports-page .reports-details-card,
+    body .reports-page .reports-table-card {
+        border-radius: 10px;
+    }
+
+    body .reports-page .reports-header-card,
+    body .reports-page .reports-details-card {
+        padding: 14px;
+    }
+
+    body .reports-page .reports-title-row {
+        align-items: flex-start;
+    }
+
+    body .reports-page .reports-title {
+        width: calc(100% - 44px);
+        font-size: 21px;
+        line-height: 1.25;
+    }
+
+    body .reports-page .priority-badge {
+        margin-left: 44px;
+    }
+
+    body .reports-page .view-reports-summary-grid {
+        grid-template-columns: 1fr;
+    }
+
+    body .reports-page .view-reports-aircraft {
+        grid-column: auto;
+    }
+
+    body .reports-page .view-reports-aircraft-image {
+        min-height: 125px;
+    }
+
+    body .reports-page .view-reports-schedule {
+        grid-template-columns: 1fr;
+    }
+
+    body .reports-page .reports-table-toolbar,
+    body .reports-page .reports-record-list,
+    body .reports-page .reports-footer {
+        padding: 14px;
+    }
+}

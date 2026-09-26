@@ -173,6 +173,35 @@ $operatorName = $getSafeAttribute(
     'N/A'
 );
 
+/* Shared read-only request context used by the detail-page presentation. */
+$destinationAirport = $requestModel && method_exists($requestModel, 'getDestinationAirport')
+    ? $requestModel->getDestinationAirport()->one()
+    : null;
+$airportName = $getSafeAttribute($destinationAirport, ['airport_name', 'name'], 'N/A');
+$airportIcao = $getSafeAttribute($destinationAirport, ['icao', 'icao_code'], 'N/A');
+$operationalPriority = strtolower((string) $getSafeAttribute($requestModel, ['operational_priority'], 'routine'));
+$operationalPriorityLabel = $requestModel && method_exists($requestModel, 'getOperationalPriorityLabel')
+    ? $requestModel->getOperationalPriorityLabel()
+    : ucfirst($operationalPriority);
+$operationalPriorityIcons = [
+    'aog' => 'bi-exclamation-octagon',
+    'urgent' => 'bi-lightning-charge',
+    'routine' => 'bi-calendar-check',
+];
+$aircraftName = trim(
+    ($aircraftManufacturer !== 'N/A' ? $aircraftManufacturer : '')
+    . ' '
+    . ($aircraftModel !== 'N/A' ? $aircraftModel : '')
+);
+$aircraftName = $aircraftName !== '' ? $aircraftName : 'Aircraft unavailable';
+$formatRequestDate = static function ($value) {
+    return !empty($value) && strtotime((string) $value)
+        ? date('d M Y H:i', strtotime((string) $value))
+        : 'N/A';
+};
+$requestCreatedAt = $formatRequestDate($getSafeAttribute($requestModel, ['created_at', 'createdAt'], null));
+$requestUpdatedAt = $formatRequestDate($getSafeAttribute($requestModel, ['updated_at', 'updatedAt'], null));
+
 /**
  * ADVERTISING: load campaigns that are active for the current date.
  * Empty start/end dates are treated as open-ended campaign dates.
@@ -211,6 +240,9 @@ $requestViewUrl = $requestId !== 'N/A'
 $this->registerCssFile(
     'https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css',
     ['position' => View::POS_HEAD]
+);
+$this->registerCssFile(
+    Yii::$app->request->baseUrl . '/css/mro-view-answer-refresh.css?v=20260926-8'
 );
 
 /**
@@ -867,41 +899,117 @@ CSS);
 ?>
 
 <!-- SHARED DETAIL SYSTEM: presentation only; feedback data remains read-only. -->
-<main class="dash-content requests-page can-detail-page">
+<main class="dash-content requests-page can-detail-page answer-view-page feedback-detail-page">
     <div class="container-fluid">
 
         <!-- Page header -->
         <div class="page-header-card">
-            <div>
-                <h1 class="dash-title fw-bold">
-                    <span style="color: var(--bs-info);">
-                        <i class="bi bi-star-half"></i>
+            <div class="answer-header-copy">
+                <div class="answer-title-row">
+                    <?= Html::a('<i class="bi bi-arrow-left"></i>', $backUrl, [
+                        'class' => 'answer-back-link',
+                        'aria-label' => 'Back',
+                        'title' => 'Back',
+                    ]) ?>
+                    <h1 class="dash-title fw-bold"><?= Html::encode($this->title) ?></h1>
+                    <span class="answer-priority priority-<?= Html::encode($operationalPriority) ?>">
+                        <i class="bi <?= Html::encode($operationalPriorityIcons[$operationalPriority] ?? 'bi-calendar-check') ?>"></i>
+                        <?= Html::encode($operationalPriorityLabel) ?>
                     </span>
-                    <?= Html::encode($this->title) ?>
-                </h1>
-
+                    <span class="answer-request-status <?= Html::encode($requestStatusClass) ?>">
+                        <i class="bi bi-circle-fill"></i>
+                        <?= Html::encode($requestStatusText) ?>
+                    </span>
+                </div>
                 <div class="subtitle-text">
                     Detailed evaluation for this maintenance request: schedule, cost, communication and overall rating.
                 </div>
             </div>
 
-            <div class="header-actions">
-                <!-- HEADER ACTIONS: primary context link moved out of Quick Actions. -->
-                <?php if ($requestId !== 'N/A'): ?>
-                    <?= Html::a(
-                        '<i class="bi bi-clipboard2-check"></i> View Request',
-                        $requestViewUrl,
-                        ['class' => 'btn-page-action btn-request']
-                    ) ?>
-                <?php endif; ?>
-
-                <?= Html::a(
-                    '<i class="bi bi-arrow-left-circle"></i> Back',
-                    $backUrl,
-                    ['class' => 'btn-page-action btn-back']
-                ) ?>
+            <div class="answer-header-side">
+                <div class="header-actions">
+                    <?php if ($requestId !== 'N/A'): ?>
+                        <?= Html::a(
+                            '<i class="bi bi-clipboard2-check"></i> View Request',
+                            $requestViewUrl,
+                            ['class' => 'btn-page-action btn-request']
+                        ) ?>
+                    <?php endif; ?>
+                </div>
+                <div class="answer-header-dates">
+                    <span>Created: <strong><?= Html::encode($requestCreatedAt) ?></strong></span>
+                    <span>Last updated: <strong><?= Html::encode($requestUpdatedAt) ?></strong></span>
+                </div>
             </div>
         </div>
+
+        <section class="answer-request-overview" aria-labelledby="feedback-overview-title">
+            <div class="answer-overview-head">
+                <div>
+                    <h2 id="feedback-overview-title"><i class="bi bi-info-circle"></i>Request Overview</h2>
+                    <p>Read-only operational context for this MRO performance evaluation.</p>
+                </div>
+                <span class="answer-request-id"><i class="bi bi-hash"></i><?= Html::encode($requestId) ?></span>
+            </div>
+
+            <div class="answer-summary-grid">
+                <article class="answer-summary-item answer-aircraft-item">
+                    <div class="answer-summary-label"><i class="bi bi-airplane"></i>Aircraft</div>
+                    <div class="answer-summary-value"><?= Html::encode($aircraftName) ?></div>
+                    <div class="answer-aircraft-reference">
+                        <span><?= Html::encode($aircraftRegistration) ?></span>
+                        <span>MSN <?= Html::encode($serialNumber) ?></span>
+                    </div>
+                    <div class="answer-aircraft-image" role="img" aria-label="Aircraft maintenance network"></div>
+                </article>
+
+                <article class="answer-summary-item">
+                    <div class="answer-summary-label"><i class="bi bi-building"></i>Aircraft Operator / CAMO</div>
+                    <div class="answer-summary-value"><?= Html::encode($operatorName) ?></div>
+                </article>
+
+                <article class="answer-summary-item">
+                    <div class="answer-summary-label"><i class="bi bi-geo-alt"></i>Maintenance Location</div>
+                    <div class="answer-summary-value"><?= Html::encode($requestLocation !== 'N/A' ? $requestLocation : $airportName) ?></div>
+                    <div class="answer-summary-secondary"><?= Html::encode(trim($airportIcao . ' · ' . $airportName, ' ·')) ?></div>
+                </article>
+
+                <article class="answer-summary-item">
+                    <div class="answer-summary-label"><i class="bi bi-calendar2-week"></i>ETA / ETD</div>
+                    <div class="answer-schedule">
+                        <span><small>ETA</small><strong><?= Html::encode($requestEta) ?></strong></span>
+                        <span><small>ETD</small><strong><?= Html::encode($requestEtd) ?></strong></span>
+                    </div>
+                </article>
+
+                <article class="answer-summary-item">
+                    <div class="answer-summary-label"><i class="bi bi-broadcast-pin"></i>Operational Priority</div>
+                    <span class="answer-priority priority-<?= Html::encode($operationalPriority) ?>">
+                        <i class="bi <?= Html::encode($operationalPriorityIcons[$operationalPriority] ?? 'bi-calendar-check') ?>"></i>
+                        <?= Html::encode($operationalPriorityLabel) ?>
+                    </span>
+                </article>
+
+                <article class="answer-summary-item">
+                    <div class="answer-summary-label"><i class="bi bi-star-fill"></i>Overall Rating</div>
+                    <div class="answer-summary-value answer-quote-value"><?= Html::encode($overallRating) ?> / 5</div>
+                    <div class="answer-summary-secondary">Feedback submitted <?= Html::encode($feedbackDate) ?></div>
+                </article>
+
+                <article class="answer-summary-item">
+                    <div class="answer-summary-label"><i class="bi bi-activity"></i>Request Status</div>
+                    <span class="answer-request-status <?= Html::encode($requestStatusClass) ?>">
+                        <i class="bi bi-circle-fill"></i>
+                        <?= Html::encode($requestStatusText) ?>
+                    </span>
+                </article>
+            </div>
+
+            <article class="answer-request-information">
+                <div class="answer-summary-label"><i class="bi bi-file-text"></i>Request Informations</div>
+                <div class="answer-request-text"><?= nl2br(Html::encode(!empty($requestDetails) ? $requestDetails : 'No request details available')) ?></div>
+            </article>
+        </section>
 
         <div class="view-grid">
 
@@ -1043,12 +1151,12 @@ CSS);
                 </div>
 
                 <!-- Current request details -->
-                <h2 class="section-title" style="margin-top: 24px;">
+                <h2 class="section-title request-details-only" style="margin-top: 24px;">
                     <i class="bi bi-clipboard2-check text-primary"></i>
                     Current Request Details
                 </h2>
 
-                <div class="detail-list">
+                <div class="detail-list request-details-only">
 
                     <!-- REQUEST DETAILS: request identity is displayed only in this section. -->
                     <div class="detail-item">

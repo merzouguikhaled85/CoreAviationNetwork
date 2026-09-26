@@ -8,6 +8,9 @@ use app\components\UrlIdHelper;
 /**
  * This view expects the MRO request application model in $mroRequestApplication.
  */
+/* @var $latestAcceptedChange app\models\RequestChange|null */
+
+$latestAcceptedChange = $latestAcceptedChange ?? null;
 
 $this->title = 'View Answer';
 $this->params['breadcrumbs'][] = ['label' => 'Applied Requests', 'url' => ['/mro-applications/index']];
@@ -30,6 +33,9 @@ $aircraft = $requestModel->aircraft ?? null;
 if ($requestModel && !$aircraft && method_exists($requestModel, 'getAircraft')) {
     $aircraft = $requestModel->getAircraft()->one();
 }
+$destinationAirport = $requestModel && method_exists($requestModel, 'getDestinationAirport')
+    ? $requestModel->getDestinationAirport()->one()
+    : null;
 
 /**
  * Safe attribute getter.
@@ -67,8 +73,22 @@ $getSafeAttribute = static function ($model, array $fields, $default = null) {
  * Prepare answer values safely.
  */
 $requestId = $mroRequestApplication->request_id ?? 'N/A';
-$description = $mroRequestApplication->Description ?? null;
-$price = $mroRequestApplication->price ?? null;
+$usesAcceptedChange = $latestAcceptedChange !== null;
+$description = $usesAcceptedChange
+    ? $latestAcceptedChange->quote_description
+    : ($mroRequestApplication->Description ?? null);
+$price = $usesAcceptedChange
+    ? $latestAcceptedChange->quote_price
+    : ($mroRequestApplication->price ?? null);
+$activeQuoteDocument = $usesAcceptedChange
+    ? $latestAcceptedChange->revised_quote
+    : ($mroRequestApplication->attachment ?? null);
+$quoteSourceLabel = $usesAcceptedChange
+    ? 'Accepted Change Order v' . $latestAcceptedChange->version
+    : 'Original Accepted Quote';
+$quoteSourceDescription = $usesAcceptedChange
+    ? 'This is the latest revised quote approved by the AO.'
+    : 'No completed Change Order currently replaces the original quote.';
 
 /**
  * Prepare price currency safely.
@@ -76,13 +96,15 @@ $price = $mroRequestApplication->price ?? null;
  * currency, devise, price_currency, currency_code, quote_currency.
  * Otherwise USD is used by default.
  */
-$currencyCode = $getSafeAttribute($mroRequestApplication, [
-    'currency',
-    'devise',
-    'price_currency',
-    'currency_code',
-    'quote_currency',
-], 'USD');
+$currencyCode = $usesAcceptedChange
+    ? $latestAcceptedChange->quote_currency
+    : $getSafeAttribute($mroRequestApplication, [
+        'currency',
+        'devise',
+        'price_currency',
+        'currency_code',
+        'quote_currency',
+    ], 'USD');
 
 $currencyCode = strtoupper(trim((string) $currencyCode));
 
@@ -96,6 +118,15 @@ $currencySymbols = [
 ];
 
 $currencySymbol = $currencySymbols[$currencyCode] ?? $currencyCode;
+
+/* Les anciens et nouveaux devis utilisent des chemins relatifs sous web/. */
+$activeQuoteDocumentUrl = null;
+if (trim((string) $activeQuoteDocument) !== '') {
+    $activeQuoteDocument = trim((string) $activeQuoteDocument);
+    $activeQuoteDocumentUrl = preg_match('/^https?:\/\//i', $activeQuoteDocument)
+        ? $activeQuoteDocument
+        : Yii::getAlias('@web/') . ltrim($activeQuoteDocument, '/');
+}
 
 /**
  * Format price with currency.
@@ -124,6 +155,15 @@ $requestStatusText = $requestStatus !== 'N/A'
     : 'N/A';
 
 $requestStatusClass = 'status-' . preg_replace('/[^a-zA-Z0-9_-]/', '', (string) $requestStatus);
+$operationalPriority = (string) ($requestModel->operational_priority ?? 'routine');
+$operationalPriorityLabel = $requestModel && method_exists($requestModel, 'getOperationalPriorityLabel')
+    ? $requestModel->getOperationalPriorityLabel()
+    : ucfirst($operationalPriority);
+$operationalPriorityIcons = [
+    'aog' => 'bi-exclamation-octagon',
+    'urgent' => 'bi-lightning-charge',
+    'routine' => 'bi-calendar-check',
+];
 
 $aircraftModel = $aircraft->model ?? 'N/A';
 $aircraftManufacturer = $aircraft->manufacturer ?? 'N/A';
@@ -149,6 +189,25 @@ $requestEtd = !empty($requestModel->etd)
 $requestDetails = $requestModel->request_details
     ?? $requestModel->description
     ?? null;
+$airportName = $destinationAirport->airport_name ?? 'N/A';
+$airportIcao = $destinationAirport->icao ?? 'N/A';
+$aircraftName = trim(($aircraftManufacturer !== 'N/A' ? $aircraftManufacturer : '') . ' ' . ($aircraftModel !== 'N/A' ? $aircraftModel : ''));
+$aircraftName = $aircraftName !== '' ? $aircraftName : 'N/A';
+$stakeholderName = $userType === 'ao'
+    ? ($mro->company_name ?? $mro->username ?? 'N/A')
+    : ($ao->company_name ?? $ao->username ?? 'N/A');
+$stakeholderLabel = $userType === 'ao' ? 'Selected MRO' : 'AO / CAMO';
+$formatRequestDate = static function ($value) {
+    return !empty($value) && strtotime((string) $value)
+        ? date('d M Y H:i', strtotime((string) $value))
+        : 'N/A';
+};
+$requestCreatedAt = $requestModel && $requestModel->hasAttribute('created_at')
+    ? $formatRequestDate($requestModel->created_at)
+    : 'N/A';
+$requestUpdatedAt = $requestModel && $requestModel->hasAttribute('updated_at')
+    ? $formatRequestDate($requestModel->updated_at)
+    : 'N/A';
 
 /*
  * CLOSED REQUEST ACTIONS: mirror the useful row actions from closed-requests.
@@ -193,6 +252,9 @@ $adverts = \app\models\Advert::find()
 $this->registerCssFile(
     'https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css',
     ['position' => View::POS_HEAD]
+);
+$this->registerCssFile(
+    Yii::$app->request->baseUrl . '/css/mro-view-answer-refresh.css?v=20260926-1'
 );
 
 /**
@@ -390,6 +452,65 @@ body {
     background: #fff7ed;
     color: #c2410c;
     border: 1px solid #fed7aa;
+}
+
+.active-quote-banner {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 16px;
+    padding: 13px 15px;
+    color: #1e40af;
+    border: 1px solid #bfdbfe;
+    border-radius: 13px;
+    background: #eff6ff;
+}
+
+.active-quote-banner-icon {
+    width: 38px;
+    height: 38px;
+    flex: 0 0 auto;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    color: #ffffff;
+    border-radius: 10px;
+    background: #0d6efd;
+    font-size: 18px;
+}
+
+.active-quote-banner strong {
+    display: block;
+    color: #0f172a;
+    font-size: 13px;
+    font-weight: 900;
+}
+
+.active-quote-banner small {
+    display: block;
+    margin-top: 2px;
+    color: #64748b;
+    font-size: 11px;
+}
+
+.active-quote-document {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    padding: 9px 12px;
+    color: #ffffff !important;
+    border: 1px solid #0d6efd;
+    border-radius: 10px;
+    background: #0d6efd;
+    font-size: 12px;
+    font-weight: 900;
+    text-decoration: none !important;
+}
+
+.active-quote-document:hover {
+    color: #ffffff !important;
+    border-color: #0b5ed7;
+    background: #0b5ed7;
 }
 
 .aircraft-badge {
@@ -853,108 +974,145 @@ CSS);
 ?>
 
 <!-- SHARED DETAIL SYSTEM: presentation only; MRO application actions remain local. -->
-<main class="dash-content requests-page can-detail-page">
+<main class="dash-content requests-page can-detail-page answer-view-page">
     <div class="container-fluid">
 
         <!-- Page header -->
         <div class="page-header-card">
-            <div>
-                <h1 class="dash-title fw-bold">
-                    <span style="color: var(--bs-info);">
-                        <i class="bi bi-send-check"></i>
+            <div class="answer-header-copy">
+                <div class="answer-title-row">
+                    <?= Html::a('<i class="bi bi-arrow-left"></i>', $backUrl, [
+                        'class' => 'answer-back-link',
+                        'aria-label' => 'Back to applied requests',
+                        'title' => 'Back to applied requests',
+                    ]) ?>
+                    <h1 class="dash-title fw-bold"><?= Html::encode($this->title) ?></h1>
+                    <span class="answer-priority priority-<?= Html::encode($operationalPriority) ?>">
+                        <i class="bi <?= Html::encode($operationalPriorityIcons[$operationalPriority] ?? 'bi-calendar-check') ?>"></i>
+                        <?= Html::encode($operationalPriorityLabel) ?>
                     </span>
-                    <?= Html::encode($this->title) ?>
-                </h1>
-
+                    <span class="answer-request-status <?= Html::encode($requestStatusClass) ?>">
+                        <i class="bi bi-circle-fill"></i>
+                        <?= Html::encode($requestStatusText) ?>
+                    </span>
+                </div>
                 <div class="subtitle-text">
-                    View the submitted answer details, quoted price and current request context.
+                    View the currently applicable accepted quote and the current Request context.
                 </div>
             </div>
 
-            <div class="header-actions">
-                <?php if ($userType === 'ao' && $mro): ?>
-                    <?php $encryptedMroId = UrlIdHelper::encode($mro->mro_id); ?>
-                    <?= Html::a(
-                        '<i class="bi bi-tools"></i> View MRO Profile',
-                        ['/mro-profile/view', 'id' => $encryptedMroId],
-                        ['class' => 'btn-page-action qa-profile']
-                    ) ?>
-                <?php endif; ?>
+            <div class="answer-header-side">
+                <div class="header-actions">
+                    <?php if ($userType === 'ao' && $mro): ?>
+                        <?php $encryptedMroId = UrlIdHelper::encode($mro->mro_id); ?>
+                        <?= Html::a(
+                            '<i class="bi bi-tools"></i> View MRO Profile',
+                            ['/mro-profile/view', 'id' => $encryptedMroId],
+                            ['class' => 'btn-page-action qa-profile']
+                        ) ?>
+                    <?php endif; ?>
 
-                <!-- CLOSED REQUEST ACTIONS: same conditional actions exposed by the list row. -->
-                <?php if ($userType === 'mro' && $hasRepairReport): ?>
-                    <?= Html::a(
-                        '<i class="bi bi-file-text"></i> View CRSs',
-                        ['view-reports', 'id' => $encodedApplicationId],
-                        [
-                            'class' => 'btn-page-action qa-reports',
-                            'title' => 'View submitted CRS documents',
-                        ]
-                    ) ?>
-                <?php endif; ?>
+                    <!-- CLOSED REQUEST ACTIONS: same conditional actions exposed by the list row. -->
+                    <?php if ($userType === 'mro' && $hasRepairReport): ?>
+                        <?= Html::a(
+                            '<i class="bi bi-file-text"></i> View CRSs',
+                            ['view-reports', 'id' => $encodedApplicationId],
+                            [
+                                'class' => 'btn-page-action qa-reports',
+                                'title' => 'View submitted CRS documents',
+                            ]
+                        ) ?>
+                    <?php endif; ?>
 
-                <?php if (
-                    $userType === 'mro'
-                    && $requestStatus === 'closed'
-                    && $hasRequestFeedback
-                    && $encodedRequestId !== null
-                ): ?>
-                    <?= Html::a(
-                        '<i class="bi bi-chat-square-text"></i> View Feedback',
-                        ['view-feedback', 'id' => $encodedRequestId],
-                        [
-                            'class' => 'btn-page-action qa-feedback',
-                            'title' => 'View aircraft operator feedback',
-                        ]
-                    ) ?>
-                <?php endif; ?>
-
-                <?= Html::a(
-                    '<i class="bi bi-arrow-left-circle"></i> Back to Applied Requests',
-                    $backUrl,
-                    ['class' => 'btn-page-action btn-back']
-                ) ?>
+                    <?php if (
+                        $userType === 'mro'
+                        && $requestStatus === 'closed'
+                        && $hasRequestFeedback
+                        && $encodedRequestId !== null
+                    ): ?>
+                        <?= Html::a(
+                            '<i class="bi bi-chat-square-text"></i> View Feedback',
+                            ['view-feedback', 'id' => $encodedRequestId],
+                            [
+                                'class' => 'btn-page-action qa-feedback',
+                                'title' => 'View aircraft operator feedback',
+                            ]
+                        ) ?>
+                    <?php endif; ?>
+                </div>
+                <div class="answer-header-dates">
+                    <span>Created: <strong><?= Html::encode($requestCreatedAt) ?></strong></span>
+                    <span>Last updated: <strong><?= Html::encode($requestUpdatedAt) ?></strong></span>
+                </div>
             </div>
         </div>
 
-        <!-- Compact operational request summary -->
-        <section class="request-summary-strip" aria-label="Current request summary">
-            <div class="detail-item">
-                <div class="detail-label"><i class="bi bi-hash"></i> Request ID</div>
-                <div class="detail-value"><span class="request-id-badge">#<?= Html::encode($requestId) ?></span></div>
+        <!-- Request context aligned with the other detail pages. -->
+        <section class="answer-request-overview" aria-labelledby="answer-overview-title">
+            <div class="answer-overview-head">
+                <div>
+                    <h2 id="answer-overview-title"><i class="bi bi-info-circle"></i> Request Overview</h2>
+                    <p>Read-only operational context for the active MRO quotation.</p>
+                </div>
+                <span class="answer-request-id"><i class="bi bi-hash"></i><?= Html::encode($requestId) ?></span>
             </div>
-            <div class="detail-item">
-                <div class="detail-label"><i class="bi bi-activity"></i> Request Status</div>
-                <div class="detail-value"><span class="status-badge <?= Html::encode($requestStatusClass) ?>"><i class="bi bi-circle-fill"></i> <?= Html::encode($requestStatusText) ?></span></div>
+
+            <div class="answer-summary-grid">
+                <article class="answer-summary-item answer-aircraft-item">
+                    <div class="answer-summary-label"><i class="bi bi-airplane"></i>Aircraft</div>
+                    <div class="answer-summary-value"><?= Html::encode($aircraftName) ?></div>
+                    <div class="answer-aircraft-reference">
+                        <span><?= Html::encode($aircraftRegistration) ?></span>
+                        <span>MSN <?= Html::encode($serialNumber) ?></span>
+                    </div>
+                    <div class="answer-aircraft-image" role="img" aria-label="Aircraft maintenance network"></div>
+                </article>
+
+                <article class="answer-summary-item">
+                    <div class="answer-summary-label"><i class="bi bi-building"></i><?= Html::encode($stakeholderLabel) ?></div>
+                    <div class="answer-summary-value"><?= Html::encode($stakeholderName) ?></div>
+                </article>
+
+                <article class="answer-summary-item">
+                    <div class="answer-summary-label"><i class="bi bi-geo-alt"></i>Maintenance Location</div>
+                    <div class="answer-summary-value"><?= Html::encode($requestLocation !== 'N/A' ? $requestLocation : $airportName) ?></div>
+                    <div class="answer-summary-secondary"><?= Html::encode(trim($airportIcao . ' · ' . $airportName, ' ·')) ?></div>
+                </article>
+
+                <article class="answer-summary-item">
+                    <div class="answer-summary-label"><i class="bi bi-calendar2-week"></i>ETA / ETD</div>
+                    <div class="answer-schedule">
+                        <span><small>ETA</small><strong><?= Html::encode($requestEta) ?></strong></span>
+                        <span><small>ETD</small><strong><?= Html::encode($requestEtd) ?></strong></span>
+                    </div>
+                </article>
+
+                <article class="answer-summary-item">
+                    <div class="answer-summary-label"><i class="bi bi-broadcast-pin"></i>Operational Priority</div>
+                    <span class="answer-priority priority-<?= Html::encode($operationalPriority) ?>">
+                        <i class="bi <?= Html::encode($operationalPriorityIcons[$operationalPriority] ?? 'bi-calendar-check') ?>"></i>
+                        <?= Html::encode($operationalPriorityLabel) ?>
+                    </span>
+                </article>
+
+                <article class="answer-summary-item">
+                    <div class="answer-summary-label"><i class="bi bi-cash-stack"></i>Active Quote</div>
+                    <div class="answer-summary-value answer-quote-value"><?= Html::encode($formattedPrice) ?></div>
+                </article>
+
+                <article class="answer-summary-item">
+                    <div class="answer-summary-label"><i class="bi bi-activity"></i>Request Status</div>
+                    <span class="answer-request-status <?= Html::encode($requestStatusClass) ?>">
+                        <i class="bi bi-circle-fill"></i>
+                        <?= Html::encode($requestStatusText) ?>
+                    </span>
+                </article>
             </div>
-            <div class="detail-item">
-                <div class="detail-label"><i class="bi bi-building"></i> Manufacturer</div>
-                <div class="detail-value"><span class="aircraft-badge"><?= Html::encode($aircraftManufacturer) ?></span></div>
-            </div>
-            <div class="detail-item">
-                <div class="detail-label"><i class="bi bi-airplane-engines"></i> Aircraft Model</div>
-                <div class="detail-value"><span class="aircraft-badge"><?= Html::encode($aircraftModel) ?></span></div>
-            </div>
-            <div class="detail-item">
-                <div class="detail-label"><i class="bi bi-card-text"></i> Registration</div>
-                <div class="detail-value"><span class="registration-badge"><?= Html::encode($aircraftRegistration) ?></span></div>
-            </div>
-            <div class="detail-item">
-                <div class="detail-label"><i class="bi bi-upc-scan"></i> Serial Number</div>
-                <div class="detail-value"><span class="serial-badge"><?= Html::encode($serialNumber) ?></span></div>
-            </div>
-            <div class="detail-item">
-                <div class="detail-label"><i class="bi bi-calendar-event"></i> ETA</div>
-                <div class="detail-value"><span class="date-badge"><?= Html::encode($requestEta) ?></span></div>
-            </div>
-            <div class="detail-item">
-                <div class="detail-label"><i class="bi bi-calendar-check"></i> ETD</div>
-                <div class="detail-value"><span class="date-badge"><?= Html::encode($requestEtd) ?></span></div>
-            </div>
-            <div class="detail-item">
-                <div class="detail-label"><i class="bi bi-geo-alt"></i> Maintenance Location</div>
-                <div class="detail-value"><span class="location-badge"><i class="bi bi-pin-map"></i> <?= Html::encode($requestLocation) ?></span></div>
-            </div>
+
+            <article class="answer-request-information">
+                <div class="answer-summary-label"><i class="bi bi-file-text"></i>Request Informations</div>
+                <div class="answer-request-text"><?= nl2br(Html::encode(!empty($requestDetails) ? $requestDetails : 'No request details available')) ?></div>
+            </article>
         </section>
 
         <div class="view-grid">
@@ -963,8 +1121,16 @@ CSS);
             <div class="content-card">
                 <h2 class="section-title">
                     <i class="bi bi-info-circle text-primary"></i>
-                    Answer Details
+                    Active Quote Details
                 </h2>
+
+                <div class="active-quote-banner">
+                    <span class="active-quote-banner-icon"><i class="bi bi-patch-check"></i></span>
+                    <div>
+                        <strong><?= Html::encode($quoteSourceLabel) ?></strong>
+                        <small><?= Html::encode($quoteSourceDescription) ?></small>
+                    </div>
+                </div>
 
                 <div class="detail-list">
 
@@ -1085,10 +1251,37 @@ CSS);
                         ) ?>
                     </div>
 
+                    <!-- Active quotation document -->
+                    <div class="detail-item full-width">
+                        <div class="detail-label">
+                            <i class="bi bi-file-earmark-text"></i>
+                            Active Quote Document
+                        </div>
+
+                        <div class="detail-value">
+                            <?php if ($activeQuoteDocumentUrl !== null): ?>
+                                <?= Html::a(
+                                    '<i class="bi bi-box-arrow-up-right"></i> Open Active Quote Document',
+                                    $activeQuoteDocumentUrl,
+                                    [
+                                        'class' => 'active-quote-document',
+                                        'target' => '_blank',
+                                        'rel' => 'noopener',
+                                    ]
+                                ) ?>
+                            <?php else: ?>
+                                <span class="empty-badge">
+                                    <i class="bi bi-file-earmark-minus"></i>
+                                    No quote document attached
+                                </span>
+                            <?php endif; ?>
+                        </div>
+                    </div>
+
                 </div>
 
                 <!-- Current request details -->
-                <h2 class="section-title" style="margin-top: 24px;">
+                <h2 class="section-title request-details-duplicate-title" style="margin-top: 24px;">
                     <i class="bi bi-clipboard2-check text-primary"></i>
                     Request Informations
                 </h2>
