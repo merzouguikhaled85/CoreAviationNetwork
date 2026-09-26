@@ -27,6 +27,24 @@ ROLLBACK_RUNNING=0
 export CAN_APP_ENV="prod"
 export CAN_APP_DEBUG="0"
 
+# Le compte SSH de l'hébergement peut utiliser un umask 077. Les assets créés
+# ou remplacés par Git deviennent alors illisibles par Apache et répondent 403.
+# La normalisation reste volontairement limitée aux fichiers publics suivis par
+# Git ; les uploads, les assets générés et les secrets ne sont jamais touchés.
+normalize_public_asset_permissions() {
+    local public_asset=""
+
+    for public_directory in web web/css web/js web/logo; do
+        if [[ -d "$public_directory" ]]; then
+            chmod 755 "$public_directory"
+        fi
+    done
+
+    while IFS= read -r -d '' public_asset; do
+        chmod 644 -- "$public_asset"
+    done < <(git ls-files -z -- web/css web/js web/logo web/favicon.png)
+}
+
 cleanup_secrets() {
     if [[ -n "$MYSQL_CONFIG" && -f "$MYSQL_CONFIG" ]]; then
         rm -f "$MYSQL_CONFIG"
@@ -102,6 +120,7 @@ rollback_deployment() {
     if [[ "$CODE_UPDATED" -eq 1 && -n "$PREVIOUS_REVISION" ]]; then
         echo "[CAN] Restauration du code ${PREVIOUS_REVISION}."
         git reset --hard "$PREVIOUS_REVISION" || rollback_failed=1
+        normalize_public_asset_permissions || rollback_failed=1
 
         "$COMPOSER_BIN" install \
             --no-dev \
@@ -279,6 +298,7 @@ git fetch --prune origin main
 git checkout main
 git merge --ff-only origin/main
 CODE_UPDATED=1
+normalize_public_asset_permissions
 
 mkdir -p "$UPLOAD_DIR"
 cp -a "$PERSISTENT_UPLOAD_DIR/." "$UPLOAD_DIR/"
