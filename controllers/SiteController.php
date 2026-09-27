@@ -1,6 +1,7 @@
 <?php
 
 namespace app\controllers;
+use app\components\PrelaunchMode;
 use app\models\Airports;
 use app\models\Notification;
 use app\models\UsernameResetRequestForm;
@@ -36,6 +37,8 @@ use app\models\PasswordResetRequestForm;
 use yii\helpers\VarDumper;
 use app\models\MroInsuranceDocuments;
 use app\models\UserPasswordResetRequestForm;
+use app\models\PrelaunchSubscriber;
+use yii\db\IntegrityException;
 
 
 class SiteController extends Controller
@@ -65,6 +68,9 @@ class SiteController extends Controller
                 'class' => VerbFilter::class,
                 'actions' => [
                     'logout' => ['post'],
+                    'join-network' => ['post'],
+                    'confirm-prelaunch' => ['get'],
+                    'unsubscribe-prelaunch' => ['get', 'post'],
                 ],
             ],
         ];
@@ -94,7 +100,436 @@ class SiteController extends Controller
      */
     public function actionIndex()
     {
-        return $this->render('home');
+        return $this->render('home', [
+            'prelaunchSubscriber' => $this->newPrelaunchSubscriber(),
+        ]);
+    }
+
+    /**
+     * Registers a visitor and dispatches the double opt-in email.
+     */
+    public function actionJoinNetwork()
+    {
+        $model = $this->newPrelaunchSubscriber();
+        if (!$model->load(Yii::$app->request->post())) {
+            Yii::$app->session->setFlash('error', 'The registration could not be submitted. Please try again.');
+            return $this->redirect(['/site/index', '#' => 'early-access']);
+        }
+
+        if (!$this->consumePrelaunchRateLimit()) {
+            Yii::$app->session->setFlash('warning', 'Too many registration attempts. Please try again in a few minutes.');
+            return $this->redirect(['/site/index', '#' => 'early-access']);
+        }
+
+        if (!$model->validate()) {
+            Yii::$app->response->statusCode = 422;
+            return $this->render('home', ['prelaunchSubscriber' => $model]);
+        }
+
+        /* Reject malformed or honeypot submissions before calling Turnstile. */
+        $challenge = $this->validatePrelaunchChallenge();
+        if (!$challenge['valid']) {
+            Yii::$app->session->setFlash('error', $challenge['message']);
+            Yii::$app->response->statusCode = $challenge['status'];
+            return $this->render('home', ['prelaunchSubscriber' => $model]);
+        }
+
+        $now = date('Y-m-d H:i:s');
+        $subscriber = PrelaunchSubscriber::findOne(['business_email' => $model->business_email]);
+
+        /*
+         * A confirmed address receives the same generic response as a new one.
+         * This prevents the public form from becoming an email enumeration API.
+         */
+        if ($subscriber && $subscriber->subscription_status === PrelaunchSubscriber::STATUS_CONFIRMED) {
+            $this->setPrelaunchGenericSuccess();
+            return $this->redirect(['/site/index', '#' => 'early-access']);
+        }
+
+        /* A pending confirmation is resent at most once every ten minutes. */
+        if (
+            $subscriber
+            && $subscriber->subscription_status === PrelaunchSubscriber::STATUS_PENDING_CONFIRMATION
+            && $subscriber->confirmation_sent_at
+            && strtotime($subscriber->confirmation_sent_at) > time() - 600
+        ) {
+            $this->setPrelaunchGenericSuccess();
+            return $this->redirect(['/site/index', '#' => 'early-access']);
+        }
+
+        $confirmationToken = Yii::$app->security->generateRandomString(48);
+        $unsubscribeToken = Yii::$app->security->generateRandomString(48);
+        $transaction = Yii::$app->db->beginTransaction();
+
+        try {
+            if ($subscriber === null) {
+                $subscriber = $model;
+            } else {
+                $subscriber->first_name = $model->first_name;
+                $subscriber->last_name = $model->last_name;
+                $subscriber->company_name = $model->company_name;
+                $subscriber->company_website = $model->company_website;
+                $subscriber->company_type = $model->company_type;
+            }
+
+            $subscriber->business_email = $model->business_email;
+            $subscriber->subscription_status = PrelaunchSubscriber::STATUS_PENDING_CONFIRMATION;
+            $subscriber->consent = 1;
+            $subscriber->consent_at = $now;
+            $subscriber->consent_text_version = PrelaunchSubscriber::CONSENT_TEXT_VERSION;
+            $subscriber->source = 'homepage';
+            $subscriber->confirmed_at = null;
+            $subscriber->unsubscribed_at = null;
+            $subscriber->confirmation_token_hash = hash('sha256', $confirmationToken);
+            $subscriber->confirmation_token_expires_at = date('Y-m-d H:i:s', time() + 86400);
+            $subscriber->confirmation_sent_at = null;
+            $subscriber->confirmation_email_status = PrelaunchSubscriber::EMAIL_PENDING;
+            $subscriber->confirmation_last_error = null;
+            $subscriber->unsubscribe_token_hash = hash('sha256', $unsubscribeToken);
+            $subscriber->ip_address = mb_substr((string) Yii::$app->request->userIP, 0, 45, 'UTF-8');
+            $subscriber->user_agent = mb_substr(
+                (string) Yii::$app->request->userAgent,
+                0,
+                500,
+                'UTF-8'
+            );
+
+            if (!$subscriber->save(false)) {
+                throw new \RuntimeException('The early access registration could not be persisted.');
+            }
+
+            $transaction->commit();
+        } catch (IntegrityException $exception) {
+            $transaction->rollBack();
+            Yii::warning('Concurrent duplicate early access registration was ignored.', __METHOD__);
+            $this->setPrelaunchGenericSuccess();
+            return $this->redirect(['/site/index', '#' => 'early-access']);
+        } catch (\Throwable $exception) {
+            $transaction->rollBack();
+            Yii::error([
+                'message' => 'Early access registration failed.',
+                'exception' => $exception,
+            ], __METHOD__);
+            Yii::$app->session->setFlash('error', 'We could not save your registration. Please try again later.');
+            return $this->redirect(['/site/index', '#' => 'early-access']);
+        }
+
+        $delivery = $this->sendPrelaunchConfirmationEmail(
+            $subscriber,
+            $confirmationToken,
+            $unsubscribeToken
+        );
+        $deliveryAttributes = [
+            'confirmation_attempt_count' => (int) $subscriber->confirmation_attempt_count + 1,
+            'confirmation_attempted_at' => $now,
+        ];
+
+        if ($delivery['sent']) {
+            $deliveryAttributes['confirmation_email_status'] = PrelaunchSubscriber::EMAIL_SENT;
+            $deliveryAttributes['confirmation_sent_at'] = $now;
+            $deliveryAttributes['confirmation_last_error'] = null;
+            $subscriber->updateAttributes($deliveryAttributes);
+            $this->setPrelaunchGenericSuccess();
+        } else {
+            $deliveryAttributes['confirmation_email_status'] = PrelaunchSubscriber::EMAIL_FAILED;
+            $deliveryAttributes['confirmation_last_error'] = $delivery['error'];
+            $subscriber->updateAttributes($deliveryAttributes);
+            Yii::$app->session->setFlash(
+                'warning',
+                'Your registration was saved, but the confirmation email could not be sent. Please try again shortly.'
+            );
+        }
+
+        return $this->redirect(['/site/index', '#' => 'early-access']);
+    }
+
+    /**
+     * Confirms a pending early-access address using a one-day token.
+     */
+    public function actionConfirmPrelaunch($token)
+    {
+        $subscriber = $this->findPrelaunchSubscriberByToken($token, 'confirmation_token_hash');
+        if ($subscriber === null) {
+            Yii::$app->session->setFlash('error', 'This confirmation link is invalid.');
+            return $this->redirect(['/site/index', '#' => 'early-access']);
+        }
+
+        if ($subscriber->subscription_status === PrelaunchSubscriber::STATUS_CONFIRMED) {
+            Yii::$app->session->setFlash('info', 'Your early access registration is already confirmed.');
+            return $this->redirect(['/site/index', '#' => 'early-access']);
+        }
+
+        if (
+            !$subscriber->confirmation_token_expires_at
+            || strtotime($subscriber->confirmation_token_expires_at) < time()
+        ) {
+            Yii::$app->session->setFlash('warning', 'This confirmation link has expired. Submit the form again to receive a new one.');
+            return $this->redirect(['/site/index', '#' => 'early-access']);
+        }
+
+        $subscriber->updateAttributes([
+            'subscription_status' => PrelaunchSubscriber::STATUS_CONFIRMED,
+            'confirmed_at' => date('Y-m-d H:i:s'),
+        ]);
+        Yii::$app->session->setFlash(
+            'success',
+            'Your early access registration is confirmed. We will notify you when CAN goes live.'
+        );
+
+        return $this->redirect(['/site/index', '#' => 'early-access']);
+    }
+
+    /**
+     * Uses a confirmation screen before removing an address from launch updates.
+     */
+    public function actionUnsubscribePrelaunch($token)
+    {
+        $subscriber = $this->findPrelaunchSubscriberByToken($token, 'unsubscribe_token_hash');
+        if ($subscriber === null) {
+            Yii::$app->session->setFlash('error', 'This preference link is invalid.');
+            return $this->redirect(['/site/index']);
+        }
+
+        $alreadyUnsubscribed = $subscriber->subscription_status === PrelaunchSubscriber::STATUS_UNSUBSCRIBED;
+        if (Yii::$app->request->isPost && !$alreadyUnsubscribed) {
+            $subscriber->updateAttributes([
+                'subscription_status' => PrelaunchSubscriber::STATUS_UNSUBSCRIBED,
+                'unsubscribed_at' => date('Y-m-d H:i:s'),
+                'confirmation_token_hash' => null,
+                'confirmation_token_expires_at' => null,
+            ]);
+            Yii::$app->session->setFlash('success', 'Your address has been removed from the launch notification list.');
+            return $this->redirect(['/site/index']);
+        }
+
+        return $this->render('prelaunch-unsubscribe', [
+            'token' => $token,
+            'alreadyUnsubscribed' => $alreadyUnsubscribed,
+        ]);
+    }
+
+    private function newPrelaunchSubscriber()
+    {
+        $model = new PrelaunchSubscriber();
+        $model->scenario = PrelaunchSubscriber::SCENARIO_PUBLIC_SIGNUP;
+        return $model;
+    }
+
+    private function redirectToPrelaunchRegistration()
+    {
+        Yii::$app->session->setFlash(
+            'info',
+            'New AO and MRO registrations are currently available through Early Access.'
+        );
+
+        return $this->redirect(PrelaunchMode::earlyAccessRoute());
+    }
+
+    private function setPrelaunchGenericSuccess()
+    {
+        Yii::$app->session->setFlash(
+            'success',
+            'Thank you. If confirmation is required, an email has been sent to the address provided.'
+        );
+    }
+
+    private function findPrelaunchSubscriberByToken($token, $attribute)
+    {
+        $token = trim((string) $token);
+        if (!in_array($attribute, ['confirmation_token_hash', 'unsubscribe_token_hash'], true)) {
+            return null;
+        }
+        if (strlen($token) < 32 || strlen($token) > 128 || !preg_match('/^[A-Za-z0-9_-]+$/', $token)) {
+            return null;
+        }
+
+        return PrelaunchSubscriber::findOne([$attribute => hash('sha256', $token)]);
+    }
+
+    private function sendPrelaunchConfirmationEmail(
+        PrelaunchSubscriber $subscriber,
+        $confirmationToken,
+        $unsubscribeToken
+    ) {
+        $confirmationUrl = Yii::$app->urlManager->createAbsoluteUrl([
+            '/site/confirm-prelaunch',
+            'token' => $confirmationToken,
+        ]);
+        $unsubscribeUrl = Yii::$app->urlManager->createAbsoluteUrl([
+            '/site/unsubscribe-prelaunch',
+            'token' => $unsubscribeToken,
+        ]);
+
+        try {
+            $sent = (bool) Yii::$app->mailer->compose(
+                [
+                    'html' => 'prelaunch-confirmation-html',
+                    'text' => 'prelaunch-confirmation-text',
+                ],
+                [
+                    'subscriber' => $subscriber,
+                    'confirmationUrl' => $confirmationUrl,
+                    'unsubscribeUrl' => $unsubscribeUrl,
+                ]
+            )
+                ->setTo($subscriber->business_email)
+                ->setSubject('Confirm your Core Aviation Network early access registration')
+                ->send();
+
+            return [
+                'sent' => $sent,
+                'error' => $sent
+                    ? null
+                    : 'SMTP transport returned no delivery confirmation. Review the protected application log.',
+            ];
+        } catch (\Throwable $exception) {
+            Yii::warning([
+                'message' => 'Prelaunch confirmation email could not be sent.',
+                'subscriberId' => (int) $subscriber->id,
+                'exceptionClass' => get_class($exception),
+            ], __METHOD__);
+            return [
+                'sent' => false,
+                'error' => 'Mailer exception (' . get_class($exception) . '). Review the protected application log.',
+            ];
+        }
+    }
+
+    /**
+     * Five attempts per IP every ten minutes; the address is only used in cache.
+     */
+    private function consumePrelaunchRateLimit()
+    {
+        $key = 'prelaunch-rate-' . hash('sha256', (string) Yii::$app->request->userIP);
+        $now = time();
+        $window = Yii::$app->cache->get($key);
+
+        if (!is_array($window) || ($now - (int) ($window['started'] ?? 0)) >= 600) {
+            Yii::$app->cache->set($key, ['started' => $now, 'count' => 1], 600);
+            return true;
+        }
+        if ((int) ($window['count'] ?? 0) >= 5) {
+            return false;
+        }
+
+        $window['count'] = (int) ($window['count'] ?? 0) + 1;
+        Yii::$app->cache->set($key, $window, 600);
+        return true;
+    }
+
+    /**
+     * Validates the Turnstile token without ever logging the token or secret.
+     */
+    private function validatePrelaunchChallenge()
+    {
+        if (YII_ENV_TEST) {
+            return ['valid' => true, 'status' => 200, 'message' => ''];
+        }
+
+        $secret = trim((string) (Yii::$app->params['turnstileSecretKey'] ?? ''));
+        $siteKey = trim((string) (Yii::$app->params['turnstileSiteKey'] ?? ''));
+        $expectedHostname = strtolower(rtrim(trim((string) (
+            Yii::$app->params['turnstileExpectedHostname'] ?? ''
+        )), '.'));
+        if ($secret === '' || $siteKey === '' || $expectedHostname === '') {
+            Yii::error('Turnstile is not configured for early access registrations.', __METHOD__);
+            return [
+                'valid' => false,
+                'status' => 503,
+                'message' => 'Visitor verification is temporarily unavailable. Please try again later.',
+            ];
+        }
+
+        $token = trim((string) Yii::$app->request->post('cf-turnstile-response', ''));
+        if ($token === '' || strlen($token) > 2048) {
+            return [
+                'valid' => false,
+                'status' => 422,
+                'message' => 'Please complete the visitor verification.',
+            ];
+        }
+
+        if (!function_exists('curl_init')) {
+            Yii::error('cURL is unavailable for early access Turnstile validation.', __METHOD__);
+            return [
+                'valid' => false,
+                'status' => 503,
+                'message' => 'Visitor verification is temporarily unavailable. Please try again later.',
+            ];
+        }
+
+        $handle = curl_init('https://challenges.cloudflare.com/turnstile/v0/siteverify');
+        $options = [
+            CURLOPT_POST => true,
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_CONNECTTIMEOUT => 3,
+            CURLOPT_TIMEOUT => 5,
+            CURLOPT_HTTPHEADER => ['Accept: application/json'],
+            CURLOPT_POSTFIELDS => http_build_query([
+                'secret' => $secret,
+                'response' => $token,
+                'remoteip' => (string) Yii::$app->request->userIP,
+            ]),
+        ];
+        if (defined('CURLSSLOPT_NATIVE_CA')) {
+            $options[CURLOPT_SSL_OPTIONS] = CURLSSLOPT_NATIVE_CA;
+        }
+        curl_setopt_array($handle, $options);
+
+        $rawResponse = curl_exec($handle);
+        $httpCode = (int) curl_getinfo($handle, CURLINFO_HTTP_CODE);
+        $transportError = curl_error($handle);
+        curl_close($handle);
+
+        if ($rawResponse === false || $transportError !== '' || $httpCode !== 200) {
+            Yii::warning([
+                'message' => 'Turnstile transport failed for an early access registration.',
+                'httpCode' => $httpCode,
+                'transportError' => $transportError,
+            ], __METHOD__);
+            return [
+                'valid' => false,
+                'status' => 503,
+                'message' => 'Visitor verification is temporarily unavailable. Please try again.',
+            ];
+        }
+
+        $result = json_decode((string) $rawResponse, true);
+        $verifiedAction = is_array($result) ? ($result['action'] ?? 'early_access') : null;
+        $verifiedHostname = is_array($result)
+            ? strtolower(rtrim(trim((string) ($result['hostname'] ?? '')), '.'))
+            : '';
+        /*
+         * La cle publique officielle 1x000...AA renvoie volontairement un
+         * hostname factice. Cette exception est limitee au mode developpement ;
+         * une vraie cle de production conserve la comparaison stricte ci-dessous.
+         */
+        $usesOfficialDevelopmentTestKey = YII_ENV_DEV
+            && hash_equals('1x00000000000000000000AA', $siteKey);
+        $actionIsValid = $verifiedAction === 'early_access'
+            || (YII_ENV_DEV && $verifiedAction === 'test');
+        $hostnameIsValid = $usesOfficialDevelopmentTestKey
+            || ($verifiedHostname !== '' && hash_equals($expectedHostname, $verifiedHostname));
+
+        if (
+            !is_array($result)
+            || empty($result['success'])
+            || !$actionIsValid
+            || !$hostnameIsValid
+        ) {
+            Yii::warning([
+                'message' => 'Turnstile rejected an early access registration.',
+                'errorCodes' => is_array($result) ? ($result['error-codes'] ?? []) : ['invalid-json'],
+                'hostnameMatches' => $hostnameIsValid,
+            ], __METHOD__);
+            return [
+                'valid' => false,
+                'status' => 422,
+                'message' => 'Visitor verification failed or expired. Please try again.',
+            ];
+        }
+
+        return ['valid' => true, 'status' => 200, 'message' => ''];
     }
 
 public function beforeAction($action)
@@ -151,11 +586,23 @@ public function beforeAction($action)
      */
     public function actionAdvertising()
     {
+        if (PrelaunchMode::isEnabled()) {
+            Yii::$app->session->setFlash(
+                'info',
+                'Advertising will open with the network. Join Early Access to receive launch updates.'
+            );
+            return $this->redirect(PrelaunchMode::earlyAccessRoute());
+        }
+
         return $this->render('advertising');
     }
     
     public function actionBecomeAo()
     {
+        if (PrelaunchMode::isEnabled()) {
+            return $this->redirectToPrelaunchRegistration();
+        }
+
         $model = new AoProfile();
         $airplaneModel = new Aircrafts(); // Create an instance of the Airplane model
         $manufacturers = AircraftModel::find()->select('manufacturer')->distinct()->orderBy(['manufacturer' => SORT_ASC])
@@ -424,6 +871,9 @@ $message = Yii::$app->mailer->compose()
     
     public function actionBecomeMro()
     {
+        if (PrelaunchMode::isEnabled()) {
+            return $this->redirectToPrelaunchRegistration();
+        }
 
         $model = new MroProfile();
         $termsContent = Terms::find()->one()->content; // Assuming you have a Terms model with a content field
@@ -1027,7 +1477,9 @@ private function getEmailVerificationTokenState(string $token): string
 
 public function actionHome()
 {
-    return $this->render('home');
+    return $this->render('home', [
+        'prelaunchSubscriber' => $this->newPrelaunchSubscriber(),
+    ]);
 }
 
     
@@ -1105,7 +1557,7 @@ $this->layout = 'login';
             
             Yii::$app->cache->delete($loginRateKey);
             Yii::$app->auditService->record('LOGIN');
-            Yii::$app->session->setFlash('message', 'You have successfully logged in. ' );
+            //Yii::$app->session->setFlash('message', 'You have successfully logged in. ' );
             return $this->redirect(['dashboard/home']);
         } else {
             Yii::$app->session->setFlash('error', 'Failed to set user identity.');

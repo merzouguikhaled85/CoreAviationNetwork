@@ -1,5 +1,6 @@
 <?php
 
+use app\components\PrelaunchMode;
 use yii\helpers\Html;
 use yii\bootstrap5\Nav;
 use yii\bootstrap5\NavBar;
@@ -10,6 +11,17 @@ use yii\helpers\Url;
 /* @var $this yii\web\View */
 
 $this->title = 'GlobalMROs';
+$prelaunchMode = PrelaunchMode::isEnabled();
+$signupItems = $prelaunchMode
+    ? [[
+        'label' => 'Early Access',
+        'url' => ['/site/index', '#' => 'early-access'],
+        'linkOptions' => ['class' => 'nav-link gradient-text'],
+    ]]
+    : [
+        ['label' => 'Operator Signup', 'url' => ['/site/become-ao'], 'linkOptions' => ['class' => 'nav-link gradient-text']],
+        ['label' => 'MRO Signup', 'url' => ['/site/become-mro'], 'linkOptions' => ['class' => 'nav-link gradient-text']],
+    ];
 
 ?>
 <style>
@@ -37,11 +49,7 @@ $this->title = 'GlobalMROs';
 
 <?= Nav::widget([
     'options' => ['class' => 'navbar-nav mr-auto'],
-    'items' => [
-        ['label' => 'Operator Signup', 'url' => ['/site/become-ao'], 'linkOptions' => ['class' => 'nav-link gradient-text']],
-
-        ['label' => 'MRO Signup', 'url' => ['/site/become-mro'], 'linkOptions' => ['class' => 'nav-link gradient-text' ]],
-    ],
+    'items' => $signupItems,
 ]); ?>
 <div class="navbar-nav mx-auto text-center" style="position: absolute; left: 50%; transform: translateX(-50%);">
 <a class="text-white gradient-text" href="<?= Yii::$app->homeUrl ?>" style="font-size: 2.35rem; font-weight: bold; line-height: 1.2; background: linear-gradient(to right, #BF953F, #FCF6BA, #B38728, #FBF5B7, #AA771C); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">

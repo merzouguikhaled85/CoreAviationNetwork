@@ -1,10 +1,41 @@
 <?php
 /** @var yii\web\View $this */
+use app\components\PrelaunchMode;
 use yii\helpers\Html;
 use yii\helpers\Url;
 use app\models\Advert;
+use app\models\PrelaunchSubscriber;
+use yii\widgets\ActiveForm;
+
+/** @var PrelaunchSubscriber $prelaunchSubscriber */
 
 $this->title = 'Core Aviation Network';
+
+$this->registerCssFile(
+    '@web/css/prelaunch.css?v=20260926-1',
+    ['depends' => [\yii\bootstrap5\BootstrapAsset::class]]
+);
+$this->registerJsFile(
+    '@web/js/prelaunch.js?v=20260926-1',
+    ['depends' => [\yii\web\JqueryAsset::class], 'position' => \yii\web\View::POS_END]
+);
+
+$prelaunchTurnstileSiteKey = trim((string) (Yii::$app->params['turnstileSiteKey'] ?? ''));
+$prelaunchTurnstileConfigured = $prelaunchTurnstileSiteKey !== ''
+    && trim((string) (Yii::$app->params['turnstileSecretKey'] ?? '')) !== ''
+    && trim((string) (Yii::$app->params['turnstileExpectedHostname'] ?? '')) !== '';
+if ($prelaunchTurnstileConfigured) {
+    $this->registerJsFile(
+        'https://challenges.cloudflare.com/turnstile/v0/api.js',
+        [
+            'async' => true,
+            'defer' => true,
+            'data-can-turnstile-api' => '1',
+            'position' => \yii\web\View::POS_END,
+        ],
+        'can-turnstile-api'
+    );
+}
 
 /*
  * ANCIENS MEDIAS DU HERO - CONSERVES COMME REFERENCE :
@@ -90,41 +121,58 @@ $this->registerLinkTag([
  */
 $isGuest = Yii::$app->user->isGuest;
 $homeUserType = (string) Yii::$app->session->get('user_type');
+$prelaunchMode = PrelaunchMode::isEnabled();
 
-if ($isGuest) {
+if ($isGuest && $prelaunchMode) {
+    $heroPrimaryUrl = '#early-access';
+    $heroPrimaryLabel = 'Get Early Access';
+    $heroPrimaryIcon = 'ri-flight-takeoff-line';
+    $heroSecondaryUrl = ['/site/login'];
+    $heroSecondaryLabel = 'Login';
+    $heroSecondaryIcon = 'ri-login-box-line';
+} elseif ($isGuest) {
     $heroPrimaryUrl = ['/site/become-ao'];
     $heroPrimaryLabel = 'Join as AO';
+    $heroPrimaryIcon = 'ri-send-plane-line';
     $heroSecondaryUrl = ['/site/become-mro'];
     $heroSecondaryLabel = 'Join as MRO';
+    $heroSecondaryIcon = 'ri-building-2-line';
 } elseif ($homeUserType === 'ao') {
     $heroPrimaryUrl = ['/requests/create'];
     $heroPrimaryLabel = 'New Request';
+    $heroPrimaryIcon = 'ri-send-plane-line';
     $heroSecondaryUrl = ['/dashboard/home'];
     $heroSecondaryLabel = 'Dashboard';
+    $heroSecondaryIcon = 'ri-layout-grid-line';
 } else {
     $heroPrimaryUrl = ['/mro-requests/index'];
     $heroPrimaryLabel = 'View Requests';
+    $heroPrimaryIcon = 'ri-file-list-3-line';
     $heroSecondaryUrl = ['/dashboard/home'];
     $heroSecondaryLabel = 'Dashboard';
+    $heroSecondaryIcon = 'ri-layout-grid-line';
 }
 
 
 $now = date('Y-m-d H:i:s');
 
-$aboutAdverts = Advert::find()
-    ->where(['status' => 'active'])
-    ->andWhere([
-        'or',
-        ['start_date' => null],
-        ['<=', 'start_date', $now],
-    ])
-    ->andWhere([
-        'or',
-        ['end_date' => null],
-        ['>=', 'end_date', $now],
-    ])
-    ->orderBy(['advert_id' => SORT_DESC])
-    ->all();
+$aboutAdverts = [];
+if (!$prelaunchMode) {
+    $aboutAdverts = Advert::find()
+        ->where(['status' => 'active'])
+        ->andWhere([
+            'or',
+            ['start_date' => null],
+            ['<=', 'start_date', $now],
+        ])
+        ->andWhere([
+            'or',
+            ['end_date' => null],
+            ['>=', 'end_date', $now],
+        ])
+        ->orderBy(['advert_id' => SORT_DESC])
+        ->all();
+}
 
 
 /* ===== JS du slider (auto, dots, prev/next, pause-hover, clavier, swipe, vidéo) ===== */
@@ -867,8 +915,9 @@ $this->registerCss(<<<CSS
 .network-audience-section{
     padding:clamp(72px, 8vw, 112px) 0;
     background:
-        radial-gradient(circle at 50% 45%, rgba(14,165,233,.12), transparent 24%),
-        linear-gradient(180deg, #f8fbff 0%, #ffffff 100%);
+        linear-gradient(90deg, rgba(15,23,42,.035) 1px, transparent 1px),
+        linear-gradient(180deg, #f8fafc 0%, #ffffff 100%);
+    background-size:64px 100%, auto;
 }
 .home-section-heading{
     max-width:760px;
@@ -910,72 +959,132 @@ $this->registerCss(<<<CSS
 }
 .audience-network-grid{
     display:grid;
-    max-width:1110px;
+    max-width:1120px;
     margin:0 auto;
     grid-template-columns:repeat(2, minmax(0, 1fr));
     align-items:stretch;
-    gap:24px;
+    gap:28px;
 }
 .audience-card{
+    --audience-accent:#0878ad;
+    --audience-accent-soft:#e8f5fb;
     position:relative;
     overflow:hidden;
-    border:1px solid #dbe7f3;
-    border-radius:24px;
-    padding:32px;
-    background:#fff;
-    box-shadow:0 18px 48px rgba(15,23,42,.08);
+    border:1px solid #d9e1e8;
+    border-radius:6px;
+    padding:0 38px 34px;
+    background:linear-gradient(135deg, #ffffff 0%, #ffffff 76%, #f7fafc 100%);
+    box-shadow:0 12px 30px rgba(15,23,42,.07);
 }
-.audience-card::after{
+.audience-card--mro{
+    --audience-accent:#c49a00;
+    --audience-accent-soft:#fff8d9;
+}
+.audience-card::before{
     position:absolute;
-    right:-55px;
-    bottom:-65px;
-    width:170px;
-    height:170px;
-    border-radius:50%;
-    background:rgba(14,165,233,.07);
+    inset:0 auto 0 0;
+    width:5px;
+    background:var(--audience-accent);
     content:"";
 }
+.audience-card-topline{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:20px;
+    min-height:53px;
+    border-bottom:1px solid #e5e9ee;
+}
+.audience-card-role{
+    color:#64748b;
+    font-size:10px;
+    font-weight:800;
+    letter-spacing:.12em;
+    line-height:1.3;
+    text-transform:uppercase;
+}
+.audience-card-index{
+    color:var(--audience-accent);
+    font-family:ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    font-size:12px;
+    font-weight:800;
+    letter-spacing:.08em;
+}
+.audience-card-heading{
+    display:flex;
+    align-items:center;
+    gap:17px;
+    margin-top:27px;
+}
 .audience-card-icon{
-    width:56px;
-    height:56px;
+    width:48px;
+    height:48px;
+    flex:0 0 48px;
     display:grid;
     place-items:center;
-    border-radius:17px;
-    background:#e0f2fe;
-    color:#0369a1;
-    font-size:27px;
+    border:1px solid color-mix(in srgb, var(--audience-accent) 38%, white);
+    border-radius:3px;
+    background:var(--audience-accent-soft);
+    color:var(--audience-accent);
+    font-size:24px;
 }
 .audience-card h3{
-    margin:23px 0 10px;
-    color:#0f172a;
-    font-size:22px;
-    font-weight:850;
-}
-.audience-card > p{
     margin:0;
+    color:#0f172a;
+    font-size:clamp(20px, 2vw, 25px);
+    font-weight:800;
+    letter-spacing:-.025em;
+    line-height:1.18;
+}
+.audience-card-summary{
+    min-height:78px;
+    margin:21px 0 0;
     color:#64748b;
+    font-size:15px;
     line-height:1.65;
 }
+.audience-card-divider{
+    display:flex;
+    align-items:center;
+    gap:12px;
+    margin-top:22px;
+    color:#94a3b8;
+    font-size:9px;
+    font-weight:800;
+    letter-spacing:.14em;
+    text-transform:uppercase;
+}
+.audience-card-divider::after{
+    height:1px;
+    flex:1;
+    background:#e5e9ee;
+    content:"";
+}
 .audience-benefits{
-    position:relative;
-    z-index:1;
     display:grid;
-    gap:11px;
-    margin:24px 0 0;
+    gap:0;
+    margin:8px 0 0;
     padding:0;
     list-style:none;
 }
 .audience-benefits li{
     display:flex;
     align-items:center;
-    gap:10px;
+    gap:12px;
+    min-height:40px;
+    border-bottom:1px solid #edf0f3;
     color:#334155;
     font-size:13px;
-    font-weight:750;
+    font-weight:700;
 }
-.audience-benefits i{color:#0284c7; font-size:18px;}
+.audience-benefits li:last-child{border-bottom:0;}
+.audience-benefits i{
+    color:var(--audience-accent);
+    font-size:17px;
+}
 @media (max-width:991.98px){
     .audience-network-grid{grid-template-columns:1fr;}
+    .audience-card-summary{min-height:0;}
 }
 
 @media (max-width:575.98px){
@@ -983,14 +1092,24 @@ $this->registerCss(<<<CSS
     .home-section-heading{margin-bottom:30px; text-align:left;}
     .home-section-eyebrow::before,
     .home-section-eyebrow::after{display:none;}
-    .audience-card{padding:25px 22px;}
+    .audience-card{padding:0 23px 25px;}
+    .audience-card-heading{align-items:flex-start;}
+    .audience-card-role{max-width:210px;}
 }
 
-/* PARCOURS PRINCIPAL : meme hierarchie centree que la section des publics. */
+/* PARCOURS PRINCIPAL : tableau de processus sobre et technique. */
+.workflow-section{
+    padding:clamp(72px, 8vw, 108px) 0;
+    border-top:1px solid #e2e8f0;
+    background:
+        linear-gradient(90deg, rgba(15,23,42,.025) 1px, transparent 1px),
+        #f8fafc;
+    background-size:64px 100%;
+}
 .workflow-heading.home-section-heading{
     display:block;
     max-width:760px;
-    margin:0 auto 34px;
+    margin:0 auto 42px;
     text-align:center;
 }
 .workflow-heading.home-section-heading p:last-child{
@@ -1000,35 +1119,68 @@ $this->registerCss(<<<CSS
 
 .workflow-grid{
     display:grid;
+    max-width:1120px;
+    margin:0 auto;
     grid-template-columns:repeat(3, minmax(0, 1fr));
-    gap:18px;
+    gap:1px;
+    overflow:hidden;
+    border:1px solid #d7e0e8;
+    border-radius:6px;
+    background:#d7e0e8;
+    box-shadow:0 14px 34px rgba(15,23,42,.07);
 }
 
 .workflow-card{
+    --workflow-accent:#0878ad;
+    --workflow-accent-soft:#e8f5fb;
     position:relative;
-    min-height:245px;
+    min-height:250px;
     overflow:hidden;
-    border:1px solid var(--border-subtle, #dbe5f1);
-    border-radius:20px;
-    padding:25px;
-    background:linear-gradient(145deg, #fff, #f5f9ff);
-    box-shadow:0 14px 34px rgba(15,23,42,.08);
-    transition:transform .22s ease, box-shadow .22s ease, border-color .22s ease;
+    padding:0 28px 30px;
+    background:#fff;
+    transition:background-color .18s ease;
+}
+
+.workflow-card:nth-child(n+4){
+    --workflow-accent:#b78f00;
+    --workflow-accent-soft:#fff8d9;
+}
+
+.workflow-card::before{
+    position:absolute;
+    inset:0 auto auto 0;
+    width:100%;
+    height:4px;
+    background:var(--workflow-accent);
+    content:"";
 }
 
 .workflow-card:hover{
-    transform:translateY(-5px);
-    border-color:#7dd3fc;
-    box-shadow:0 20px 44px rgba(15,23,42,.13);
+    background:#fbfdff;
+}
+
+.workflow-card-meta{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    min-height:52px;
+    border-bottom:1px solid #e8edf1;
+}
+
+.workflow-stage-label{
+    color:#94a3b8;
+    font-size:9px;
+    font-weight:800;
+    letter-spacing:.15em;
+    text-transform:uppercase;
 }
 
 .workflow-number{
-    position:absolute;
-    top:18px;
-    right:20px;
-    color:#bfdbfe;
-    font-size:34px;
-    font-weight:900;
+    color:var(--workflow-accent);
+    font-family:ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    font-size:12px;
+    font-weight:800;
+    letter-spacing:.08em;
 }
 
 .workflow-icon{
@@ -1036,24 +1188,27 @@ $this->registerCss(<<<CSS
     height:48px;
     display:grid;
     place-items:center;
-    border-radius:14px;
-    background:#e0f2fe;
-    color:#0369a1;
-    font-size:23px;
+    margin-top:25px;
+    border:1px solid color-mix(in srgb, var(--workflow-accent) 38%, white);
+    border-radius:3px;
+    background:var(--workflow-accent-soft);
+    color:var(--workflow-accent);
+    font-size:22px;
 }
 
 .workflow-card h3{
-    margin:24px 0 10px;
+    margin:19px 0 9px;
     color:#0f172a;
-    font-size:18px;
+    font-size:19px;
     font-weight:800;
+    letter-spacing:-.02em;
 }
 
 .workflow-card p{
     margin:0;
     color:#64748b;
-    font-size:13px;
-    line-height:1.65;
+    font-size:13.5px;
+    line-height:1.62;
 }
 
 @media (max-width:1100px){
@@ -1317,30 +1472,123 @@ $this->registerCss(<<<CSS
 
 .about .about-ad-layout{
     display:grid;
-    /* PHASE 9: wider sponsored media while keeping About Us equally readable. */
-    grid-template-columns:minmax(0, 52%) minmax(360px, 48%);
+    grid-template-columns:minmax(0, 50%) minmax(360px, 50%);
     gap:clamp(20px, 2.2vw, 34px);
     align-items:stretch;
-    height:clamp(430px, calc(100svh - 170px), 640px);
+    height:clamp(520px, calc(100svh - 190px), 600px);
     min-height:0;
 }
 
 .about .about-copy-column{
     min-width:0;
-    display:flex;
-    align-items:center;
-    justify-content:center;
-    padding:clamp(12px, 1.7vw, 26px);
+    overflow:hidden;
     border:1px solid rgba(211,226,242,.92);
-    border-radius:22px;
-    background:rgba(255,255,255,.90);
+    border-radius:6px;
+    background:#fff;
     box-shadow:0 18px 46px rgba(13,50,97,.07);
 }
 
 .about .about-copy-inner{
     width:100%;
-    max-width:460px;
+    height:100%;
+    display:flex;
+    flex-direction:column;
 }
+
+.about-teaser-media{
+    position:relative;
+    height:clamp(135px, 17vh, 180px);
+    flex:0 0 auto;
+    overflow:hidden;
+    background:#0b1423;
+}
+
+.about-teaser-media::after{
+    position:absolute;
+    inset:0;
+    background:linear-gradient(180deg, rgba(7,18,33,.08), rgba(7,18,33,.46));
+    content:"";
+}
+
+.about-teaser-media img{
+    width:100%;
+    height:100%;
+    display:block;
+    object-fit:cover;
+    object-position:center 44%;
+}
+
+.about-teaser-copy{
+    display:flex;
+    flex:1;
+    flex-direction:column;
+    align-items:flex-start;
+    padding:clamp(24px, 3vw, 38px);
+    text-align:left;
+}
+
+.about-teaser-eyebrow{
+    margin:0 0 10px;
+    color:#0878ad;
+    font-size:10px;
+    font-weight:850;
+    letter-spacing:.15em;
+    text-transform:uppercase;
+}
+
+.about-teaser-title{
+    margin:0;
+    color:#0f172a;
+    font-size:clamp(25px, 2.6vw, 36px);
+    font-weight:850;
+    letter-spacing:-.04em;
+    line-height:1.08;
+}
+
+.about-teaser-summary{
+    margin:15px 0 0;
+    color:#64748b;
+    font-size:14px;
+    line-height:1.65;
+}
+
+.about-teaser-benefits{
+    width:100%;
+    display:grid;
+    gap:0;
+    margin:15px 0 18px;
+    padding:0;
+    list-style:none;
+}
+
+.about-teaser-benefits li{
+    display:flex;
+    align-items:center;
+    gap:10px;
+    min-height:33px;
+    border-bottom:1px solid #edf1f5;
+    color:#334155;
+    font-size:12px;
+    font-weight:750;
+}
+
+.about-teaser-benefits li:last-child{border-bottom:0;}
+.about-teaser-benefits i{color:#0878ad; font-size:16px;}
+
+.about-teaser-link{
+    display:inline-flex;
+    align-items:center;
+    gap:9px;
+    margin-top:auto;
+    border-bottom:2px solid #0878ad;
+    padding:0 0 5px;
+    color:#0f172a;
+    font-size:12px;
+    font-weight:850;
+    text-decoration:none;
+}
+
+.about-teaser-link:hover{color:#0878ad;}
 
 .about-brand-logo-wrap{
     display:flex;
@@ -1379,19 +1627,162 @@ $this->registerCss(<<<CSS
 .about .about-ad-column{
     min-width:0;
     min-height:0;
+    display:flex;
+    flex-direction:column;
+    gap:9px;
+}
+
+.about-ad-label{
+    flex:0 0 auto;
+    display:flex;
+    align-items:center;
+    gap:7px;
+    margin:0;
+    color:#7b8ca0;
+    font-size:9px;
+    font-weight:800;
+    letter-spacing:.14em;
+    text-transform:uppercase;
 }
 
 .about-ad-zone{
     position:relative;
     width:100%;
-    height:100%;
+    height:auto;
+    flex:1;
     min-height:0;
     overflow:hidden;
     border:1px solid #C9D9EB;
-    border-radius:24px;
+    border-radius:6px;
     background:#071A31;
     box-shadow:0 24px 60px rgba(13,50,97,.17);
     isolation:isolate;
+}
+
+.about-early-access-promo{
+    position:relative;
+    width:100%;
+    height:100%;
+    min-height:0;
+    overflow:hidden;
+    color:#FFFFFF;
+    background:#071A31;
+}
+
+.about-early-access-image,
+.about-early-access-overlay{
+    position:absolute;
+    inset:0;
+    width:100%;
+    height:100%;
+}
+
+.about-early-access-image{
+    z-index:0;
+    object-fit:cover;
+    object-position:58% center;
+    transform:scale(1.015);
+}
+
+.about-early-access-overlay{
+    z-index:1;
+    background:
+        linear-gradient(90deg, rgba(4,18,36,.98) 0%, rgba(4,25,49,.92) 35%, rgba(4,25,49,.56) 68%, rgba(4,25,49,.18) 100%),
+        linear-gradient(0deg, rgba(2,13,27,.58) 0%, transparent 45%);
+}
+
+.about-early-access-content{
+    position:relative;
+    z-index:2;
+    display:flex;
+    width:min(74%, 510px);
+    height:100%;
+    align-items:flex-start;
+    justify-content:center;
+    flex-direction:column;
+    padding:clamp(28px, 4.5vw, 64px);
+}
+
+.about-early-access-kicker{
+    display:inline-flex;
+    align-items:center;
+    gap:8px;
+    margin-bottom:14px;
+    color:#55D6FF;
+    font-size:11px;
+    font-weight:900;
+    letter-spacing:.13em;
+    text-transform:uppercase;
+}
+
+.about-early-access-kicker i{
+    font-size:17px;
+}
+
+.about-early-access-content h3{
+    max-width:470px;
+    margin:0;
+    color:#FFFFFF;
+    font-size:clamp(27px, 3.1vw, 46px);
+    font-weight:800;
+    line-height:1.08;
+    letter-spacing:-.035em;
+    text-wrap:balance;
+}
+
+.about-early-access-content p{
+    max-width:430px;
+    margin:18px 0 14px;
+    color:rgba(235,247,255,.86);
+    font-size:clamp(13px, 1.15vw, 16px);
+    line-height:1.6;
+}
+
+.about-early-access-audience{
+    display:inline-flex;
+    align-items:center;
+    min-height:30px;
+    margin-bottom:22px;
+    padding:0 11px;
+    border:1px solid rgba(138,222,255,.34);
+    border-radius:999px;
+    color:#DDF7FF;
+    background:rgba(6,60,92,.42);
+    font-size:10px;
+    font-weight:800;
+    letter-spacing:.04em;
+    backdrop-filter:blur(8px);
+    -webkit-backdrop-filter:blur(8px);
+}
+
+.about-early-access-button{
+    display:inline-flex;
+    min-height:48px;
+    align-items:center;
+    justify-content:center;
+    gap:12px;
+    padding:0 20px;
+    border:1px solid rgba(255,255,255,.2);
+    border-radius:12px;
+    color:#FFFFFF;
+    background:linear-gradient(135deg, #0A8CE2, #006BC1);
+    box-shadow:0 14px 28px rgba(0,115,199,.34);
+    font-size:13px;
+    font-weight:800;
+    text-decoration:none;
+    transition:transform .2s ease, box-shadow .2s ease, background .2s ease;
+}
+
+.about-early-access-button:hover,
+.about-early-access-button:focus-visible{
+    color:#FFFFFF;
+    background:linear-gradient(135deg, #10A5EF, #0879D3);
+    box-shadow:0 17px 34px rgba(0,115,199,.44);
+    transform:translateY(-2px);
+}
+
+.about-early-access-button i{
+    font-size:18px;
 }
 
 .about-ad-carousel,
@@ -1709,7 +2100,7 @@ $this->registerCss(<<<CSS
 
 @media (max-width:1199.98px){
     .about .about-ad-layout{
-        grid-template-columns:minmax(0, 52%) minmax(300px, 48%);
+        grid-template-columns:minmax(0, 50%) minmax(300px, 50%);
         gap:22px;
     }
 }
@@ -1726,7 +2117,7 @@ $this->registerCss(<<<CSS
     }
 
     .about .about-copy-column{
-        padding:26px 22px;
+        padding:0;
     }
 
     .about-ad-zone{
@@ -1744,13 +2135,37 @@ $this->registerCss(<<<CSS
     }
 
     .about .about-copy-column{
-        padding:22px 18px;
-        border-radius:18px;
+        padding:0;
+        border-radius:6px;
     }
 
     .about-ad-zone{
         height:clamp(380px, 60svh, 500px);
-        border-radius:18px;
+        border-radius:6px;
+    }
+
+    .about-early-access-image{
+        object-position:66% center;
+    }
+
+    .about-early-access-overlay{
+        background:
+            linear-gradient(90deg, rgba(4,18,36,.98) 0%, rgba(4,25,49,.86) 72%, rgba(4,25,49,.48) 100%),
+            linear-gradient(0deg, rgba(2,13,27,.68) 0%, transparent 55%);
+    }
+
+    .about-early-access-content{
+        width:100%;
+        padding:28px 24px;
+    }
+
+    .about-early-access-content h3{
+        max-width:340px;
+        font-size:clamp(26px, 8vw, 36px);
+    }
+
+    .about-early-access-content p{
+        max-width:315px;
     }
 
     .about-ad-nav{
@@ -1790,19 +2205,7 @@ CSS
 
 <div class="site-index" style="margin:0;padding:0;">
 
-  <!-- ===== FLASH MESSAGES ===== -->
-  <?php if (Yii::$app->session->hasFlash('message')): ?>
-    <div class="alert alert-success"><?= Yii::$app->session->getFlash('message') ?></div>
-  <?php endif; ?>
-  <?php if (Yii::$app->session->hasFlash('error')): ?>
-    <div class="alert alert-danger"><?= Yii::$app->session->getFlash('error') ?></div>
-  <?php endif; ?>
-  <?php if (Yii::$app->session->hasFlash('usernameError')): ?>
-    <div class="alert alert-danger"><?= Yii::$app->session->getFlash('usernameError') ?></div>
-  <?php endif; ?>
-  <?php if (Yii::$app->session->hasFlash('passwordError')): ?>
-    <div class="alert alert-danger"><?= Yii::$app->session->getFlash('passwordError') ?></div>
-  <?php endif; ?>
+  <!-- Les notifications publiques sont rendues une seule fois par landing-main. -->
 
   <!--
     NOUVEAU HERO : ce carrousel raconte le parcours maintenance en cinq scenes.
@@ -1825,15 +2228,28 @@ CSS
         <p class="home-hero-proof">One request. One history. Full traceability.</p>
         <div class="home-hero-actions">
           <?= Html::a(
-              '<i class="ri-send-plane-line"></i><span>' . Html::encode($heroPrimaryLabel) . '</span>',
+              '<i class="' . Html::encode($heroPrimaryIcon) . '"></i><span>' . Html::encode($heroPrimaryLabel) . '</span>',
               $heroPrimaryUrl,
-              ['class' => 'home-hero-action is-primary']
+              [
+                  'class' => 'home-hero-action is-primary',
+                  'data-early-access-link' => $isGuest && $prelaunchMode ? '1' : null,
+              ]
           ) ?>
           <?= Html::a(
-              '<i class="ri-building-2-line"></i><span>' . Html::encode($heroSecondaryLabel) . '</span>',
+              '<i class="' . Html::encode($heroSecondaryIcon) . '"></i><span>' . Html::encode($heroSecondaryLabel) . '</span>',
               $heroSecondaryUrl,
               ['class' => 'home-hero-action is-secondary']
           ) ?>
+          <?php if ($isGuest && !$prelaunchMode): ?>
+            <?= Html::a(
+                '<i class="ri-flight-takeoff-line"></i><span>Early Access</span>',
+                '#early-access',
+                [
+                    'class' => 'home-hero-action is-secondary',
+                    'data-early-access-link' => '1',
+                ]
+            ) ?>
+          <?php endif; ?>
         </div>
       </div>
     </div>
@@ -2028,26 +2444,40 @@ CSS
       </header>
 
       <div class="audience-network-grid">
-        <article class="audience-card">
-          <span class="audience-card-icon" aria-hidden="true"><i class="ri-plane-line"></i></span>
-          <h3>For Aircraft Operators &amp; CAMOs</h3>
-          <p>Structure maintenance needs, compare responses and retain operational visibility from the first request to completion.</p>
+        <article class="audience-card audience-card--operator">
+          <div class="audience-card-topline">
+            <span class="audience-card-role">Operations / Continuing Airworthiness</span>
+            <span class="audience-card-index" aria-hidden="true">01</span>
+          </div>
+          <div class="audience-card-heading">
+            <span class="audience-card-icon" aria-hidden="true"><i class="ri-plane-line"></i></span>
+            <h3>For Aircraft Operators &amp; CAMOs</h3>
+          </div>
+          <p class="audience-card-summary">Structure maintenance needs, compare responses and retain operational visibility from the first request to completion.</p>
+          <div class="audience-card-divider" aria-hidden="true"><span>What you can do</span></div>
           <ul class="audience-benefits">
-            <li><i class="ri-check-line" aria-hidden="true"></i> Submit structured maintenance requests</li>
-            <li><i class="ri-check-line" aria-hidden="true"></i> Compare relevant MRO quotations</li>
-            <li><i class="ri-check-line" aria-hidden="true"></i> Track documents, decisions and progress</li>
+            <li><i class="ri-arrow-right-line" aria-hidden="true"></i> Submit structured maintenance requests</li>
+            <li><i class="ri-arrow-right-line" aria-hidden="true"></i> Compare relevant MRO quotations</li>
+            <li><i class="ri-arrow-right-line" aria-hidden="true"></i> Track documents, decisions and progress</li>
           </ul>
         </article>
 
 
-        <article class="audience-card">
-          <span class="audience-card-icon" aria-hidden="true"><i class="ri-building-2-line"></i></span>
-          <h3>For MROs</h3>
-          <p>Receive requests aligned with your maintenance capabilities and manage commercial and operational responses in one place.</p>
+        <article class="audience-card audience-card--mro">
+          <div class="audience-card-topline">
+            <span class="audience-card-role">Maintenance / Repair / Overhaul</span>
+            <span class="audience-card-index" aria-hidden="true">02</span>
+          </div>
+          <div class="audience-card-heading">
+            <span class="audience-card-icon" aria-hidden="true"><i class="ri-building-2-line"></i></span>
+            <h3>For MROs</h3>
+          </div>
+          <p class="audience-card-summary">Receive requests aligned with your maintenance capabilities and manage commercial and operational responses in one place.</p>
+          <div class="audience-card-divider" aria-hidden="true"><span>What you can do</span></div>
           <ul class="audience-benefits">
-            <li><i class="ri-check-line" aria-hidden="true"></i> Review relevant maintenance opportunities</li>
-            <li><i class="ri-check-line" aria-hidden="true"></i> Prepare controlled quotations</li>
-            <li><i class="ri-check-line" aria-hidden="true"></i> Coordinate work, reports and CRS records</li>
+            <li><i class="ri-arrow-right-line" aria-hidden="true"></i> Review relevant maintenance opportunities</li>
+            <li><i class="ri-arrow-right-line" aria-hidden="true"></i> Prepare controlled quotations</li>
+            <li><i class="ri-arrow-right-line" aria-hidden="true"></i> Coordinate work, reports and CRS records</li>
           </ul>
         </article>
       </div>
@@ -2055,48 +2485,84 @@ CSS
   </section>
 
  
-  <!-- ================== ABOUT / GLOBALMROs ================== -->
+  <!-- ================== ABOUT CORE AVIATION NETWORK ================== -->
   <section class="about section-padding" aria-labelledby="about-title" id="about">
     <div class="container">
       <div class="about-ad-layout">
 
-        <!-- About Us: titre, soulignement et contenu conservés -->
-        <div class="about-copy-column text-center">
+        <!-- Teaser institutionnel : la page About porte désormais le contenu détaillé. -->
+        <div class="about-copy-column">
           <div class="about-copy-inner">
-            <div class="about-brand-logo-wrap">
+            <div class="about-teaser-media" aria-hidden="true">
               <img
-                src="<?= Url::to('@web/logo/can-logo-main.png') ?>"
-                alt="Core Aviation Network"
-                class="about-brand-logo"
+                src="<?= Url::to('@web/img/home-carousel/mro-team.jpg') ?>"
+                alt=""
                 loading="lazy"
+                decoding="async"
               >
             </div>
-
-            <h2 id="about-title" class="section-title">
-              About Us <span class="underline"></span>
-            </h2>
-            <p class="lead">
-              <strong>Core Aviation Network</strong> connects aircraft operators and CAMO teams
-              with MRO facilities through one controlled maintenance workflow.
-            </p>
-            <p class="lead">
-              Operators can submit an operational request with aircraft data, ETA, ETD,
-              maintenance location and controlled attachments, then compare qualified responses.
-            </p>
-            <p class="lead mb-0">
-              MRO partners can prepare quotations, receive purchase orders, follow the work
-              and exchange reports, CRS documents and feedback in a traceable environment.
-            </p>
+            <div class="about-teaser-copy">
+              <p class="about-teaser-eyebrow">About Core Aviation Network</p>
+              <h2 id="about-title" class="about-teaser-title">A controlled environment for aircraft maintenance.</h2>
+              <p class="about-teaser-summary">CAN connects operational demand with relevant maintenance capability while keeping each exchange attached to the same request.</p>
+              <ul class="about-teaser-benefits">
+                <li><i class="ri-arrow-right-line" aria-hidden="true"></i> Relevant maintenance connections</li>
+                <li><i class="ri-arrow-right-line" aria-hidden="true"></i> One structured workflow</li>
+                <li><i class="ri-arrow-right-line" aria-hidden="true"></i> Traceable decisions and records</li>
+              </ul>
+              <a class="about-teaser-link" href="<?= Url::to(['/site/about']) ?>">
+                <span>Discover Core Aviation Network</span>
+                <i class="ri-arrow-right-line" aria-hidden="true"></i>
+              </a>
+            </div>
           </div>
         </div>
 
         <!-- PHASE 9: responsive sponsored zone, secondary to the product message. -->
         <div class="about-ad-column">
+          <p class="about-ad-label">
+            <i class="<?= $prelaunchMode ? 'ri-flight-takeoff-line' : 'ri-megaphone-line' ?>" aria-hidden="true"></i>
+            <span><?= $prelaunchMode ? 'Network access' : 'Sponsored placement' ?></span>
+          </p>
           <aside
             class="about-ad-zone"
-            aria-label="Sponsored aviation content"
+            aria-label="<?= $prelaunchMode ? 'Core Aviation Network Early Access' : 'Sponsored aviation content' ?>"
           >
-            <?php if (!empty($aboutAdverts)): ?>
+            <?php if ($prelaunchMode): ?>
+
+              <div class="about-early-access-promo">
+                <?= Html::img('@web/img/home-carousel/global-network.jpg', [
+                    'class' => 'about-early-access-image',
+                    'alt' => '',
+                    'loading' => 'lazy',
+                    'decoding' => 'async',
+                    'aria-hidden' => 'true',
+                ]) ?>
+                <div class="about-early-access-overlay" aria-hidden="true"></div>
+                <div class="about-early-access-content">
+                  <span class="about-early-access-kicker">
+                    <i class="ri-flight-takeoff-line" aria-hidden="true"></i>
+                    Be among the first
+                  </span>
+                  <h3>Get Early Access to Core Aviation Network</h3>
+                  <p>
+                    Join the launch list for product updates and priority onboarding.
+                  </p>
+                  <span class="about-early-access-audience">
+                    For Aircraft Operators &amp; MROs
+                  </span>
+                  <?= Html::a(
+                      '<span>Get Early Access</span><i class="ri-arrow-right-line" aria-hidden="true"></i>',
+                      '#early-access',
+                      [
+                          'class' => 'about-early-access-button',
+                          'data-early-access-link' => '1',
+                      ]
+                  ) ?>
+                </div>
+              </div>
+
+            <?php elseif (!empty($aboutAdverts)): ?>
 
               <div
                 class="about-ad-carousel"
@@ -2306,42 +2772,42 @@ CSS
 
       <div class="workflow-grid">
         <article class="workflow-card">
-          <span class="workflow-number">01</span>
+          <div class="workflow-card-meta"><span class="workflow-stage-label">Define</span><span class="workflow-number">01</span></div>
           <span class="workflow-icon"><i class="ri-file-add-line"></i></span>
           <h3>Request</h3>
           <p>Capture aircraft, location, priority, schedule, maintenance scope and controlled attachments.</p>
         </article>
 
         <article class="workflow-card">
-          <span class="workflow-number">02</span>
+          <div class="workflow-card-meta"><span class="workflow-stage-label">Qualify</span><span class="workflow-number">02</span></div>
           <span class="workflow-icon"><i class="ri-route-line"></i></span>
           <h3>Match</h3>
           <p>Connect the requirement with MRO partners according to the operational information available in CAN.</p>
         </article>
 
         <article class="workflow-card">
-          <span class="workflow-number">03</span>
+          <div class="workflow-card-meta"><span class="workflow-stage-label">Evaluate</span><span class="workflow-number">03</span></div>
           <span class="workflow-icon"><i class="ri-file-list-3-line"></i></span>
           <h3>Quote</h3>
           <p>Compare technical scope, price, currency, lead time and quotation documents in one place.</p>
         </article>
 
         <article class="workflow-card">
-          <span class="workflow-number">04</span>
+          <div class="workflow-card-meta"><span class="workflow-stage-label">Approve</span><span class="workflow-number">04</span></div>
           <span class="workflow-icon"><i class="ri-shopping-bag-3-line"></i></span>
           <h3>Purchase Order</h3>
           <p>Confirm the selected response and retain the purchase order with its maintenance request.</p>
         </article>
 
         <article class="workflow-card">
-          <span class="workflow-number">05</span>
+          <div class="workflow-card-meta"><span class="workflow-stage-label">Execute</span><span class="workflow-number">05</span></div>
           <span class="workflow-icon"><i class="ri-tools-line"></i></span>
           <h3>Work</h3>
           <p>Coordinate appointments, messages, operational updates and supporting maintenance records.</p>
         </article>
 
         <article class="workflow-card">
-          <span class="workflow-number">06</span>
+          <div class="workflow-card-meta"><span class="workflow-stage-label">Close</span><span class="workflow-number">06</span></div>
           <span class="workflow-icon"><i class="ri-shield-check-line"></i></span>
           <h3>Complete</h3>
           <p>Keep reports, CRS documents, feedback and the final history connected and traceable.</p>
@@ -2416,6 +2882,162 @@ CSS
     </div>
   </section>
 
-  
+  <!-- ================== EARLY ACCESS ================== -->
+  <section id="early-access" class="early-access-section" aria-labelledby="early-access-title">
+    <div class="container">
+      <div class="early-access-shell">
+        <div class="early-access-copy">
+          <p class="early-access-eyebrow"><i class="ri-radar-line" aria-hidden="true"></i> Early access</p>
+          <h2 id="early-access-title">Launching Soon</h2>
+          <p class="early-access-lead">
+            Be among the first aviation professionals to join Core Aviation Network.
+            We&apos;ll notify you when CAN goes live.
+          </p>
+
+          <div class="early-access-benefits" aria-label="Early access benefits">
+            <div><i class="ri-checkbox-circle-line" aria-hidden="true"></i><span>Launch notification for aviation professionals</span></div>
+            <div><i class="ri-checkbox-circle-line" aria-hidden="true"></i><span>One confirmation email to verify your address</span></div>
+            <div><i class="ri-checkbox-circle-line" aria-hidden="true"></i><span>No spam or unrelated marketing</span></div>
+          </div>
+
+          <div class="early-access-network-preview" aria-label="Core Aviation Network connection preview">
+            <div class="early-access-network-node">
+              <span class="early-access-network-icon"><i class="ri-plane-line" aria-hidden="true"></i></span>
+              <span><small>Demand</small><strong>Aircraft Operator</strong></span>
+            </div>
+            <div class="early-access-network-link" aria-hidden="true">
+              <span></span><i class="ri-arrow-left-right-line"></i><span></span>
+            </div>
+            <div class="early-access-network-node">
+              <span class="early-access-network-icon"><i class="ri-tools-line" aria-hidden="true"></i></span>
+              <span><small>Capability</small><strong>MRO Partner</strong></span>
+            </div>
+          </div>
+        </div>
+
+        <div class="early-access-form-card">
+          <?php $earlyAccessForm = ActiveForm::begin([
+              'id' => 'early-access-form',
+              'action' => ['/site/join-network'],
+              'method' => 'post',
+              'enableClientValidation' => true,
+              'options' => [
+                  'class' => 'early-access-form',
+                  'novalidate' => true,
+                  'data-early-access-form' => '1',
+              ],
+              'fieldConfig' => [
+                  'options' => ['class' => 'early-access-field'],
+                  'inputOptions' => ['class' => 'form-control early-access-input'],
+                  'errorOptions' => ['class' => 'early-access-error'],
+              ],
+          ]); ?>
+
+          <header class="early-access-form-header">
+            <div class="early-access-form-header-icon" aria-hidden="true">
+              <i class="ri-flight-takeoff-line"></i>
+            </div>
+            <div>
+              <p>Private launch list</p>
+              <h3>Request early access</h3>
+              <span>Complete the form and confirm your business email.</span>
+            </div>
+          </header>
+
+          <div class="early-access-form-trust" aria-label="Registration information">
+            <span><i class="ri-time-line" aria-hidden="true"></i> 2-minute registration</span>
+            <span><i class="ri-mail-check-line" aria-hidden="true"></i> Email confirmation</span>
+            <span><i class="ri-shield-check-line" aria-hidden="true"></i> Secure form</span>
+          </div>
+
+          <div class="early-access-form-body">
+
+          <div class="early-access-grid">
+            <?= $earlyAccessForm->field($prelaunchSubscriber, 'first_name')->textInput([
+                'maxlength' => true,
+                'autocomplete' => 'given-name',
+                'placeholder' => 'First name',
+            ]) ?>
+            <?= $earlyAccessForm->field($prelaunchSubscriber, 'last_name')->textInput([
+                'maxlength' => true,
+                'autocomplete' => 'family-name',
+                'placeholder' => 'Last name',
+            ]) ?>
+            <?= $earlyAccessForm->field($prelaunchSubscriber, 'company_name')->textInput([
+                'maxlength' => true,
+                'autocomplete' => 'organization',
+                'placeholder' => 'Company name',
+            ]) ?>
+            <?= $earlyAccessForm->field($prelaunchSubscriber, 'business_email')->input('email', [
+                'maxlength' => true,
+                'autocomplete' => 'email',
+                'inputmode' => 'email',
+                'placeholder' => 'name@company.com',
+            ]) ?>
+            <?= $earlyAccessForm->field($prelaunchSubscriber, 'company_website')->textInput([
+                'maxlength' => true,
+                'autocomplete' => 'url',
+                'inputmode' => 'url',
+                'placeholder' => 'https://company.com',
+            ])->label('Company Website <span>Optional</span>', ['encode' => false]) ?>
+            <?= $earlyAccessForm->field($prelaunchSubscriber, 'company_type')->dropDownList(
+                PrelaunchSubscriber::companyTypeOptions(),
+                ['prompt' => 'Select company type', 'class' => 'form-select early-access-input']
+            ) ?>
+          </div>
+
+          <div class="early-access-honeypot" aria-hidden="true">
+            <?= $earlyAccessForm->field($prelaunchSubscriber, 'website')->textInput([
+                'tabindex' => '-1',
+                'autocomplete' => 'off',
+            ])->label('Leave this field empty') ?>
+          </div>
+
+          <?= $earlyAccessForm->field($prelaunchSubscriber, 'consent', [
+              'options' => ['class' => 'early-access-consent'],
+          ])->checkbox([
+              'value' => 1,
+              'uncheck' => 0,
+              'class' => 'form-check-input',
+          ]) ?>
+
+          <?php if ($prelaunchTurnstileConfigured): ?>
+            <div class="early-access-turnstile">
+              <div
+                class="cf-turnstile"
+                data-sitekey="<?= Html::encode($prelaunchTurnstileSiteKey) ?>"
+                data-action="early_access"
+                data-theme="light"
+              ></div>
+            </div>
+          <?php else: ?>
+            <div class="early-access-verification-unavailable" role="alert">
+              Visitor verification is temporarily unavailable.
+            </div>
+          <?php endif; ?>
+
+          <button
+            type="submit"
+            class="early-access-submit"
+            data-joining-label="Joining..."
+            <?= $prelaunchTurnstileConfigured ? '' : 'disabled' ?>
+          >
+            <i class="ri-flight-takeoff-line" aria-hidden="true"></i>
+            <span>Join the Network</span>
+          </button>
+
+          <p class="early-access-privacy">
+            <i class="ri-lock-line" aria-hidden="true"></i>
+            No spam. You will only receive important launch-related updates.
+            See our <?= Html::a('Privacy Policy', ['/site/privacy-policy']) ?>.
+          </p>
+
+          </div>
+
+          <?php ActiveForm::end(); ?>
+        </div>
+      </div>
+    </div>
+  </section>
 
 </div>

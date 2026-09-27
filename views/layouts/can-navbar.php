@@ -1,10 +1,12 @@
 <?php
 /** @var yii\web\View $this */
 
+use app\components\PrelaunchMode;
 use yii\helpers\Url;
 use yii\helpers\Html;
 
 $isGuest = Yii::$app->user->isGuest;
+$prelaunchMode = PrelaunchMode::isEnabled();
 
 // Route actuelle
 $controller = Yii::$app->controller->id;
@@ -52,6 +54,11 @@ if (!$isGuest && Yii::$app->user->identity !== null) {
         <i class="ri-home-5-line"></i> Home
       </a>
 <?php if ($isGuest): ?>
+  <?php if ($prelaunchMode): ?>
+      <a href="<?= Url::to(['/site/index', '#' => 'early-access']) ?>">
+        <i class="ri-flight-takeoff-line"></i> Early Access
+      </a>
+  <?php else: ?>
       <a href="<?= Url::to(['/site/become-mro']) ?>"
          class="<?= $navActive('site/become-mro') ?>">
         <i class="ri-building-2-line"></i> MRO Signup
@@ -61,16 +68,19 @@ if (!$isGuest && Yii::$app->user->identity !== null) {
          class="<?= $navActive('site/become-ao') ?>">
         <i class="ri-plane-line"></i> Operator Signup
       </a>
+  <?php endif; ?>
 <?php endif; ?>
       <a href="<?= Url::to(['/site/about']) ?>"
          class="<?= $navActive('site/about') ?>">
         <i class="ri-price-tag-3-line"></i> About Us
       </a>
 
-      <a href="<?= Url::to(['/site/advertising']) ?>"
-         class="<?= $navActive('site/advertising') ?>">
-        <i class="ri-megaphone-line"></i> Advertising
-      </a>
+      <?php if (!$prelaunchMode): ?>
+        <a href="<?= Url::to(['/site/advertising']) ?>"
+           class="<?= $navActive('site/advertising') ?>">
+          <i class="ri-megaphone-line"></i> Advertising
+        </a>
+      <?php endif; ?>
 
       <!-- Dashboard visible seulement si connecté -->
       <?php if (!$isGuest): ?>
@@ -141,6 +151,11 @@ if (!$isGuest && Yii::$app->user->identity !== null) {
       <i class="ri-home-5-line"></i> Home
     </a>
  <?php if ($isGuest): ?>
+  <?php if ($prelaunchMode): ?>
+    <a href="<?= Url::to(['/site/index', '#' => 'early-access']) ?>">
+      <i class="ri-flight-takeoff-line"></i> Early Access
+    </a>
+  <?php else: ?>
     <a href="<?= Url::to(['/site/become-mro']) ?>"
        class="<?= $navActive('site/become-mro') ?>">
       <i class="ri-building-2-line"></i> MRO Signup
@@ -150,6 +165,7 @@ if (!$isGuest && Yii::$app->user->identity !== null) {
        class="<?= $navActive('site/become-ao') ?>">
       <i class="ri-plane-line"></i> Operator Signup
     </a>
+  <?php endif; ?>
     <?php endif; ?>
 
     <a href="<?= Url::to(['/site/about']) ?>"
@@ -157,10 +173,12 @@ if (!$isGuest && Yii::$app->user->identity !== null) {
       <i class="ri-price-tag-3-line"></i> About Us
     </a>
 
-    <a href="<?= Url::to(['/site/advertising']) ?>"
-       class="<?= $navActive('site/advertising') ?>">
-      <i class="ri-megaphone-line"></i> Advertising
-    </a>
+    <?php if (!$prelaunchMode): ?>
+      <a href="<?= Url::to(['/site/advertising']) ?>"
+         class="<?= $navActive('site/advertising') ?>">
+        <i class="ri-megaphone-line"></i> Advertising
+      </a>
+    <?php endif; ?>
     
 
     <!-- Dashboard visible seulement si connecté -->

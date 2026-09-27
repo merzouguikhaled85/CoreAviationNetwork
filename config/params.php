@@ -33,6 +33,12 @@ return [
         ?: (YII_ENV_DEV ? '1x0000000000000000000000000000000AA' : ''),
     'turnstileExpectedHostname' => $environment['turnstileExpectedHostname'],
 
+    // Feature flag central pour la phase Early Access.
+    'prelaunchMode' => filter_var(
+        $environment['prelaunchMode'],
+        FILTER_VALIDATE_BOOLEAN
+    ),
+
 
 
 ];

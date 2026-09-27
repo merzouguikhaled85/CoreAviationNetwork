@@ -25,6 +25,9 @@ return [
     'turnstileSecretKey' => '1x0000000000000000000000000000000AA',
     'turnstileExpectedHostname' => 'localhost',
 
+    // 1: Early Access uniquement. 0: ouvre les inscriptions AO/MRO et Advertising.
+    'prelaunchMode' => '1',
+
     /*
      * En local, conserver une liste vide : REMOTE_ADDR sera utilise. En production,
      * recopier toutes les plages IPv4 et IPv6 publiees officiellement par Cloudflare.

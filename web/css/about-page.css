@@ -1,0 +1,354 @@
+.can-about-page {
+    --about-ink: #0f172a;
+    --about-muted: #64748b;
+    --about-line: #dbe3eb;
+    --about-blue: #0878ad;
+    --about-gold: #c49a00;
+    overflow: hidden;
+    background: #fff;
+    color: var(--about-ink);
+}
+
+.can-about-container {
+    width: min(1160px, calc(100% - 40px));
+    margin: 0 auto;
+}
+
+.can-about-hero {
+    position: relative;
+    min-height: 560px;
+    display: flex;
+    align-items: center;
+    isolation: isolate;
+    overflow: hidden;
+    background: #091321;
+    color: #fff;
+}
+
+.can-about-hero::before {
+    position: absolute;
+    inset: 0;
+    z-index: -2;
+    background: url("../img/hero-hangar-heavy.webp") center 44% / cover no-repeat;
+    content: "";
+}
+
+.can-about-hero::after {
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    background:
+        linear-gradient(90deg, rgba(5, 13, 25, .97) 0%, rgba(7, 18, 33, .88) 47%, rgba(7, 18, 33, .50) 100%),
+        linear-gradient(0deg, rgba(5, 13, 25, .38), transparent 55%);
+    content: "";
+}
+
+.can-about-hero-copy {
+    max-width: 700px;
+    padding: 82px 0 88px;
+}
+
+.can-about-eyebrow {
+    display: flex;
+    align-items: center;
+    gap: 11px;
+    margin: 0 0 17px;
+    color: #55c5f3;
+    font-size: 11px;
+    font-weight: 800;
+    letter-spacing: .16em;
+    text-transform: uppercase;
+}
+
+.can-about-eyebrow::before {
+    width: 30px;
+    height: 2px;
+    background: currentColor;
+    content: "";
+}
+
+.can-about-hero h1 {
+    margin: 0;
+    font-size: clamp(42px, 6vw, 74px);
+    font-weight: 800;
+    letter-spacing: -.055em;
+    line-height: .98;
+}
+
+.can-about-hero-summary {
+    max-width: 640px;
+    margin: 25px 0 0;
+    color: #c5d1df;
+    font-size: 17px;
+    line-height: 1.7;
+}
+
+.can-about-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    margin-top: 32px;
+}
+
+.can-about-action {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 9px;
+    min-height: 46px;
+    border: 1px solid rgba(255, 255, 255, .24);
+    border-radius: 3px;
+    padding: 0 20px;
+    color: #fff;
+    font-size: 13px;
+    font-weight: 800;
+    text-decoration: none;
+    transition: border-color .18s ease, background-color .18s ease, color .18s ease;
+}
+
+.can-about-action.is-primary {
+    border-color: #55c5f3;
+    background: #0878ad;
+}
+
+.can-about-action:hover {
+    border-color: #55c5f3;
+    background: #55c5f3;
+    color: #071321;
+}
+
+.can-about-section { padding: clamp(70px, 8vw, 108px) 0; }
+
+.can-about-section.is-tinted {
+    border-block: 1px solid #e4eaf0;
+    background:
+        linear-gradient(90deg, rgba(15, 23, 42, .025) 1px, transparent 1px),
+        #f7f9fc;
+    background-size: 64px 100%;
+}
+
+.can-about-intro {
+    display: grid;
+    grid-template-columns: minmax(0, .82fr) minmax(0, 1.18fr);
+    align-items: start;
+    gap: clamp(44px, 8vw, 110px);
+}
+
+.can-about-kicker {
+    margin: 0 0 13px;
+    color: var(--about-blue);
+    font-size: 10px;
+    font-weight: 800;
+    letter-spacing: .15em;
+    text-transform: uppercase;
+}
+
+.can-about-section h2 {
+    margin: 0;
+    color: var(--about-ink);
+    font-size: clamp(30px, 4vw, 48px);
+    font-weight: 800;
+    letter-spacing: -.045em;
+    line-height: 1.08;
+}
+
+.can-about-copy {
+    padding-top: 4px;
+    border-top: 4px solid var(--about-gold);
+}
+
+.can-about-copy p {
+    margin: 22px 0 0;
+    color: var(--about-muted);
+    font-size: 16px;
+    line-height: 1.78;
+}
+
+.can-about-heading {
+    max-width: 730px;
+    margin-bottom: 40px;
+}
+
+.can-about-heading p:last-child {
+    max-width: 660px;
+    margin: 18px 0 0;
+    color: var(--about-muted);
+    font-size: 16px;
+    line-height: 1.72;
+}
+
+.can-about-audiences {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 28px;
+}
+
+.can-about-audience {
+    --audience-accent: var(--about-blue);
+    position: relative;
+    border: 1px solid var(--about-line);
+    border-radius: 6px;
+    padding: 0 34px 32px;
+    background: #fff;
+    box-shadow: 0 12px 30px rgba(15, 23, 42, .06);
+}
+
+.can-about-audience.is-mro { --audience-accent: var(--about-gold); }
+
+.can-about-audience::before {
+    position: absolute;
+    inset: 0 auto 0 0;
+    width: 5px;
+    background: var(--audience-accent);
+    content: "";
+}
+
+.can-about-audience-label {
+    display: flex;
+    align-items: center;
+    min-height: 50px;
+    border-bottom: 1px solid #e7ecf1;
+    color: #94a3b8;
+    font-size: 9px;
+    font-weight: 800;
+    letter-spacing: .15em;
+    text-transform: uppercase;
+}
+
+.can-about-audience-icon {
+    width: 46px;
+    height: 46px;
+    display: grid;
+    place-items: center;
+    margin-top: 25px;
+    border: 1px solid color-mix(in srgb, var(--audience-accent) 40%, white);
+    border-radius: 3px;
+    color: var(--audience-accent);
+    font-size: 22px;
+}
+
+.can-about-audience h3 {
+    margin: 19px 0 10px;
+    color: var(--about-ink);
+    font-size: 23px;
+    font-weight: 800;
+    letter-spacing: -.025em;
+}
+
+.can-about-audience p {
+    margin: 0;
+    color: var(--about-muted);
+    font-size: 14px;
+    line-height: 1.72;
+}
+
+.can-about-principles {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 1px;
+    overflow: hidden;
+    border: 1px solid var(--about-line);
+    border-radius: 6px;
+    background: var(--about-line);
+}
+
+.can-about-principle {
+    min-height: 245px;
+    padding: 30px;
+    background: #fff;
+}
+
+.can-about-principle i {
+    color: var(--about-blue);
+    font-size: 26px;
+}
+
+.can-about-principle h3 {
+    margin: 25px 0 11px;
+    color: var(--about-ink);
+    font-size: 19px;
+    font-weight: 800;
+}
+
+.can-about-principle p {
+    margin: 0;
+    color: var(--about-muted);
+    font-size: 14px;
+    line-height: 1.7;
+}
+
+.can-about-control {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(320px, .78fr);
+    gap: 56px;
+    align-items: center;
+    border-radius: 6px;
+    padding: clamp(36px, 6vw, 64px);
+    background: #0b1423;
+    color: #fff;
+}
+
+.can-about-control h2 { color: #fff; }
+
+.can-about-control-copy > p:last-child {
+    margin: 20px 0 0;
+    color: #aebed0;
+    font-size: 15px;
+    line-height: 1.75;
+}
+
+.can-about-control-list {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.can-about-control-list li {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    min-height: 48px;
+    border-bottom: 1px solid rgba(255, 255, 255, .1);
+    color: #d9e3ee;
+    font-size: 13px;
+    font-weight: 700;
+}
+
+.can-about-control-list li:last-child { border-bottom: 0; }
+.can-about-control-list i { color: #55c5f3; font-size: 18px; }
+
+.can-about-cta {
+    padding: 66px 0;
+    background: #0878ad;
+    color: #fff;
+}
+
+.can-about-cta-inner {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 34px;
+}
+
+.can-about-cta h2 { color: #fff; font-size: clamp(28px, 4vw, 42px); }
+.can-about-cta p { margin: 12px 0 0; color: #d8f1fb; line-height: 1.65; }
+.can-about-cta .can-about-action { flex: 0 0 auto; border-color: rgba(255, 255, 255, .6); }
+
+@media (max-width: 900px) {
+    .can-about-hero { min-height: 500px; }
+    .can-about-intro,
+    .can-about-control { grid-template-columns: 1fr; gap: 34px; }
+    .can-about-principles { grid-template-columns: 1fr; }
+    .can-about-principle { min-height: 0; }
+}
+
+@media (max-width: 700px) {
+    .can-about-container { width: min(100% - 28px, 1160px); }
+    .can-about-hero { min-height: 470px; }
+    .can-about-hero-copy { padding: 58px 0 62px; }
+    .can-about-hero::after { background: rgba(5, 13, 25, .84); }
+    .can-about-hero-summary { font-size: 15px; }
+    .can-about-audiences { grid-template-columns: 1fr; }
+    .can-about-audience { padding-inline: 25px; }
+    .can-about-cta-inner { align-items: flex-start; flex-direction: column; }
+}

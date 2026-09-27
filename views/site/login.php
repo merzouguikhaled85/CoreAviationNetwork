@@ -3,12 +3,14 @@
 /** @var yii\bootstrap5\ActiveForm $form */
 /** @var app\models\LoginForm $model */
 
+use app\components\PrelaunchMode;
 use yii\bootstrap5\ActiveForm;
 use yii\bootstrap5\Html;
 use yii\helpers\Url;
 
 $this->title = 'Login';
 $this->params['breadcrumbs'][] = $this->title;
+$prelaunchMode = PrelaunchMode::isEnabled();
 ?>
 
 <!--
@@ -217,9 +219,13 @@ $this->params['breadcrumbs'][] = $this->title;
           Back to Home
         </a>
         <div class="auth-signup-links">
-          <a href="<?= Url::to(['/site/become-mro']) ?>">MRO Signup</a>
-          <span aria-hidden="true">·</span>
-          <a href="<?= Url::to(['/site/become-ao']) ?>">Operator Signup</a>
+          <?php if ($prelaunchMode): ?>
+            <a href="<?= Url::to(['/site/index', '#' => 'early-access']) ?>">Get Early Access</a>
+          <?php else: ?>
+            <a href="<?= Url::to(['/site/become-mro']) ?>">MRO Signup</a>
+            <span aria-hidden="true">·</span>
+            <a href="<?= Url::to(['/site/become-ao']) ?>">Operator Signup</a>
+          <?php endif; ?>
         </div>
       </div>
 
