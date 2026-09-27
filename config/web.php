@@ -135,9 +135,9 @@ $config = [
         /*
          * RÉSILIENCE SMTP : l'envoi d'un e-mail ne doit pas immobiliser une
          * inscription ou une transition métier jusqu'à la limite PHP de 30 s.
-         * Le mailer journalise l'indisponibilité et retourne false après 4 s.
+         * Le mailer journalise l'indisponibilité et retourne false après 12 s.
          */
-        'smtpTimeout' => 4.0,
+        'smtpTimeout' => 12.0,
         'viewPath' => '@app/mail',
         'useFileTransport' => false, // Set this to false to send real emails
         'messageConfig' => [

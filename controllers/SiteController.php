@@ -236,7 +236,7 @@ class SiteController extends Controller
             $subscriber->updateAttributes($deliveryAttributes);
             Yii::$app->session->setFlash(
                 'warning',
-                'Your registration was saved, but the confirmation email could not be sent. Please try again shortly.'
+                'Your registration was saved. Email delivery may take a few minutes. Please check your inbox and spam folder before trying again.'
             );
         }
 
