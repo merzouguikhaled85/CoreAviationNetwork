@@ -915,8 +915,9 @@ $this->registerCss(<<<CSS
 .network-audience-section{
     padding:clamp(72px, 8vw, 112px) 0;
     background:
-        radial-gradient(circle at 50% 45%, rgba(14,165,233,.12), transparent 24%),
-        linear-gradient(180deg, #f8fbff 0%, #ffffff 100%);
+        linear-gradient(90deg, rgba(15,23,42,.035) 1px, transparent 1px),
+        linear-gradient(180deg, #f8fafc 0%, #ffffff 100%);
+    background-size:64px 100%, auto;
 }
 .home-section-heading{
     max-width:760px;
@@ -958,72 +959,132 @@ $this->registerCss(<<<CSS
 }
 .audience-network-grid{
     display:grid;
-    max-width:1110px;
+    max-width:1120px;
     margin:0 auto;
     grid-template-columns:repeat(2, minmax(0, 1fr));
     align-items:stretch;
-    gap:24px;
+    gap:28px;
 }
 .audience-card{
+    --audience-accent:#0878ad;
+    --audience-accent-soft:#e8f5fb;
     position:relative;
     overflow:hidden;
-    border:1px solid #dbe7f3;
-    border-radius:24px;
-    padding:32px;
-    background:#fff;
-    box-shadow:0 18px 48px rgba(15,23,42,.08);
+    border:1px solid #d9e1e8;
+    border-radius:6px;
+    padding:0 38px 34px;
+    background:linear-gradient(135deg, #ffffff 0%, #ffffff 76%, #f7fafc 100%);
+    box-shadow:0 12px 30px rgba(15,23,42,.07);
 }
-.audience-card::after{
+.audience-card--mro{
+    --audience-accent:#c49a00;
+    --audience-accent-soft:#fff8d9;
+}
+.audience-card::before{
     position:absolute;
-    right:-55px;
-    bottom:-65px;
-    width:170px;
-    height:170px;
-    border-radius:50%;
-    background:rgba(14,165,233,.07);
+    inset:0 auto 0 0;
+    width:5px;
+    background:var(--audience-accent);
     content:"";
 }
+.audience-card-topline{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:20px;
+    min-height:53px;
+    border-bottom:1px solid #e5e9ee;
+}
+.audience-card-role{
+    color:#64748b;
+    font-size:10px;
+    font-weight:800;
+    letter-spacing:.12em;
+    line-height:1.3;
+    text-transform:uppercase;
+}
+.audience-card-index{
+    color:var(--audience-accent);
+    font-family:ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    font-size:12px;
+    font-weight:800;
+    letter-spacing:.08em;
+}
+.audience-card-heading{
+    display:flex;
+    align-items:center;
+    gap:17px;
+    margin-top:27px;
+}
 .audience-card-icon{
-    width:56px;
-    height:56px;
+    width:48px;
+    height:48px;
+    flex:0 0 48px;
     display:grid;
     place-items:center;
-    border-radius:17px;
-    background:#e0f2fe;
-    color:#0369a1;
-    font-size:27px;
+    border:1px solid color-mix(in srgb, var(--audience-accent) 38%, white);
+    border-radius:3px;
+    background:var(--audience-accent-soft);
+    color:var(--audience-accent);
+    font-size:24px;
 }
 .audience-card h3{
-    margin:23px 0 10px;
-    color:#0f172a;
-    font-size:22px;
-    font-weight:850;
-}
-.audience-card > p{
     margin:0;
+    color:#0f172a;
+    font-size:clamp(20px, 2vw, 25px);
+    font-weight:800;
+    letter-spacing:-.025em;
+    line-height:1.18;
+}
+.audience-card-summary{
+    min-height:78px;
+    margin:21px 0 0;
     color:#64748b;
+    font-size:15px;
     line-height:1.65;
 }
+.audience-card-divider{
+    display:flex;
+    align-items:center;
+    gap:12px;
+    margin-top:22px;
+    color:#94a3b8;
+    font-size:9px;
+    font-weight:800;
+    letter-spacing:.14em;
+    text-transform:uppercase;
+}
+.audience-card-divider::after{
+    height:1px;
+    flex:1;
+    background:#e5e9ee;
+    content:"";
+}
 .audience-benefits{
-    position:relative;
-    z-index:1;
     display:grid;
-    gap:11px;
-    margin:24px 0 0;
+    gap:0;
+    margin:8px 0 0;
     padding:0;
     list-style:none;
 }
 .audience-benefits li{
     display:flex;
     align-items:center;
-    gap:10px;
+    gap:12px;
+    min-height:40px;
+    border-bottom:1px solid #edf0f3;
     color:#334155;
     font-size:13px;
-    font-weight:750;
+    font-weight:700;
 }
-.audience-benefits i{color:#0284c7; font-size:18px;}
+.audience-benefits li:last-child{border-bottom:0;}
+.audience-benefits i{
+    color:var(--audience-accent);
+    font-size:17px;
+}
 @media (max-width:991.98px){
     .audience-network-grid{grid-template-columns:1fr;}
+    .audience-card-summary{min-height:0;}
 }
 
 @media (max-width:575.98px){
@@ -1031,14 +1092,24 @@ $this->registerCss(<<<CSS
     .home-section-heading{margin-bottom:30px; text-align:left;}
     .home-section-eyebrow::before,
     .home-section-eyebrow::after{display:none;}
-    .audience-card{padding:25px 22px;}
+    .audience-card{padding:0 23px 25px;}
+    .audience-card-heading{align-items:flex-start;}
+    .audience-card-role{max-width:210px;}
 }
 
-/* PARCOURS PRINCIPAL : meme hierarchie centree que la section des publics. */
+/* PARCOURS PRINCIPAL : tableau de processus sobre et technique. */
+.workflow-section{
+    padding:clamp(72px, 8vw, 108px) 0;
+    border-top:1px solid #e2e8f0;
+    background:
+        linear-gradient(90deg, rgba(15,23,42,.025) 1px, transparent 1px),
+        #f8fafc;
+    background-size:64px 100%;
+}
 .workflow-heading.home-section-heading{
     display:block;
     max-width:760px;
-    margin:0 auto 34px;
+    margin:0 auto 42px;
     text-align:center;
 }
 .workflow-heading.home-section-heading p:last-child{
@@ -1048,35 +1119,68 @@ $this->registerCss(<<<CSS
 
 .workflow-grid{
     display:grid;
+    max-width:1120px;
+    margin:0 auto;
     grid-template-columns:repeat(3, minmax(0, 1fr));
-    gap:18px;
+    gap:1px;
+    overflow:hidden;
+    border:1px solid #d7e0e8;
+    border-radius:6px;
+    background:#d7e0e8;
+    box-shadow:0 14px 34px rgba(15,23,42,.07);
 }
 
 .workflow-card{
+    --workflow-accent:#0878ad;
+    --workflow-accent-soft:#e8f5fb;
     position:relative;
-    min-height:245px;
+    min-height:250px;
     overflow:hidden;
-    border:1px solid var(--border-subtle, #dbe5f1);
-    border-radius:20px;
-    padding:25px;
-    background:linear-gradient(145deg, #fff, #f5f9ff);
-    box-shadow:0 14px 34px rgba(15,23,42,.08);
-    transition:transform .22s ease, box-shadow .22s ease, border-color .22s ease;
+    padding:0 28px 30px;
+    background:#fff;
+    transition:background-color .18s ease;
+}
+
+.workflow-card:nth-child(n+4){
+    --workflow-accent:#b78f00;
+    --workflow-accent-soft:#fff8d9;
+}
+
+.workflow-card::before{
+    position:absolute;
+    inset:0 auto auto 0;
+    width:100%;
+    height:4px;
+    background:var(--workflow-accent);
+    content:"";
 }
 
 .workflow-card:hover{
-    transform:translateY(-5px);
-    border-color:#7dd3fc;
-    box-shadow:0 20px 44px rgba(15,23,42,.13);
+    background:#fbfdff;
+}
+
+.workflow-card-meta{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    min-height:52px;
+    border-bottom:1px solid #e8edf1;
+}
+
+.workflow-stage-label{
+    color:#94a3b8;
+    font-size:9px;
+    font-weight:800;
+    letter-spacing:.15em;
+    text-transform:uppercase;
 }
 
 .workflow-number{
-    position:absolute;
-    top:18px;
-    right:20px;
-    color:#bfdbfe;
-    font-size:34px;
-    font-weight:900;
+    color:var(--workflow-accent);
+    font-family:ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    font-size:12px;
+    font-weight:800;
+    letter-spacing:.08em;
 }
 
 .workflow-icon{
@@ -1084,24 +1188,27 @@ $this->registerCss(<<<CSS
     height:48px;
     display:grid;
     place-items:center;
-    border-radius:14px;
-    background:#e0f2fe;
-    color:#0369a1;
-    font-size:23px;
+    margin-top:25px;
+    border:1px solid color-mix(in srgb, var(--workflow-accent) 38%, white);
+    border-radius:3px;
+    background:var(--workflow-accent-soft);
+    color:var(--workflow-accent);
+    font-size:22px;
 }
 
 .workflow-card h3{
-    margin:24px 0 10px;
+    margin:19px 0 9px;
     color:#0f172a;
-    font-size:18px;
+    font-size:19px;
     font-weight:800;
+    letter-spacing:-.02em;
 }
 
 .workflow-card p{
     margin:0;
     color:#64748b;
-    font-size:13px;
-    line-height:1.65;
+    font-size:13.5px;
+    line-height:1.62;
 }
 
 @media (max-width:1100px){
@@ -1365,30 +1472,123 @@ $this->registerCss(<<<CSS
 
 .about .about-ad-layout{
     display:grid;
-    /* PHASE 9: wider sponsored media while keeping About Us equally readable. */
-    grid-template-columns:minmax(0, 52%) minmax(360px, 48%);
+    grid-template-columns:minmax(0, 50%) minmax(360px, 50%);
     gap:clamp(20px, 2.2vw, 34px);
     align-items:stretch;
-    height:clamp(430px, calc(100svh - 170px), 640px);
+    height:clamp(520px, calc(100svh - 190px), 600px);
     min-height:0;
 }
 
 .about .about-copy-column{
     min-width:0;
-    display:flex;
-    align-items:center;
-    justify-content:center;
-    padding:clamp(12px, 1.7vw, 26px);
+    overflow:hidden;
     border:1px solid rgba(211,226,242,.92);
-    border-radius:22px;
-    background:rgba(255,255,255,.90);
+    border-radius:6px;
+    background:#fff;
     box-shadow:0 18px 46px rgba(13,50,97,.07);
 }
 
 .about .about-copy-inner{
     width:100%;
-    max-width:460px;
+    height:100%;
+    display:flex;
+    flex-direction:column;
 }
+
+.about-teaser-media{
+    position:relative;
+    height:clamp(135px, 17vh, 180px);
+    flex:0 0 auto;
+    overflow:hidden;
+    background:#0b1423;
+}
+
+.about-teaser-media::after{
+    position:absolute;
+    inset:0;
+    background:linear-gradient(180deg, rgba(7,18,33,.08), rgba(7,18,33,.46));
+    content:"";
+}
+
+.about-teaser-media img{
+    width:100%;
+    height:100%;
+    display:block;
+    object-fit:cover;
+    object-position:center 44%;
+}
+
+.about-teaser-copy{
+    display:flex;
+    flex:1;
+    flex-direction:column;
+    align-items:flex-start;
+    padding:clamp(24px, 3vw, 38px);
+    text-align:left;
+}
+
+.about-teaser-eyebrow{
+    margin:0 0 10px;
+    color:#0878ad;
+    font-size:10px;
+    font-weight:850;
+    letter-spacing:.15em;
+    text-transform:uppercase;
+}
+
+.about-teaser-title{
+    margin:0;
+    color:#0f172a;
+    font-size:clamp(25px, 2.6vw, 36px);
+    font-weight:850;
+    letter-spacing:-.04em;
+    line-height:1.08;
+}
+
+.about-teaser-summary{
+    margin:15px 0 0;
+    color:#64748b;
+    font-size:14px;
+    line-height:1.65;
+}
+
+.about-teaser-benefits{
+    width:100%;
+    display:grid;
+    gap:0;
+    margin:15px 0 18px;
+    padding:0;
+    list-style:none;
+}
+
+.about-teaser-benefits li{
+    display:flex;
+    align-items:center;
+    gap:10px;
+    min-height:33px;
+    border-bottom:1px solid #edf1f5;
+    color:#334155;
+    font-size:12px;
+    font-weight:750;
+}
+
+.about-teaser-benefits li:last-child{border-bottom:0;}
+.about-teaser-benefits i{color:#0878ad; font-size:16px;}
+
+.about-teaser-link{
+    display:inline-flex;
+    align-items:center;
+    gap:9px;
+    margin-top:auto;
+    border-bottom:2px solid #0878ad;
+    padding:0 0 5px;
+    color:#0f172a;
+    font-size:12px;
+    font-weight:850;
+    text-decoration:none;
+}
+
+.about-teaser-link:hover{color:#0878ad;}
 
 .about-brand-logo-wrap{
     display:flex;
@@ -1427,16 +1627,33 @@ $this->registerCss(<<<CSS
 .about .about-ad-column{
     min-width:0;
     min-height:0;
+    display:flex;
+    flex-direction:column;
+    gap:9px;
+}
+
+.about-ad-label{
+    flex:0 0 auto;
+    display:flex;
+    align-items:center;
+    gap:7px;
+    margin:0;
+    color:#7b8ca0;
+    font-size:9px;
+    font-weight:800;
+    letter-spacing:.14em;
+    text-transform:uppercase;
 }
 
 .about-ad-zone{
     position:relative;
     width:100%;
-    height:100%;
+    height:auto;
+    flex:1;
     min-height:0;
     overflow:hidden;
     border:1px solid #C9D9EB;
-    border-radius:24px;
+    border-radius:6px;
     background:#071A31;
     box-shadow:0 24px 60px rgba(13,50,97,.17);
     isolation:isolate;
@@ -1883,7 +2100,7 @@ $this->registerCss(<<<CSS
 
 @media (max-width:1199.98px){
     .about .about-ad-layout{
-        grid-template-columns:minmax(0, 52%) minmax(300px, 48%);
+        grid-template-columns:minmax(0, 50%) minmax(300px, 50%);
         gap:22px;
     }
 }
@@ -1900,7 +2117,7 @@ $this->registerCss(<<<CSS
     }
 
     .about .about-copy-column{
-        padding:26px 22px;
+        padding:0;
     }
 
     .about-ad-zone{
@@ -1918,13 +2135,13 @@ $this->registerCss(<<<CSS
     }
 
     .about .about-copy-column{
-        padding:22px 18px;
-        border-radius:18px;
+        padding:0;
+        border-radius:6px;
     }
 
     .about-ad-zone{
         height:clamp(380px, 60svh, 500px);
-        border-radius:18px;
+        border-radius:6px;
     }
 
     .about-early-access-image{
@@ -2227,26 +2444,40 @@ CSS
       </header>
 
       <div class="audience-network-grid">
-        <article class="audience-card">
-          <span class="audience-card-icon" aria-hidden="true"><i class="ri-plane-line"></i></span>
-          <h3>For Aircraft Operators &amp; CAMOs</h3>
-          <p>Structure maintenance needs, compare responses and retain operational visibility from the first request to completion.</p>
+        <article class="audience-card audience-card--operator">
+          <div class="audience-card-topline">
+            <span class="audience-card-role">Operations / Continuing Airworthiness</span>
+            <span class="audience-card-index" aria-hidden="true">01</span>
+          </div>
+          <div class="audience-card-heading">
+            <span class="audience-card-icon" aria-hidden="true"><i class="ri-plane-line"></i></span>
+            <h3>For Aircraft Operators &amp; CAMOs</h3>
+          </div>
+          <p class="audience-card-summary">Structure maintenance needs, compare responses and retain operational visibility from the first request to completion.</p>
+          <div class="audience-card-divider" aria-hidden="true"><span>What you can do</span></div>
           <ul class="audience-benefits">
-            <li><i class="ri-check-line" aria-hidden="true"></i> Submit structured maintenance requests</li>
-            <li><i class="ri-check-line" aria-hidden="true"></i> Compare relevant MRO quotations</li>
-            <li><i class="ri-check-line" aria-hidden="true"></i> Track documents, decisions and progress</li>
+            <li><i class="ri-arrow-right-line" aria-hidden="true"></i> Submit structured maintenance requests</li>
+            <li><i class="ri-arrow-right-line" aria-hidden="true"></i> Compare relevant MRO quotations</li>
+            <li><i class="ri-arrow-right-line" aria-hidden="true"></i> Track documents, decisions and progress</li>
           </ul>
         </article>
 
 
-        <article class="audience-card">
-          <span class="audience-card-icon" aria-hidden="true"><i class="ri-building-2-line"></i></span>
-          <h3>For MROs</h3>
-          <p>Receive requests aligned with your maintenance capabilities and manage commercial and operational responses in one place.</p>
+        <article class="audience-card audience-card--mro">
+          <div class="audience-card-topline">
+            <span class="audience-card-role">Maintenance / Repair / Overhaul</span>
+            <span class="audience-card-index" aria-hidden="true">02</span>
+          </div>
+          <div class="audience-card-heading">
+            <span class="audience-card-icon" aria-hidden="true"><i class="ri-building-2-line"></i></span>
+            <h3>For MROs</h3>
+          </div>
+          <p class="audience-card-summary">Receive requests aligned with your maintenance capabilities and manage commercial and operational responses in one place.</p>
+          <div class="audience-card-divider" aria-hidden="true"><span>What you can do</span></div>
           <ul class="audience-benefits">
-            <li><i class="ri-check-line" aria-hidden="true"></i> Review relevant maintenance opportunities</li>
-            <li><i class="ri-check-line" aria-hidden="true"></i> Prepare controlled quotations</li>
-            <li><i class="ri-check-line" aria-hidden="true"></i> Coordinate work, reports and CRS records</li>
+            <li><i class="ri-arrow-right-line" aria-hidden="true"></i> Review relevant maintenance opportunities</li>
+            <li><i class="ri-arrow-right-line" aria-hidden="true"></i> Prepare controlled quotations</li>
+            <li><i class="ri-arrow-right-line" aria-hidden="true"></i> Coordinate work, reports and CRS records</li>
           </ul>
         </article>
       </div>
@@ -2254,43 +2485,45 @@ CSS
   </section>
 
  
-  <!-- ================== ABOUT / GLOBALMROs ================== -->
+  <!-- ================== ABOUT CORE AVIATION NETWORK ================== -->
   <section class="about section-padding" aria-labelledby="about-title" id="about">
     <div class="container">
       <div class="about-ad-layout">
 
-        <!-- About Us: titre, soulignement et contenu conservés -->
-        <div class="about-copy-column text-center">
+        <!-- Teaser institutionnel : la page About porte désormais le contenu détaillé. -->
+        <div class="about-copy-column">
           <div class="about-copy-inner">
-            <div class="about-brand-logo-wrap">
+            <div class="about-teaser-media" aria-hidden="true">
               <img
-                src="<?= Url::to('@web/logo/can-logo-main.png') ?>"
-                alt="Core Aviation Network"
-                class="about-brand-logo"
+                src="<?= Url::to('@web/img/home-carousel/mro-team.jpg') ?>"
+                alt=""
                 loading="lazy"
+                decoding="async"
               >
             </div>
-
-            <h2 id="about-title" class="section-title">
-              About Us <span class="underline"></span>
-            </h2>
-            <p class="lead">
-              <strong>Core Aviation Network</strong> connects aircraft operators and CAMO teams
-              with MRO facilities through one controlled maintenance workflow.
-            </p>
-            <p class="lead">
-              Operators can submit an operational request with aircraft data, ETA, ETD,
-              maintenance location and controlled attachments, then compare qualified responses.
-            </p>
-            <p class="lead mb-0">
-              MRO partners can prepare quotations, receive purchase orders, follow the work
-              and exchange reports, CRS documents and feedback in a traceable environment.
-            </p>
+            <div class="about-teaser-copy">
+              <p class="about-teaser-eyebrow">About Core Aviation Network</p>
+              <h2 id="about-title" class="about-teaser-title">A controlled environment for aircraft maintenance.</h2>
+              <p class="about-teaser-summary">CAN connects operational demand with relevant maintenance capability while keeping each exchange attached to the same request.</p>
+              <ul class="about-teaser-benefits">
+                <li><i class="ri-arrow-right-line" aria-hidden="true"></i> Relevant maintenance connections</li>
+                <li><i class="ri-arrow-right-line" aria-hidden="true"></i> One structured workflow</li>
+                <li><i class="ri-arrow-right-line" aria-hidden="true"></i> Traceable decisions and records</li>
+              </ul>
+              <a class="about-teaser-link" href="<?= Url::to(['/site/about']) ?>">
+                <span>Discover Core Aviation Network</span>
+                <i class="ri-arrow-right-line" aria-hidden="true"></i>
+              </a>
+            </div>
           </div>
         </div>
 
         <!-- PHASE 9: responsive sponsored zone, secondary to the product message. -->
         <div class="about-ad-column">
+          <p class="about-ad-label">
+            <i class="<?= $prelaunchMode ? 'ri-flight-takeoff-line' : 'ri-megaphone-line' ?>" aria-hidden="true"></i>
+            <span><?= $prelaunchMode ? 'Network access' : 'Sponsored placement' ?></span>
+          </p>
           <aside
             class="about-ad-zone"
             aria-label="<?= $prelaunchMode ? 'Core Aviation Network Early Access' : 'Sponsored aviation content' ?>"
@@ -2539,42 +2772,42 @@ CSS
 
       <div class="workflow-grid">
         <article class="workflow-card">
-          <span class="workflow-number">01</span>
+          <div class="workflow-card-meta"><span class="workflow-stage-label">Define</span><span class="workflow-number">01</span></div>
           <span class="workflow-icon"><i class="ri-file-add-line"></i></span>
           <h3>Request</h3>
           <p>Capture aircraft, location, priority, schedule, maintenance scope and controlled attachments.</p>
         </article>
 
         <article class="workflow-card">
-          <span class="workflow-number">02</span>
+          <div class="workflow-card-meta"><span class="workflow-stage-label">Qualify</span><span class="workflow-number">02</span></div>
           <span class="workflow-icon"><i class="ri-route-line"></i></span>
           <h3>Match</h3>
           <p>Connect the requirement with MRO partners according to the operational information available in CAN.</p>
         </article>
 
         <article class="workflow-card">
-          <span class="workflow-number">03</span>
+          <div class="workflow-card-meta"><span class="workflow-stage-label">Evaluate</span><span class="workflow-number">03</span></div>
           <span class="workflow-icon"><i class="ri-file-list-3-line"></i></span>
           <h3>Quote</h3>
           <p>Compare technical scope, price, currency, lead time and quotation documents in one place.</p>
         </article>
 
         <article class="workflow-card">
-          <span class="workflow-number">04</span>
+          <div class="workflow-card-meta"><span class="workflow-stage-label">Approve</span><span class="workflow-number">04</span></div>
           <span class="workflow-icon"><i class="ri-shopping-bag-3-line"></i></span>
           <h3>Purchase Order</h3>
           <p>Confirm the selected response and retain the purchase order with its maintenance request.</p>
         </article>
 
         <article class="workflow-card">
-          <span class="workflow-number">05</span>
+          <div class="workflow-card-meta"><span class="workflow-stage-label">Execute</span><span class="workflow-number">05</span></div>
           <span class="workflow-icon"><i class="ri-tools-line"></i></span>
           <h3>Work</h3>
           <p>Coordinate appointments, messages, operational updates and supporting maintenance records.</p>
         </article>
 
         <article class="workflow-card">
-          <span class="workflow-number">06</span>
+          <div class="workflow-card-meta"><span class="workflow-stage-label">Close</span><span class="workflow-number">06</span></div>
           <span class="workflow-icon"><i class="ri-shield-check-line"></i></span>
           <h3>Complete</h3>
           <p>Keep reports, CRS documents, feedback and the final history connected and traceable.</p>

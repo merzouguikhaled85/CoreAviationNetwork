@@ -1557,7 +1557,7 @@ $this->layout = 'login';
             
             Yii::$app->cache->delete($loginRateKey);
             Yii::$app->auditService->record('LOGIN');
-            Yii::$app->session->setFlash('message', 'You have successfully logged in. ' );
+            //Yii::$app->session->setFlash('message', 'You have successfully logged in. ' );
             return $this->redirect(['dashboard/home']);
         } else {
             Yii::$app->session->setFlash('error', 'Failed to set user identity.');

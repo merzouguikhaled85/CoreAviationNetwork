@@ -1,30 +1,60 @@
 <?php
-use yii\helpers\Html;
-$this->title = 'GlobalMROs Privacy Policy';
+use yii\helpers\Url;
+
+$this->title = 'Privacy Policy | Core Aviation Network';
+$this->registerCssFile(
+    '@web/css/legal-policy.css?v=20260927-3',
+    ['depends' => [\yii\bootstrap5\BootstrapAsset::class]]
+);
 ?>
 
-<div class="privacy-policy-container" style="max-width: 900px; margin: 0 auto; padding: 40px 20px; background-color: #f9f9f9; box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);">
-    <center><h1 style="color: #333; font-size: 2.5rem; margin-bottom: 30px;">GLOBALMROS Privacy Policy</h1></center>
+<div class="can-legal-page">
+    <header class="can-legal-hero">
+        <div class="can-legal-container">
+            <a class="can-legal-back" href="<?= Url::to(['/site/index']) ?>">
+                <i class="ri-arrow-left-line" aria-hidden="true"></i>
+                <span>Back to Core Aviation Network</span>
+            </a>
+            <p class="can-legal-eyebrow">Legal &amp; Trust · Core Aviation Network</p>
+            <h1>Privacy Policy</h1>
+            <p class="can-legal-intro">How Core Aviation Network collects, uses, protects and manages personal data across the aircraft maintenance platform.</p>
+        </div>
+    </header>
 
-    <h2 style="color: #444; margin-bottom: 20px;">Introduction</h2>
-    <p style="line-height: 1.6; margin-bottom: 20px;">This Privacy Policy explains how GLOBALMROS LTD ("GLOBALMROS", "we", "us", or "our") collects, uses, and discloses your personal data when you use our website <a href="http://www.globalmros.com/" target="_blank">http://www.globalmros.com/</a> (the "Platform") as an Aircraft Operator or Maintenance, Repair, and Overhaul service provider ("MRO").</p>
+    <div class="can-legal-container can-legal-layout">
+        <nav class="can-legal-nav" aria-label="Privacy policy sections">
+            <p class="can-legal-nav-title">On this page</p>
+            <a href="#privacy-introduction">Introduction</a>
+            <a href="#privacy-controller">Data controller</a>
+            <a href="#privacy-data">Data we collect</a>
+            <a href="#privacy-use">How we use data</a>
+            <a href="#privacy-rights">Your rights</a>
+            <a href="#privacy-transfers">International transfers</a>
+            <a href="#privacy-contact">Contact us</a>
+        </nav>
 
-    <h2 style="color: #444; margin-bottom: 20px;">Data Controller</h2>
-    <p style="line-height: 1.6; margin-bottom: 20px;">GLOBALMROS LTD is the data controller for the personal data collected through the Platform. Our company number is 15789027 and our registered address is 5 Stavedown Road, South Wonston, Winchester, SO21 3HA, United Kingdom.</p>
+        <article class="privacy-policy-container can-legal-content">
+            <aside class="can-legal-note">This policy explains how personal data is handled when Aircraft Operators, CAMOs and MRO providers use Core Aviation Network.</aside>
+
+    <h2 id="privacy-introduction" style="color: #444; margin-bottom: 20px;">Introduction</h2>
+    <p style="line-height: 1.6; margin-bottom: 20px;">This Privacy Policy explains how Core Aviation Network ("we", "us", or "our") collects, uses, and discloses your personal data when you use <a href="https://coreaviationnetwork.com" target="_blank" rel="noopener noreferrer">the Core Aviation Network website</a> (the "Platform") as an Aircraft Operator or Maintenance, Repair, and Overhaul service provider ("MRO").</p>
+
+    <h2 id="privacy-controller" style="color: #444; margin-bottom: 20px;">Data Controller</h2>
+    <p style="line-height: 1.6; margin-bottom: 20px;">Core Aviation Network is the data controller for the personal data collected through the Platform. Our company number is 15789027 and our registered address is 5 Stavedown Road, South Wonston, Winchester, SO21 3HA, United Kingdom.</p>
     <p style="line-height: 1.6; margin-bottom: 20px;">If you have any questions about this Privacy Policy or your rights, please contact our Data Protection Officer:</p>
     <ul style="list-style-type: disc; margin-left: 20px; margin-bottom: 20px; line-height: 1.6;">
-        <li>By email: <a href="mailto:customerservice@globalmros.com">customerservice@globalmros.com</a></li>
-        <li>By post: GLOBALMROS LTD, 5 Stavedown Road, South Wonston, Winchester, SO21 3HA, United Kingdom.</li>
+        <li>By email: <a href="mailto:support@coreaviationnetwork.com">support@coreaviationnetwork.com</a></li>
+        <li>By post: Core Aviation Network, 5 Stavedown Road, South Wonston, Winchester, SO21 3HA, United Kingdom.</li>
     </ul>
 
-    <h2 style="color: #444; margin-bottom: 20px;">What personal data do we collect?</h2>
+    <h2 id="privacy-data" style="color: #444; margin-bottom: 20px;">What personal data do we collect?</h2>
     <p style="line-height: 1.6; margin-bottom: 20px;">The personal data we collect depends on your role on the Platform:</p>
     <ul style="list-style-type: disc; margin-left: 20px; margin-bottom: 20px; line-height: 1.6;">
         <li><strong>For Aircraft Operators:</strong> We may collect information such as your company name, contact details (name, email address, phone number), aircraft fleet details, and any information you provide when requesting quotes or interacting with MROs on the Platform.</li>
         <li><strong>For MROs:</strong> We may collect information such as your company name, contact details (name, email address, phone number), certifications, capabilities, service offerings, and any information you include in your profile. We may also collect data on user reviews and feedback about your services.</li>
     </ul>
 
-    <h2 style="color: #444; margin-bottom: 20px;">How do we use your personal data?</h2>
+    <h2 id="privacy-use" style="color: #444; margin-bottom: 20px;">How do we use your personal data?</h2>
     <p style="line-height: 1.6; margin-bottom: 20px;">We use your personal data for the following purposes, all within the confines of applicable UK data protection laws and regulations:</p>
     <ul style="list-style-type: disc; margin-left: 20px; margin-bottom: 20px; line-height: 1.6;">
         <li>To provide and improve the Platform: We use your data to allow you to connect with MROs or Aircraft Operators (depending on your role), find relevant services, manage your account, and personalise your search results based on your location, industry, or past activity on the Platform.</li>
@@ -72,17 +102,17 @@ $this->title = 'GlobalMROs Privacy Policy';
         <li><strong>Complying with legal obligations:</strong> We may also retain your data for longer periods if required by law.</li>
         <li><strong>Resolving disputes:</strong> We may retain your data for a reasonable period to resolve any disputes or inquiries.</li>
         <li><strong>Enforcing our agreements:</strong> We may retain your data for a reasonable period to enforce our terms of use and other agreements.</li>
-        <p>Data Minimisation: We follow the principle of data minimisation and only retain the personal data that is necessary for the purposes outlined above.
-Usage Data Retention: We typically retain "Usage Data" (such as anonymised data about your activity on the Platform) for shorter durations. However, we may retain this data for longer periods if it is necessary for:
-•	Security: Maintaining the security of the Platform and preventing fraud.
-•	Service improvement: Improving the functionality and performance of the Platform.
-•	Compliance with legal obligations: Complying with legal requirements that mandate longer data retention periods.
-This approach ensures that we can effectively analyse data to enhance the overall user experience and maintain the security and integrity of the Platform. We will delete your personal data when it is no longer reasonably necessary for the purposes outlined above, unless we are required by law to retain it for a longer period.
-</p>
     </ul>
-    <p style="line-height: 1.6; margin-bottom: 20px;">Data Minimisation: We follow the principle of data minimisation and only retain the personal data that is necessary for the purposes outlined above.</p>
+    <p><strong>Data Minimisation:</strong> We follow the principle of data minimisation and only retain the personal data that is necessary for the purposes outlined above.</p>
+    <p><strong>Usage Data Retention:</strong> We typically retain usage data, such as anonymised data about your activity on the Platform, for shorter durations. We may retain this data for longer periods when necessary for:</p>
+    <ul>
+        <li><strong>Security:</strong> Maintaining the security of the Platform and preventing fraud.</li>
+        <li><strong>Service improvement:</strong> Improving the functionality and performance of the Platform.</li>
+        <li><strong>Legal compliance:</strong> Complying with requirements that mandate longer retention periods.</li>
+    </ul>
+    <p>This approach enables us to analyse data, improve the user experience and maintain the security and integrity of the Platform. We will delete personal data when it is no longer reasonably necessary for the purposes outlined above, unless the law requires us to retain it for longer.</p>
 
-    <h2 style="color: #444; margin-bottom: 20px;">9. Your rights</h2>
+    <h2 id="privacy-rights" style="color: #444; margin-bottom: 20px;">9. Your rights</h2>
     <p style="line-height: 1.6; margin-bottom: 20px;">Under UK data protection laws, you have a number of rights in relation to your personal data:</p>
     <ul style="list-style-type: disc; margin-left: 20px; margin-bottom: 20px; line-height: 1.6;">
         <li><strong>Right to be informed:</strong> You have the right to be informed about how we collect, use, and share your personal data.</li>
@@ -93,7 +123,7 @@ This approach ensures that we can effectively analyse data to enhance the overal
         <li><strong>Right to data portability:</strong> You have the right to request that we transfer your personal data to another controller.</li>
         <li><strong>Right to object to processing:</strong> You have the right to object to the processing of your personal data.</li>
         <li><strong>Right to withdraw consent to processing:</strong> You have the right to withdraw your consent at any time.</li>
-        <li><strong>Exercising Your Rights: </strong>To exercise any of these rights, please contact us using the details provided in Section 13. We will respond to your request within one month, unless your request is particularly complex.</li>
+        <li><strong>Exercising Your Rights: </strong>To exercise any of these rights, please contact us using the details provided in Section 14. We will respond to your request within one month, unless your request is particularly complex.</li>
         <li><strong>Data Minimisation: </strong>We respect your privacy and are committed to data minimisation. We will only collect and retain the personal data that is necessary for the purposes outlined in this Privacy Policy.</li>
         <li><strong>Account Deletion: </strong>You can manage your personal data and privacy settings through your account on the Platform. You can also choose to disable or delete your account entirely. This will result in the permanent removal of all your content and data from the Platform.</li>
         <li><strong>Transparency and Communication: </strong>We are committed to transparency in how we handle your personal data. We will provide you with clear information about your rights and how to exercise them. We will also keep you informed about any changes to this Privacy Policy.</li>
@@ -102,34 +132,36 @@ There are no fees associated with exercising your rights under UK data protectio
 </li>
 
     </ul>
-    <p style="line-height: 1.6; margin-bottom: 20px;">To exercise any of these rights, please contact us using the details provided in Section 13. There are no fees associated with exercising your rights under UK data protection law.</p>
+    <p style="line-height: 1.6; margin-bottom: 20px;">To exercise any of these rights, please contact us using the details provided in Section 14. There are no fees associated with exercising your rights under UK data protection law.</p>
 
-    <h2 style="color: #444; margin-bottom: 20px;">10. International Data Transfers</h2>
-    <p style="line-height: 1.6; margin-bottom: 20px;">GLOBALMROS operates on a global scale and may transfer your personal data to third-party service providers located in countries outside the United Kingdom. These countries may have different data protection laws than the UK.
-We will only transfer your personal data to countries that offer an adequate level of data protection. We achieve this through one or more of the following methods:
-•	Transferring data to countries approved by the UK Information Commissioner's Office (ICO) as having adequate data protection laws.
-•	Using Standard Contractual Clauses (SCCs) approved by the European Commission, which create legally binding obligations for the recipient to protect your personal data.
-•	Obtaining your explicit consent to the transfer of your personal data.
-We take steps to ensure that any third-party service providers we use outside of the UK provide adequate safeguards for your personal data. These safeguards may include contractual obligations, security measures, and data minimisation practices.
-</p>
+    <h2 id="privacy-transfers" style="color: #444; margin-bottom: 20px;">10. International Data Transfers</h2>
+    <p>Core Aviation Network operates on a global scale and may transfer your personal data to third-party service providers located in countries outside the United Kingdom. These countries may have different data protection laws than the UK.</p>
+    <p>We will only transfer your personal data to countries that offer an adequate level of data protection. We achieve this through one or more of the following methods:</p>
+    <ul>
+        <li>Transferring data to countries approved by the UK Information Commissioner's Office (ICO) as having adequate data protection laws.</li>
+        <li>Using Standard Contractual Clauses (SCCs) approved by the European Commission, which create legally binding obligations for the recipient to protect your personal data.</li>
+        <li>Obtaining your explicit consent to the transfer of your personal data.</li>
+    </ul>
+    <p>We take steps to ensure that third-party service providers outside the UK provide adequate safeguards for your personal data. These safeguards may include contractual obligations, security measures and data minimisation practices.</p>
 
     <h2 style="color: #444; margin-bottom: 20px;">11. Children's Privacy</h2>
     <p style="line-height: 1.6; margin-bottom: 20px;">Our Platform is not directed to children under the age of 16. We do not knowingly collect personal data from children under 16. If you believe your child has provided us with personal data, please contact us.</p>
 
     <h2 style="color: #444; margin-bottom: 20px;">12. Third-Party Links</h2>
-    <p style="line-height: 1.6; margin-bottom: 20px;">The Platform may contain links to websites or resources operated by third parties ("Third-Party Links"). These links are provided solely for your convenience and information, and we do not control the content, products, or services offered on these Third-Party Links.
-GLOBALMROS does not endorse or sponsor any Third-Party Links. We recommend you carefully review the privacy policies and terms of use of any Third-Party Link you visit, as they may differ from our own.
-We are not responsible for the content, accuracy, or reliability of any information, data, opinions, advice, or statements presented on Third-Party Links. You access and use Third-Party Links at your own risk.
-Security: We advise exercising caution and due diligence when accessing Third-Party Links. We cannot guarantee the security of any information you provide to a Third-Party Link.
-</p>
+    <p>The Platform may contain links to websites or resources operated by third parties ("Third-Party Links"). These links are provided solely for your convenience and information, and we do not control the content, products, or services offered on these Third-Party Links.</p>
+    <p>Core Aviation Network does not endorse or sponsor any Third-Party Links. We recommend that you carefully review the privacy policies and terms of use of any Third-Party Link you visit, as they may differ from our own.</p>
+    <p>We are not responsible for the content, accuracy, or reliability of information presented on Third-Party Links. You access and use Third-Party Links at your own risk.</p>
+    <p><strong>Security:</strong> We advise exercising caution and due diligence when accessing Third-Party Links. We cannot guarantee the security of information you provide to a Third-Party Link.</p>
 
     <h2 style="color: #444; margin-bottom: 20px;">13. Changes to this Privacy Policy</h2>
     <p style="line-height: 1.6; margin-bottom: 20px;">We may update this Privacy Policy from time to time. We will notify you of any changes by posting the new Privacy Policy on the Platform.</p>
 
-    <h2 style="color: #444; margin-bottom: 20px;">14. Contact us</h2>
+    <h2 id="privacy-contact" style="color: #444; margin-bottom: 20px;">14. Contact us</h2>
     <p style="line-height: 1.6; margin-bottom: 20px;">If you have any questions about this Privacy Policy or your rights, please contact us:</p>
     <ul style="list-style-type: none; margin-left: 20px; margin-bottom: 20px; line-height: 1.6;">
-        <li>Email: <a href="mailto:customerservice@globalmros.com">customerservice@globalmros.com</a></li>
-        <li>Post: GLOBALMROS LTD, 5 Stavedown Road, South Wonston, Winchester, SO21 3HA, United Kingdom.</li>
+        <li>Email: <a href="mailto:support@coreaviationnetwork.com">support@coreaviationnetwork.com</a></li>
+        <li>Post: Core Aviation Network, 5 Stavedown Road, South Wonston, Winchester, SO21 3HA, United Kingdom.</li>
     </ul>
+        </article>
+    </div>
 </div>

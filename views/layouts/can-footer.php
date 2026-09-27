@@ -1,13 +1,17 @@
 <?php
 /** @var yii\web\View $this */
 
+$footerBackgroundUrl = \yii\helpers\Url::to('@web/img/hero-hangar-heavy.webp');
+
 $this->registerCss(<<<CSS
 footer.footer {
-    background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%) !important;
-    color: #475569 !important;
+    background:
+        linear-gradient(180deg, rgba(11, 20, 35, 0.91) 0%, rgba(8, 15, 28, 0.95) 100%),
+        url("{$footerBackgroundUrl}") center 44% / cover no-repeat !important;
+    color: #94a3b8 !important;
     padding: 60px 0 40px !important;
     font-size: 14px !important;
-    border-top: 1px solid #e2e8f0 !important;
+    border-top: 1px solid rgba(255, 255, 255, 0.10) !important;
     text-align: center !important;
     height: auto !important;
     min-height: unset !important;
@@ -15,18 +19,18 @@ footer.footer {
     display: block !important;
 }
 footer.footer a {
-    color: #1e293b !important;
+    color: #f8fafc !important;
     text-decoration: none !important;
     transition: all 0.2s ease !important;
 }
 footer.footer a:hover {
-    color: #0b5ed7 !important;
+    color: #55c5f3 !important;
     text-decoration: none !important;
 }
 .footer-slogan {
     font-size: 20px;
     font-weight: 700;
-    color: #0f172a;
+    color: #f8fafc;
     margin-bottom: 24px;
     display: flex;
     align-items: center;
@@ -47,14 +51,14 @@ footer.footer a:hover {
     gap: 20px;
     margin-bottom: 24px;
 }
-.social-links a {
-    color: #64748b;
+.footer .social-links a {
+    color: #94a3b8 !important;
     font-size: 20px;
     transition: all 0.2s ease;
     text-decoration: none;
 }
-.social-links a:hover {
-    color: #0b5ed7;
+.footer .social-links a:hover {
+    color: #55c5f3 !important;
     transform: scale(1.1);
 }
 .contact-info {
@@ -71,15 +75,15 @@ footer.footer a:hover {
     justify-content: center;
     gap: 8px;
     font-size: 14px;
-    color: #1e293b;
+    color: #cbd5e1;
     font-weight: 500;
 }
 .contact-info a {
-    color: #1e293b;
+    color: #f8fafc;
     font-weight: 500;
 }
 .contact-info a:hover {
-    color: #0b5ed7;
+    color: #55c5f3;
 }
 .company-info {
     max-width: 600px;
@@ -112,7 +116,7 @@ footer.footer a:hover {
     transition: color 0.2s ease;
 }
 .legal-links a:hover {
-    color: #475569 !important;
+    color: #55c5f3 !important;
 }
 .footer .small {
     color: #94a3b8;
@@ -121,7 +125,11 @@ footer.footer a:hover {
     margin-bottom: 0;
 }
 .footer .small strong {
-    color: #64748b;
+    color: #f8fafc;
+}
+
+footer.footer::before {
+    background: radial-gradient(circle at 50% 0%, rgba(85, 197, 243, 0.08), transparent 58%);
 }
 
 /* ================== SCROLL TO TOP BUTTON ================== */
@@ -131,16 +139,16 @@ footer.footer a:hover {
     right: 30px;
     width: 40px;
     height: 40px;
-    background-color: #ffffff;
-    border: 1px solid #e2e8f0;
-    color: #64748b;
+    background-color: #111c2d;
+    border: 1px solid rgba(255, 255, 255, 0.14);
+    color: #cbd5e1;
     border-radius: 50%;
     display: flex;
     align-items: center;
     justify-content: center;
     font-size: 18px;
     cursor: pointer;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.24);
     opacity: 0;
     visibility: hidden;
     transform: translateY(15px);
@@ -148,11 +156,11 @@ footer.footer a:hover {
     z-index: 9998;
 }
 .scroll-top-btn:hover {
-    background-color: #f8fafc;
-    border-color: #cbd5e1;
-    color: #1e293b;
+    background-color: #16263c;
+    border-color: #55c5f3;
+    color: #55c5f3;
     transform: translateY(-2px);
-    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.08);
+    box-shadow: 0 8px 22px rgba(0, 0, 0, 0.3);
 }
 .scroll-top-btn.visible {
     opacity: 1;
