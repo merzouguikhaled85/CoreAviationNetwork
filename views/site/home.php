@@ -125,7 +125,7 @@ $prelaunchMode = PrelaunchMode::isEnabled();
 
 if ($isGuest && $prelaunchMode) {
     $heroPrimaryUrl = '#early-access';
-    $heroPrimaryLabel = 'Get Early Access';
+    $heroPrimaryLabel = 'Register for go live';
     $heroPrimaryIcon = 'ri-flight-takeoff-line';
     $heroSecondaryUrl = ['/site/login'];
     $heroSecondaryLabel = 'Login';
@@ -2242,7 +2242,7 @@ CSS
           ) ?>
           <?php if ($isGuest && !$prelaunchMode): ?>
             <?= Html::a(
-                '<i class="ri-flight-takeoff-line"></i><span>Early Access</span>',
+                '<i class="ri-flight-takeoff-line"></i><span>Registration for early access</span>',
                 '#early-access',
                 [
                     'class' => 'home-hero-action is-secondary',
@@ -2552,7 +2552,7 @@ CSS
                     For Aircraft Operators &amp; MROs
                   </span>
                   <?= Html::a(
-                      '<span>Get Early Access</span><i class="ri-arrow-right-line" aria-hidden="true"></i>',
+                      '<span>Register for go live</span><i class="ri-arrow-right-line" aria-hidden="true"></i>',
                       '#early-access',
                       [
                           'class' => 'about-early-access-button',
@@ -2939,7 +2939,7 @@ CSS
             </div>
             <div>
               <p>Private launch list</p>
-              <h3>Request early access</h3>
+              <h3>Register for go live</h3>
               <span>Complete the form and confirm your business email.</span>
             </div>
           </header>

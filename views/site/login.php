@@ -220,7 +220,7 @@ $prelaunchMode = PrelaunchMode::isEnabled();
         </a>
         <div class="auth-signup-links">
           <?php if ($prelaunchMode): ?>
-            <a href="<?= Url::to(['/site/index', '#' => 'early-access']) ?>">Get Early Access</a>
+            <a href="<?= Url::to(['/site/index', '#' => 'early-access']) ?>">Register for go live</a>
           <?php else: ?>
             <a href="<?= Url::to(['/site/become-mro']) ?>">MRO Signup</a>
             <span aria-hidden="true">·</span>
