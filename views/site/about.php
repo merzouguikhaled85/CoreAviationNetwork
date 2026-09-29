@@ -27,7 +27,7 @@ $this->registerCssFile(
             <i class="ri-arrow-down-line" aria-hidden="true"></i>
           </a>
           <a class="can-about-action" href="<?= Url::to(['/site/index', '#' => 'early-access']) ?>">
-            <span>Registration for go live</span>
+            <span>Register for go live</span>
             <i class="ri-arrow-right-line" aria-hidden="true"></i>
           </a>
         </div>

@@ -56,7 +56,7 @@ if (!$isGuest && Yii::$app->user->identity !== null) {
 <?php if ($isGuest): ?>
   <?php if ($prelaunchMode): ?>
       <a href="<?= Url::to(['/site/index', '#' => 'early-access']) ?>">
-        <i class="ri-flight-takeoff-line"></i> Register for go live
+        <i class="ri-flight-takeoff-line"></i> Early Access
       </a>
   <?php else: ?>
       <a href="<?= Url::to(['/site/become-mro']) ?>"
@@ -153,7 +153,7 @@ if (!$isGuest && Yii::$app->user->identity !== null) {
  <?php if ($isGuest): ?>
   <?php if ($prelaunchMode): ?>
     <a href="<?= Url::to(['/site/index', '#' => 'early-access']) ?>">
-      <i class="ri-flight-takeoff-line"></i> Registration for go live
+      <i class="ri-flight-takeoff-line"></i> Early Access
     </a>
   <?php else: ?>
     <a href="<?= Url::to(['/site/become-mro']) ?>"
