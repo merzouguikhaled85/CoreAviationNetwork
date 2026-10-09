@@ -236,7 +236,7 @@ class AogPushService extends Component
                 'headers' => ['Urgency' => 'high', 'TTL' => (string) $ttl],
                 'notification' => [
                     'tag' => 'aog-request-' . $request->request_id,
-                    'icon' => $publicUrl . '/logo/CAN.png',
+                    'icon' => $publicUrl . '/logo/can-logo-main.png',
                 ],
                 'fcm_options' => ['link' => $publicUrl . '/mro-requests'],
             ],
