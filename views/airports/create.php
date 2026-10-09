@@ -4,6 +4,7 @@ use yii\widgets\ActiveForm;
 use yii\helpers\Html;
 use yii\helpers\ArrayHelper;
 use yii\helpers\Json;
+use yii\helpers\Url;
 
 $this->title = 'Create Airport';
 
@@ -23,19 +24,8 @@ $this->registerJsFile('https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/s
     'depends' => [\yii\web\JqueryAsset::class],
 ]);
 
-/*
- * Prepare cities by country for JavaScript.
- */
-$citiesByCountry = [];
-
-foreach ($cities as $city) {
-    $citiesByCountry[$city->country_id][] = [
-        'id' => $city->city_id,
-        'name' => $city->city_name,
-    ];
-}
-
-$citiesByCountryJson = Json::htmlEncode($citiesByCountry);
+// Charger les villes à la demande, sans intégrer toute la table dans la page.
+$citiesUrlJson = Json::htmlEncode(Url::to(['airports/get-cities']));
 
 $this->registerCss("
     html,
@@ -446,34 +436,42 @@ $this->registerCss("
 $this->registerJs(<<<JS
 $(document).ready(function () {
 
-    var citiesByCountry = $citiesByCountryJson;
-
-    // Initialize searchable dropdowns.
-    $('.js-select2').select2({
+    // Initialiser la recherche des pays et la recherche distante des villes.
+    $('#country-select').select2({
         width: '100%',
         allowClear: true
     });
-
-    // Populate city dropdown depending on selected country.
-    function populateCities(countryId, selectedCityId) {
-        var citySelect = $('#city-select');
-
-        citySelect.empty();
-        citySelect.append(new Option('Select City', '', false, false));
-
-        if (countryId && citiesByCountry[countryId]) {
-            citiesByCountry[countryId].forEach(function (city) {
-                var isSelected = selectedCityId && String(selectedCityId) === String(city.id);
-                var option = new Option(city.name, city.id, isSelected, isSelected);
-                citySelect.append(option);
-            });
+    $('#city-select').select2({
+        width: '100%',
+        allowClear: true,
+        placeholder: 'Select City',
+        ajax: {
+            url: $citiesUrlJson,
+            dataType: 'json',
+            delay: 250,
+            data: function (params) {
+                return {
+                    countryId: $('#country-select').val(),
+                    term: params.term || '',
+                    page: params.page || 1
+                };
+            },
+            processResults: function (data) {
+                // Ignorer une réponse arrivée après un changement de pays.
+                if (String(data.countryId) !== String($('#country-select').val())) {
+                    return {results: [], pagination: {more: false}};
+                }
+                return {
+                    results: data.cities.map(function (city) {
+                        return {id: city.id, text: city.name};
+                    }),
+                    pagination: data.pagination
+                };
+            }
         }
+    }).prop('disabled', !$('#country-select').val());
 
-        citySelect.trigger('change.select2');
-        updateCityName();
-    }
-
-    // Update hidden country_name field.
+    // Actualiser le nom du pays affiché dans le formulaire.
     function updateCountryName() {
         var countrySelect = document.getElementById('country-select');
         var countryNameInput = document.getElementById('airport-country_name');
@@ -485,10 +483,11 @@ $(document).ready(function () {
         }
     }
 
-    // Update hidden city_name field.
+    // Actualiser le nom de la ville affiché dans le formulaire.
     function updateCityName() {
         var citySelect = document.getElementById('city-select');
         var cityNameInput = document.getElementById('airport-city_name');
+        cityNameInput.value = '';
 
         if (citySelect && citySelect.selectedIndex >= 0) {
             var selectedText = citySelect.options[citySelect.selectedIndex].text;
@@ -497,30 +496,27 @@ $(document).ready(function () {
         }
     }
 
-    // Initial values after validation error or edit-like reuse.
-    var initialCountryId = $('#country-select').val();
-    var initialCityId = $('#city-select').data('selected-city');
+    // Conserver les valeurs sélectionnées après une erreur de validation.
+    updateCountryName();
+    updateCityName();
 
-    if (initialCountryId) {
-        populateCities(initialCountryId, initialCityId);
-        updateCountryName();
-    }
-
-    // Country change event.
+    // Vider la ville précédente lorsque le pays change.
     $('#country-select').on('change', function () {
         var countryId = $(this).val();
 
         updateCountryName();
-        populateCities(countryId, null);
+        $('#city-select').select2('close').empty()
+            .append(new Option('Select City', '', true, true))
+            .prop('disabled', !countryId).trigger('change');
         $('#airport-city_name').val('');
     });
 
-    // City change event.
+    // Réagir à la sélection d'une ville.
     $('#city-select').on('change', function () {
         updateCityName();
     });
 
-    // Confirm form submission with SweetAlert2 after Yii validation passes.
+    // Confirmer l'enregistrement après la validation du formulaire par Yii.
     $('#airport-create-form').on('beforeSubmit', function () {
         var form = $(this);
 
@@ -665,7 +661,7 @@ JS, \yii\web\View::POS_READY);
 
                             <!-- City field -->
                             <?= $form->field($airport, 'city_id')->dropDownList(
-                                [],
+                                $cityOptions,
                                 [
                                     'prompt' => 'Select City',
                                     'id' => 'city-select',

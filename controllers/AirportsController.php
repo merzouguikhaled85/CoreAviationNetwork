@@ -73,37 +73,48 @@ class AirportsController extends Controller
     }
 
 
-// Controller Action Adjustment
+// Charger uniquement les données nécessaires au formulaire de création.
 public function actionCreate()
 {
     $airport = new Airports();
-    $cities = Cities::find()->orderBy(['city_name' => SORT_ASC])->all();
-    $countries = Countries::find()->orderBy(['country_name' => SORT_ASC])->all();
+    $cityOptions = [];
+    $countries = Countries::find()
+        ->select(['country_id', 'country_name'])
+        ->orderBy(['country_name' => SORT_ASC])
+        ->asArray()
+        ->all();
 
-    // Check if the form is submitted and data is loaded into the $airport model
     if ($airport->load(Yii::$app->request->post())) {
-        // Populate country_name and city_name based on the selected country_id and city_id
-        $countryId = Yii::$app->request->post('Airports')['country_id'];
-        $cityId = Yii::$app->request->post('Airports')['city_id'];
-        
-        $country = Countries::findOne($countryId);
-        $city = Cities::findOne($cityId);
+        // Vérifier les identifiants et l'appartenance de la ville au pays choisi.
+        $countryId = filter_var($airport->country_id, FILTER_VALIDATE_INT, ['options' => ['min_range' => 1]]);
+        $cityId = filter_var($airport->city_id, FILTER_VALIDATE_INT, ['options' => ['min_range' => 1]]);
+        $country = $countryId ? Countries::findOne($countryId) : null;
+        $city = $cityId && $country ? Cities::find()
+            ->where(['city_id' => $cityId, 'country_id' => $countryId])
+            ->one() : null;
 
-        // Set the country_name and city_name attributes of the $airport model
-        $airport->country_name = $country->country_name;
-        $airport->city_name = $city->city_name;
-        $airport->country_id = $countryId;
-        // Save the airport model
-        if ($airport->save()) {
+        // Les noms proviennent de la base, jamais des champs cachés du navigateur.
+        $airport->country_name = $country ? $country->country_name : null;
+        $airport->city_name = $city ? $city->city_name : null;
+        if ($city) {
+            $cityOptions[$city->city_id] = $city->city_name;
+        }
+
+        if (!$country) {
+            $airport->addError('country_id', 'Please select a valid country.');
+        }
+        if (!$city) {
+            $airport->addError('city_id', 'Please select a city belonging to the selected country.');
+        }
+        if ($country && $city && $airport->save()) {
             Yii::$app->session->setFlash('message', 'Airport created successfully!');
             return $this->redirect(['index']);
         }
     }
 
-    // Render the create view with the necessary data
     return $this->render('create', [
         'airport' => $airport,
-        'cities' => $cities,
+        'cityOptions' => $cityOptions,
         'countries' => $countries,
     ]);
 }
@@ -156,23 +167,30 @@ public function actionUpdate($id)
         return $this->redirect(['index']);
     }
 
-    // Controller action to fetch cities based on country ID
-    public function actionGetCities($countryId)
+    // Limiter les recherches pour préserver la mémoire de l'hébergement partagé.
+    public function actionGetCities($countryId, $term = '', $page = 1)
     {
-        Yii::$app->response->format = \yii\web\Response::FORMAT_JSON;
-
-        // Perform database query to fetch cities based on the country ID
-        $cities = Cities::find()->where(['country_id' => $countryId])->all();
-
-        // Prepare data to be sent back as JSON
-        $data = [];
-        foreach ($cities as $city) {
-            $data[] = [
-                'id' => $city->id,
-                'name' => $city->name,
-            ];
+        Yii::$app->response->format = Response::FORMAT_JSON;
+        $countryId = filter_var($countryId, FILTER_VALIDATE_INT, ['options' => ['min_range' => 1]]);
+        $page = filter_var($page, FILTER_VALIDATE_INT, ['options' => ['min_range' => 1, 'max_range' => 100000]]);
+        if (!$countryId || !$page || !is_string($term) || strlen($term) > 200) {
+            throw new \yii\web\BadRequestHttpException('Invalid city search.');
         }
 
-        return ['cities' => $data];
+        $cities = Cities::find()
+            ->select(['id' => 'city_id', 'name' => 'city_name'])
+            ->where(['country_id' => $countryId])
+            ->andFilterWhere(['like', 'city_name', trim($term)])
+            ->orderBy(['city_name' => SORT_ASC, 'city_id' => SORT_ASC])
+            ->offset(($page - 1) * 50)
+            ->limit(51)
+            ->asArray()
+            ->all();
+
+        return [
+            'cities' => array_slice($cities, 0, 50),
+            'countryId' => $countryId,
+            'pagination' => ['more' => count($cities) > 50],
+        ];
     }
 }
