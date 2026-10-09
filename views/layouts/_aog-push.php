@@ -18,7 +18,7 @@ $settings = [
     'workerUrl' => Url::to(['/push/worker']),
     'scope' => Yii::$app->request->baseUrl . '/',
     'requestsUrl' => Url::to(['/mro-requests/index']),
-    'logoUrl' => Url::to('@web/logo/CAN.png'),
+    'logoUrl' => Url::to('@web/logo/can-logo-main.png'),
 ];
 $this->registerCssFile(Url::to('@web/css/aog-push.css'), [], 'aog-push');
 $this->registerJsFile('https://www.gstatic.com/firebasejs/13.0.0/firebase-app-compat.js', [], 'firebase-app');
