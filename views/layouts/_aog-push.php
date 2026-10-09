@@ -25,7 +25,13 @@ $this->registerJsFile('https://www.gstatic.com/firebasejs/13.0.0/firebase-app-co
 $this->registerJsFile('https://www.gstatic.com/firebasejs/13.0.0/firebase-messaging-compat.js', [], 'firebase-messaging');
 $this->registerJsFile(Url::to('@web/js/aog-push.js'), [], 'aog-push');
 ?>
-<div class="px-2" id="aog-push-settings" data-settings="<?= Html::encode(Json::encode($settings)) ?>">
-    <button type="button" class="btn btn-link" id="aog-push-toggle" disabled>Enable AOG notifications</button>
-    <small class="d-block text-muted" id="aog-push-status" role="status" aria-live="polite"></small>
+<div class="can-push-preferences" id="aog-push-settings" data-state="loading" data-settings="<?= Html::encode(Json::encode($settings)) ?>">
+    <div class="can-push-preferences__heading">
+        <span class="can-push-preferences__icon" aria-hidden="true"><i class="fas fa-bell"></i></span>
+        <span class="can-push-preferences__title">AOG alerts</span>
+        <span class="can-push-preferences__badge" id="aog-push-state">Loading</span>
+    </div>
+    <p class="can-push-preferences__status" id="aog-push-status" role="status" aria-live="polite">Checking this device…</p>
+    <button type="button" class="can-push-preferences__toggle" id="aog-push-toggle"
+            aria-label="Enable AOG notifications" aria-describedby="aog-push-status" aria-pressed="false" disabled>Enable alerts</button>
 </div>

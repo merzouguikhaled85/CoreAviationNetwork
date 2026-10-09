@@ -15,10 +15,12 @@ async function browser(options = {}) {
     const settings = { account: 'mro:1', config: {}, vapidKey: 'public-key',
         scope: '/', workerUrl: '/push/worker', registerUrl: '/push/register',
         unregisterUrl: '/push/unregister', requestsUrl: '/mro-requests', logoUrl: '/logo/CAN.png' };
-    const button = { disabled: true, addEventListener: (_, callback) => { button.click = callback; } };
+    const button = { disabled: true, attributes: {},
+        setAttribute(name, value) { this.attributes[name] = value; },
+        addEventListener: (_, callback) => { button.click = callback; } };
     const status = {};
     const elements = { 'aog-push-settings': { dataset: { settings: JSON.stringify(settings) } },
-        'aog-push-toggle': button, 'aog-push-status': status };
+        'aog-push-toggle': button, 'aog-push-status': status, 'aog-push-state': {} };
     function node(tag) {
         return { tagName: tag, children: [], attributes: {}, listeners: {},
             setAttribute(name, value) { this.attributes[name] = value; },
@@ -86,11 +88,15 @@ async function browser(options = {}) {
     assert.equal(fresh.requests[0].args.headers['X-CSRF-Token'], 'csrf-value');
     assert.equal(fresh.requests[0].args.body, 'token=device-token&account=mro%3A1');
     assert.equal(fresh.storage.get('can.aogPushAccount'), 'mro:1');
-    assert.equal(fresh.button.textContent, 'Disable AOG notifications');
+    assert.equal(fresh.button.textContent, 'Turn off alerts');
+    assert.equal(fresh.button.attributes['aria-pressed'], 'true');
+    assert.equal(fresh.elements['aog-push-state'].textContent, 'Enabled');
     await fresh.button.click();
     assert.ok(fresh.events.indexOf('/push/unregister') < fresh.events.indexOf('delete-token'));
     assert.equal(fresh.storage.has('can.aogPushAccount'), false);
-    assert.equal(fresh.button.textContent, 'Enable AOG notifications');
+    assert.equal(fresh.button.textContent, 'Enable alerts');
+    assert.equal(fresh.button.attributes['aria-pressed'], 'false');
+    assert.equal(fresh.elements['aog-push-state'].textContent, 'Disabled');
 
     fresh.messaging.receive({ notification: { title: '<script>untrusted</script>' } });
     let stack = fresh.elements['can-aog-notifications'];

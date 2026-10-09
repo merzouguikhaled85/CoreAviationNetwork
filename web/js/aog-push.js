@@ -6,6 +6,7 @@
     const settings = JSON.parse(root.dataset.settings);
     const button = document.getElementById('aog-push-toggle');
     const status = document.getElementById('aog-push-status');
+    const stateBadge = document.getElementById('aog-push-state');
     const storageKey = 'can.aogPushAccount';
     let messaging;
     let enabled = false;
@@ -90,7 +91,11 @@
     function update(message) {
         status.textContent = message;
         button.disabled = busy;
-        button.textContent = enabled ? 'Disable AOG notifications' : 'Enable AOG notifications';
+        button.textContent = busy ? 'Updating…' : (enabled ? 'Turn off alerts' : 'Enable alerts');
+        button.setAttribute('aria-label', enabled ? 'Disable AOG notifications' : 'Enable AOG notifications');
+        button.setAttribute('aria-pressed', String(enabled));
+        root.dataset.state = busy ? 'loading' : (enabled ? 'enabled' : 'disabled');
+        if (stateBadge) stateBadge.textContent = busy ? 'Updating' : (enabled ? 'Enabled' : 'Disabled');
     }
     async function post(url, values) {
         const csrf = document.querySelector('meta[name="csrf-token"]');
@@ -148,7 +153,7 @@
                 await subscribe();
             }
             busy = false;
-            update(enabled ? 'AOG notifications enabled on this device.' : 'AOG notifications disabled on this device.');
+            update(enabled ? 'Enabled on this device.' : 'Alerts are off on this device.');
         } catch (_) {
             busy = false;
             update('Could not update notifications. Please try again.');
@@ -167,7 +172,7 @@
                 busy = true;
                 await subscribe();
                 busy = false;
-                update('AOG notifications enabled on this device.');
+                update('Enabled on this device.');
             } else {
                 update('Receive new AOG requests on this device.');
             }
@@ -176,6 +181,8 @@
             if (messaging) update('Could not enable notifications. Please try again.');
             else {
                 button.disabled = true;
+                root.dataset.state = 'unavailable';
+                if (stateBadge) stateBadge.textContent = 'Unavailable';
                 const ios = /iPad|iPhone|iPod/.test(navigator.userAgent)
                     || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
                 const standalone = navigator.standalone || window.matchMedia('(display-mode: standalone)').matches;

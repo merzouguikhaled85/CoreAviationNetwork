@@ -1,4 +1,95 @@
 /* Carte indépendante des styles globaux d'alerte et du bouton d'assistance. */
+/* Réglage compact du navigateur courant dans le menu du profil. */
+.can-push-preferences {
+    margin: 8px 12px 12px;
+    padding: 12px;
+    border: 1px solid #dce5f0;
+    border-radius: 12px;
+    background: #f5f8fc;
+    color: #183758;
+    font-family: "Poppins", "Segoe UI", system-ui, sans-serif;
+    text-align: left;
+}
+.can-push-preferences .can-push-preferences__heading {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    margin-bottom: 8px;
+}
+.can-push-preferences .can-push-preferences__icon {
+    display: grid;
+    place-items: center;
+    flex: 0 0 26px;
+    height: 26px;
+    border-radius: 8px;
+    background: #e6eef9;
+    color: #0d3261;
+    font-size: 12px;
+}
+.can-push-preferences .can-push-preferences__title {
+    min-width: 0;
+    color: #183758;
+    font-size: 12px;
+    font-weight: 600;
+    line-height: 1.4;
+}
+.can-push-preferences .can-push-preferences__badge {
+    flex: 0 0 auto;
+    margin-left: auto;
+    padding: 3px 6px;
+    border-radius: 6px;
+    background: #e8edf3;
+    color: #52637a;
+    font-size: 9px;
+    font-weight: 600;
+    line-height: 1.5;
+}
+.can-push-preferences[data-state="enabled"] .can-push-preferences__badge {
+    background: #def4e9;
+    color: #18734b;
+}
+.can-push-preferences .can-push-preferences__status {
+    margin: 0 0 10px;
+    color: #60718a;
+    font-family: inherit;
+    font-size: 11px;
+    font-weight: 400;
+    line-height: 1.6;
+    overflow-wrap: anywhere;
+}
+.can-push-preferences .can-push-preferences__toggle {
+    display: block;
+    width: 100%;
+    min-height: 36px;
+    margin: 0;
+    padding: 8px 10px;
+    border: 1px solid #0d3261;
+    border-radius: 8px;
+    background: #0d3261;
+    color: #fff;
+    font-family: inherit;
+    font-size: 11px;
+    font-weight: 600;
+    line-height: 1.5;
+    text-align: center;
+    cursor: pointer;
+}
+.can-push-preferences[data-state="enabled"] .can-push-preferences__toggle {
+    border-color: #ccd9e9;
+    background: #fff;
+    color: #24456c;
+}
+.can-push-preferences .can-push-preferences__toggle:hover:not(:disabled) {
+    border-color: #174d86;
+    background: #174d86;
+    color: #fff;
+}
+.can-push-preferences .can-push-preferences__toggle:disabled { opacity: .65; cursor: wait; }
+.can-push-preferences[data-state="unavailable"] .can-push-preferences__toggle:disabled { cursor: not-allowed; }
+.can-push-preferences .can-push-preferences__toggle:focus-visible {
+    outline: 3px solid #1798dd;
+    outline-offset: 3px;
+}
 .can-aog-notifications {
     position: fixed;
     right: max(8px, env(safe-area-inset-right));
