@@ -8,6 +8,12 @@
 $environment = require __DIR__ . '/env.php';
 
 return [
+    // Les paramètres publics sont versionnés ; le chemin du secret reste hors Git.
+    'firebase' => array_merge(require __DIR__ . '/firebase.php', [
+        'enabled' => filter_var($environment['firebasePushEnabled'], FILTER_VALIDATE_BOOLEAN),
+        'serviceAccountPath' => $environment['firebaseServiceAccountPath'],
+        'publicUrl' => $environment['firebasePublicUrl'],
+    ]),
     'adminEmail' => 'admin@example.com',
     'senderEmail' => 'noreply@example.com',
     'senderName' => 'Example.com mailer',

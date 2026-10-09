@@ -14,6 +14,8 @@ $config = [
         '@tests' => '@app/tests',
     ],
     'components' => [
+        'aogPush' => ['class' => 'app\components\AogPushService'],
+        'firebaseSender' => ['class' => 'app\components\FirebaseMessagingSender'],
         'cache' => [
             'class' => 'yii\caching\FileCache',
         ],

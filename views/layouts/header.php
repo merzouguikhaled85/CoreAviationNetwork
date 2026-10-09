@@ -1095,6 +1095,7 @@ if (!Yii::$app->user->isGuest && $userType === 'admin') {
                             <a href="<?= Url::to(['mro-profile/reset-password', 'id' => $encodedId]) ?>" class="btn btn-link">
                                 <i class="fas fa-key"></i> Reset Password
                             </a>
+                            <?= $this->render('_aog-push') ?>
                         <?php endif; ?>
 
                         <?= Html::beginForm(['site/logout-all-devices'], 'post', [

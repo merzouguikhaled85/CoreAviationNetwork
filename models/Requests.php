@@ -39,6 +39,7 @@ class Requests extends ActiveRecord
     public function behaviors()
     {
         return [
+            'aogPush' => ['class' => 'app\components\AogPushBehavior'],
             'requestChange' => [
                 'class' => RequestChangeBehavior::class,
                 'requestIdAttribute' => 'request_id',

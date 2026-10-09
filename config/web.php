@@ -22,6 +22,8 @@ $config = [
         '@npm'   => '@vendor/npm-asset',
     ],
     'components' => [
+        'aogPush' => ['class' => 'app\components\AogPushService'],
+        'firebaseSender' => ['class' => 'app\components\FirebaseMessagingSender'],
         /*
          * VERSIONNEMENT DES ASSETS : Yii ajoute la date de modification aux URL
          * CSS/JavaScript. Après une correction du rafraîchissement, le navigateur
@@ -112,6 +114,9 @@ $config = [
             'class' => 'app\components\SessionSecurityBootstrap',
         ],
         'user' => [
+            // Un navigateur partagé ne conserve pas les alertes de l'ancien compte.
+            'on beforeLogin' => static function () { Yii::$app->aogPush->disableCurrentBrowser(); },
+            'on beforeLogout' => static function () { Yii::$app->aogPush->disableCurrentBrowser(); },
             'identityClass' => 'app\models\User',
             'enableAutoLogin' => true,
             /* 30 minutes d'inactivite et 12 heures maximum par session active. */
@@ -168,6 +173,9 @@ $config = [
                 [
                     'class' => 'yii\log\FileTarget',
                     'levels' => ['error', 'warning'],
+                    'maskVars' => ['_SERVER.HTTP_AUTHORIZATION', '_SERVER.PHP_AUTH_USER',
+                        '_SERVER.PHP_AUTH_PW', '_POST.token', '_COOKIE.can_push_installation',
+                        '_SERVER.HTTP_COOKIE'],
                 ],
             ],
         ],

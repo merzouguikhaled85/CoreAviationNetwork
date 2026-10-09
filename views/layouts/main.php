@@ -35,6 +35,12 @@ $this->registerMetaTag(['name' => 'viewport', 'content' => 'width=device-width, 
 $this->registerMetaTag(['name' => 'description', 'content' => $this->params['meta_description'] ?? '']);
 $this->registerMetaTag(['name' => 'keywords', 'content' => $this->params['meta_keywords'] ?? '']);
 $this->registerLinkTag(['rel' => 'icon', 'type' => 'image/x-icon', 'href' => Yii::getAlias('@web/favicon.ico')]);
+if (!empty(Yii::$app->params['firebase']['enabled'])) {
+    // Le mode autonome permet le Web Push des applications ajoutées à l'écran d'accueil.
+    $this->registerLinkTag(['rel' => 'manifest', 'href' => \yii\helpers\Url::to(['/push/manifest'])]);
+    $this->registerMetaTag(['name' => 'apple-mobile-web-app-capable', 'content' => 'yes']);
+    $this->registerMetaTag(['name' => 'apple-mobile-web-app-title', 'content' => 'CAN']);
+}
 
 /**
  * Global CSS

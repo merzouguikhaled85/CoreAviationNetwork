@@ -87,6 +87,10 @@ $readOptionalEnvironmentList = static function (
 };
 
 return [
+    // Le push reste désactivé jusqu'à la préparation de Firebase sur GoDaddy.
+    'firebasePushEnabled' => $readOptionalEnvironmentValue('CAN_FIREBASE_PUSH_ENABLED', 'firebasePushEnabled', '0'),
+    'firebaseServiceAccountPath' => $readOptionalEnvironmentValue('CAN_FIREBASE_SERVICE_ACCOUNT_PATH', 'firebaseServiceAccountPath'),
+    'firebasePublicUrl' => $readOptionalEnvironmentValue('CAN_FIREBASE_PUBLIC_URL', 'firebasePublicUrl', 'https://can.coreaviationnetwork.com'),
     'cookieValidationKey' => $readEnvironmentValue(
         'CAN_COOKIE_VALIDATION_KEY',
         'cookieValidationKey'
