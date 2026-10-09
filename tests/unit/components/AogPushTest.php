@@ -117,6 +117,7 @@ class AogPushTest extends TestCase
             array_column(Yii::$app->firebaseSender->messages, 'token'));
         $message = Yii::$app->firebaseSender->messages[0];
         $this->assertSame('New AOG Request', $message['notification']['title']);
+        $this->assertSame('https://example.test/logo/CAN.png', $message['webpush']['notification']['icon']);
         $this->assertSame('https://example.test/mro-requests', $message['webpush']['fcm_options']['link']);
     }
 

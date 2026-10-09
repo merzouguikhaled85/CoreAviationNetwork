@@ -14,11 +14,28 @@ async function browser(options = {}) {
     if (options.savedAccount) storage.set('can.aogPushAccount', options.savedAccount);
     const settings = { account: 'mro:1', config: {}, vapidKey: 'public-key',
         scope: '/', workerUrl: '/push/worker', registerUrl: '/push/register',
-        unregisterUrl: '/push/unregister', requestsUrl: '/mro-requests' };
+        unregisterUrl: '/push/unregister', requestsUrl: '/mro-requests', logoUrl: '/logo/CAN.png' };
     const button = { disabled: true, addEventListener: (_, callback) => { button.click = callback; } };
     const status = {};
     const elements = { 'aog-push-settings': { dataset: { settings: JSON.stringify(settings) } },
         'aog-push-toggle': button, 'aog-push-status': status };
+    function node(tag) {
+        return { tagName: tag, children: [], attributes: {}, listeners: {},
+            setAttribute(name, value) { this.attributes[name] = value; },
+            addEventListener(name, callback) { this.listeners[name] = callback; },
+            append(...children) { children.forEach((child) => this.appendChild(child)); },
+            appendChild(child) {
+                child.parent = this; this.children.push(child);
+                if (child.id) elements[child.id] = child;
+            },
+            get firstElementChild() { return this.children[0]; },
+            remove() {
+                if (this.parent) this.parent.children = this.parent.children.filter((child) => child !== this);
+                if (this.id) delete elements[this.id];
+            }
+        };
+    }
+    const body = node('body');
     const messaging = {
         getToken: async (args) => { assert.equal(args.vapidKey, 'public-key'); events.push('get-token'); return 'device-token'; },
         deleteToken: async () => { events.push('delete-token'); },
@@ -27,7 +44,8 @@ async function browser(options = {}) {
     let prompts = 0;
     let registrations = 0;
     const context = {
-        document: { getElementById: (id) => elements[id], querySelector: () => ({ content: 'csrf-value' }) },
+        document: { getElementById: (id) => elements[id], querySelector: () => ({ content: 'csrf-value' }),
+            createElement: node, body: body },
         window: { isSecureContext: true, matchMedia: () => ({ matches: false }) },
         navigator: { userAgent: options.ios ? 'iPhone' : 'Test Browser', serviceWorker: {
             register: async (url, args) => {
@@ -52,7 +70,7 @@ async function browser(options = {}) {
     context.window.Notification = context.Notification;
     vm.runInNewContext(source, context);
     await settle();
-    return { button, status, requests, events, storage,
+    return { button, status, requests, events, storage, elements, messaging,
         prompts: () => prompts, registrations: () => registrations };
 }
 
@@ -74,6 +92,22 @@ async function browser(options = {}) {
     assert.equal(fresh.storage.has('can.aogPushAccount'), false);
     assert.equal(fresh.button.textContent, 'Enable AOG notifications');
 
+    fresh.messaging.receive({ notification: { title: '<script>untrusted</script>' } });
+    let stack = fresh.elements['can-aog-notifications'];
+    assert.equal(stack.children.length, 1);
+    let card = stack.children[0];
+    assert.equal(card.attributes['aria-live'], 'polite');
+    assert.equal(card.children[0].children[0].src, '/logo/CAN.png');
+    assert.equal(card.children[1].textContent, 'New AOG Request');
+    assert.equal(card.children[3].children[0].href, '/mro-requests');
+    for (let i = 0; i < 3; i++) fresh.messaging.receive();
+    assert.equal(stack.children.length, 3, 'A burst must not obscure the entire page');
+    card = stack.children[0];
+    card.children[3].children[1].listeners.click();
+    assert.equal(stack.children.length, 2);
+    while (stack.children.length) stack.children[0].children[0].children[2].listeners.click();
+    assert.equal(fresh.elements['can-aog-notifications'], undefined);
+
     const denied = await browser({ result: 'denied' });
     await denied.button.click();
     assert.equal(denied.requests.length, 0);
@@ -92,5 +126,5 @@ async function browser(options = {}) {
 
     const iphone = await browser({ supported: false, ios: true });
     assert.match(iphone.status.textContent, /Home Screen/);
-    console.log('AOG push browser checks passed (consent, renewal, account switch, disable, iOS).');
+    console.log('AOG push browser checks passed (consent, renewal, account switch, disable, iOS, branded cards).');
 })().catch((error) => { console.error(error); process.exitCode = 1; });

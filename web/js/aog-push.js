@@ -11,6 +11,73 @@
     let enabled = false;
     let busy = false;
 
+    function showNotification() {
+        // Le texte reste contrôlé par l'application ; aucun HTML reçu n'est injecté.
+        let stack = document.getElementById('can-aog-notifications');
+        if (!stack) {
+            stack = document.createElement('div');
+            stack.id = 'can-aog-notifications';
+            stack.className = 'can-aog-notifications';
+            stack.setAttribute('role', 'region');
+            stack.setAttribute('aria-label', 'AOG notifications');
+            document.body.appendChild(stack);
+        }
+        const card = document.createElement('section');
+        card.className = 'can-aog-toast';
+        card.setAttribute('role', 'status');
+        card.setAttribute('aria-live', 'polite');
+        card.setAttribute('aria-atomic', 'true');
+        const header = document.createElement('div');
+        header.className = 'can-aog-toast__header';
+        const logo = document.createElement('img');
+        logo.className = 'can-aog-toast__logo';
+        logo.src = settings.logoUrl;
+        logo.alt = 'Core Aviation Network';
+        logo.width = 90;
+        logo.height = 58;
+        const badge = document.createElement('span');
+        badge.className = 'can-aog-toast__badge';
+        badge.textContent = 'AOG ALERT';
+        const close = document.createElement('button');
+        close.type = 'button';
+        close.className = 'can-aog-toast__close';
+        close.setAttribute('aria-label', 'Dismiss AOG notification');
+        close.title = 'Dismiss';
+        close.textContent = '×';
+        function dismiss() {
+            card.remove();
+            if (!stack.children.length) stack.remove();
+        }
+        close.addEventListener('click', dismiss);
+        header.append(logo, badge, close);
+        const title = document.createElement('h2');
+        title.className = 'can-aog-toast__title';
+        title.textContent = 'New AOG Request';
+        const description = document.createElement('p');
+        description.className = 'can-aog-toast__description';
+        description.textContent = 'A new request needs your attention. View the details and response deadline.';
+        const actions = document.createElement('div');
+        actions.className = 'can-aog-toast__actions';
+        const link = document.createElement('a');
+        link.className = 'can-aog-toast__open';
+        link.href = settings.requestsUrl;
+        link.textContent = 'View requests';
+        const arrow = document.createElement('span');
+        arrow.setAttribute('aria-hidden', 'true');
+        arrow.textContent = '→';
+        link.appendChild(arrow);
+        const dismissButton = document.createElement('button');
+        dismissButton.type = 'button';
+        dismissButton.className = 'can-aog-toast__dismiss';
+        dismissButton.textContent = 'Dismiss';
+        dismissButton.addEventListener('click', dismiss);
+        actions.append(link, dismissButton);
+        card.append(header, title, description, actions);
+        stack.appendChild(card);
+        // Limiter l'encombrement sans fermer automatiquement la dernière alerte AOG.
+        while (stack.children.length > 3) stack.firstElementChild.remove();
+    }
+
     function savedAccount() {
         try { return localStorage.getItem(storageKey); } catch (_) { return null; }
     }
@@ -95,23 +162,7 @@
             }
             const app = firebase.initializeApp(settings.config, 'can-aog');
             messaging = app.messaging();
-            messaging.onMessage(function () {
-                // Affichage sûr au premier plan, sans HTML provenant d'un message externe.
-                const alert = document.createElement('div');
-                alert.className = 'alert alert-info shadow position-fixed';
-                alert.style.cssText = 'right:16px;bottom:16px;z-index:9999;max-width:360px';
-                alert.setAttribute('role', 'status');
-                const link = document.createElement('a');
-                link.href = settings.requestsUrl;
-                link.textContent = 'New AOG Request — View requests and response deadlines';
-                const close = document.createElement('button');
-                close.type = 'button';
-                close.className = 'btn btn-sm ms-2';
-                close.textContent = 'Dismiss';
-                close.addEventListener('click', function () { alert.remove(); });
-                alert.append(link, close);
-                document.body.appendChild(alert);
-            });
+            messaging.onMessage(showNotification);
             if (Notification.permission === 'granted' && savedAccount() === settings.account) {
                 busy = true;
                 await subscribe();

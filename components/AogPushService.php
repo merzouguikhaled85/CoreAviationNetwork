@@ -234,7 +234,10 @@ class AogPushService extends Component
                 'body' => 'A new AOG request is available. View the request and response deadline.'],
             'webpush' => [
                 'headers' => ['Urgency' => 'high', 'TTL' => (string) $ttl],
-                'notification' => ['tag' => 'aog-request-' . $request->request_id],
+                'notification' => [
+                    'tag' => 'aog-request-' . $request->request_id,
+                    'icon' => $publicUrl . '/logo/CAN.png',
+                ],
                 'fcm_options' => ['link' => $publicUrl . '/mro-requests'],
             ],
         ]);
