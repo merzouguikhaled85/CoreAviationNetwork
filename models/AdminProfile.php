@@ -7,6 +7,8 @@ use yii\db\ActiveRecord;
 
 class AdminProfile extends ActiveRecord
 {
+    use RevokesSessionsOnPasswordChange;
+
     public static function tableName()
     {
         return 'admin_profiles';

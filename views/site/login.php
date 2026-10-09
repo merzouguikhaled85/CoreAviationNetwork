@@ -2,6 +2,8 @@
 /** @var yii\web\View $this */
 /** @var yii\bootstrap5\ActiveForm $form */
 /** @var app\models\LoginForm $model */
+/** @var bool $captchaRequired */
+/** @var bool $captchaError */
 
 use app\components\PrelaunchMode;
 use yii\bootstrap5\ActiveForm;
@@ -11,6 +13,17 @@ use yii\helpers\Url;
 $this->title = 'Login';
 $this->params['breadcrumbs'][] = $this->title;
 $prelaunchMode = PrelaunchMode::isEnabled();
+$captchaRequired = $captchaRequired ?? false;
+$captchaError = $captchaError ?? false;
+$loginTurnstileSiteKey = trim((string) (Yii::$app->params['turnstileSiteKey'] ?? ''));
+$loginTurnstileHostname = trim((string) (Yii::$app->params['turnstileExpectedHostname'] ?? ''));
+$loginTurnstileConfigured = $loginTurnstileSiteKey !== '' && $loginTurnstileHostname !== '';
+if ($captchaRequired && $loginTurnstileConfigured) {
+    $this->registerJsFile('https://challenges.cloudflare.com/turnstile/v0/api.js', [
+        'async' => true,
+        'defer' => true,
+    ]);
+}
 ?>
 
 <!--
@@ -62,12 +75,11 @@ $prelaunchMode = PrelaunchMode::isEnabled();
 </a>
 
 
-        <!-- Titre principal (nom de l'application) -->
-        <h1 class="title">
-          <!-- Icône cadenas (Remix Icon) -->
-          <i class="ri-lock-line"></i>
-          <?= Html::encode(Yii::$app->name) ?>
-        </h1>
+        <p class="auth-eyebrow">Secure workspace</p>
+        <h1 class="title">Welcome back</h1>
+        <p class="auth-subtitle">
+          Sign in to <?= Html::encode(Yii::$app->name) ?>
+        </p>
       </div>
 
       <!-- ================== MESSAGES FLASH ================== -->
@@ -112,9 +124,24 @@ $prelaunchMode = PrelaunchMode::isEnabled();
           ],
           'fieldConfig' => [
               // classes des messages d'erreur
-              'errorOptions' => ['class' => 'invalid-feedback d-block small'],
+              // Les details sont regroupes dans l'alerte accessible au-dessus
+              // du formulaire; les champs conservent leur etat visuel invalide.
+              'errorOptions' => ['class' => 'invalid-feedback visually-hidden'],
           ],
       ]); ?>
+
+      <?php if ($model->hasErrors()): ?>
+        <div class="auth-form-alert" role="alert" aria-live="assertive" tabindex="-1"<?= $captchaError ? ' data-login-captcha-error' : '' ?>>
+          <i class="ri-error-warning-line" aria-hidden="true"></i>
+          <div>
+            <strong>We couldn't sign you in</strong>
+            <?= $form->errorSummary($model, [
+                'header' => '',
+                'class' => 'auth-error-summary',
+            ]) ?>
+          </div>
+        </div>
+      <?php endif; ?>
 
       <!-- ===== CHAMP USERNAME ===== -->
       <div class="mb-3">
@@ -163,6 +190,10 @@ $prelaunchMode = PrelaunchMode::isEnabled();
               ])->label(false);
           ?>
         </div>
+        <p class="caps-lock-warning" id="capsLockWarning" role="status" aria-live="polite" hidden>
+          <i class="ri-arrow-up-circle-line" aria-hidden="true"></i>
+          Caps Lock is on
+        </p>
       </div>
 
       <!-- ===== OPTION DE SESSION ===== -->
@@ -173,11 +204,13 @@ $prelaunchMode = PrelaunchMode::isEnabled();
           <?php
           echo $form->field($model, 'rememberMe', [
                   'template' => "{input}\n{error}",
+                  'options' => ['class' => 'remember-me-field'],
               ])->checkbox([
                   'id'    => 'rememberMe',
                   'class' => 'form-check-input',
-              ])->label('Remember me', ['class' => 'form-check-label']);
+              ])->label('Keep me signed in', ['class' => 'form-check-label']);
           ?>
+          <small class="remember-me-hint">Only use this option on a private device.</small>
         </div>
 
       </div>
@@ -195,15 +228,39 @@ $prelaunchMode = PrelaunchMode::isEnabled();
         </a>
       </nav>
 
+      <?php if ($captchaRequired): ?>
+        <div class="login-challenge" aria-label="Visitor verification">
+          <?php if ($loginTurnstileConfigured): ?>
+            <div
+              class="cf-turnstile"
+              data-sitekey="<?= Html::encode($loginTurnstileSiteKey) ?>"
+              data-action="login"
+              data-theme="light"
+              data-language="en"
+              data-callback="onLoginTurnstileSuccess"
+              data-expired-callback="onLoginTurnstileExpired"
+            ></div>
+          <?php else: ?>
+            <p class="login-challenge-unavailable" role="alert">
+              Visitor verification is temporarily unavailable. Please contact support.
+            </p>
+          <?php endif; ?>
+        </div>
+      <?php endif; ?>
+
       <!-- ===== BOUTON SUBMIT ===== -->
       <div class="form-group mb-2">
         <?=
         Html::submitButton(
             // texte + icône
-            '<i class="ri-login-circle-line"></i> <span class="btn-text">Sign In</span>',
+            '<i class="ri-login-circle-line btn-icon" aria-hidden="true"></i>'
+                . '<span class="btn-spinner" aria-hidden="true"></span>'
+                . '<span class="btn-text">Sign in</span>',
             [
                 'class' => 'btn btn-primary w-100',
                 'id'    => 'submitBtn',
+                'data-loading-text' => 'Signing in…',
+                'disabled' => $captchaRequired && !$loginTurnstileConfigured,
             ]
         );
         ?>
@@ -216,17 +273,21 @@ $prelaunchMode = PrelaunchMode::isEnabled();
       <div class="auth-public-links" aria-label="Public navigation">
         <a href="<?= Url::to(['/site/index']) ?>" class="auth-home-link">
           <i class="ri-arrow-left-line" aria-hidden="true"></i>
-          Back to Home
+          Back to home
         </a>
         <div class="auth-signup-links">
           <?php if ($prelaunchMode): ?>
-            <a href="<?= Url::to(['/site/index', '#' => 'early-access']) ?>">Register for go live</a>
+            <a href="<?= Url::to(['/site/index', '#' => 'early-access']) ?>">Request early access</a>
           <?php else: ?>
-            <a href="<?= Url::to(['/site/become-mro']) ?>">MRO Signup</a>
+            <a href="<?= Url::to(['/site/become-mro']) ?>">Request MRO access</a>
             <span aria-hidden="true">·</span>
-            <a href="<?= Url::to(['/site/become-ao']) ?>">Operator Signup</a>
+            <a href="<?= Url::to(['/site/become-ao']) ?>">Request operator access</a>
           <?php endif; ?>
         </div>
+        <button type="button" class="auth-support-link" id="loginSupportLink">
+          <i class="ri-customer-service-2-line" aria-hidden="true"></i>
+          Need help? Contact support
+        </button>
       </div>
 
       <!-- ================== FOOTER COPYRIGHT ================== -->
@@ -270,6 +331,84 @@ $js = <<<JS
       icon.classList.toggle('ri-eye-off-line', !isText);
     }
   });
+})();
+
+// Caps Lock feedback, accessible error focus and duplicate-submit protection.
+(function enhanceLoginForm() {
+  const form = document.getElementById('login-form');
+  const password = document.getElementById('password');
+  const capsWarning = document.getElementById('capsLockWarning');
+  const submitButton = document.getElementById('submitBtn');
+  const formAlert = document.querySelector('.auth-form-alert');
+  const supportLink = document.getElementById('loginSupportLink');
+
+  window.onLoginTurnstileSuccess = function () {
+    const captchaAlert = document.querySelector('[data-login-captcha-error]');
+    if (captchaAlert) captchaAlert.remove();
+    if (password) {
+      password.classList.remove('is-invalid');
+      password.removeAttribute('aria-invalid');
+    }
+  };
+
+  window.onLoginTurnstileExpired = function () {
+    const challenge = document.querySelector('.login-challenge');
+    if (challenge) challenge.classList.add('is-expired');
+  };
+
+  if (formAlert) {
+    formAlert.focus();
+  }
+
+  if (password && capsWarning) {
+    const updateCapsLock = function (event) {
+      capsWarning.hidden = !event.getModifierState || !event.getModifierState('CapsLock');
+    };
+    password.addEventListener('keydown', updateCapsLock);
+    password.addEventListener('keyup', updateCapsLock);
+    password.addEventListener('blur', function () {
+      capsWarning.hidden = true;
+    });
+  }
+
+  if (form && submitButton) {
+    // Un bouton submit natif garantit que la touche Entree suit exactement
+    // le meme parcours de validation et de chargement qu'un clic.
+    const startSubmitting = function () {
+      if (submitButton.disabled) return;
+      submitButton.disabled = true;
+      submitButton.classList.add('is-loading');
+      submitButton.setAttribute('aria-busy', 'true');
+      const text = submitButton.querySelector('.btn-text');
+      if (text) text.textContent = submitButton.dataset.loadingText;
+    };
+
+    // Yii declenche beforeSubmit uniquement lorsque la validation client est
+    // terminee. Le fallback natif couvre le cas ou ActiveForm est indisponible.
+    if (window.jQuery && window.jQuery.fn.yiiActiveForm) {
+      window.jQuery(form).on('beforeSubmit.loginLoading', function () {
+        startSubmitting();
+        return true;
+      });
+    } else {
+      form.addEventListener('submit', startSubmitting);
+    }
+
+    window.addEventListener('pageshow', function () {
+      submitButton.disabled = false;
+      submitButton.classList.remove('is-loading');
+      submitButton.removeAttribute('aria-busy');
+      const text = submitButton.querySelector('.btn-text');
+      if (text) text.textContent = 'Sign in';
+    });
+  }
+
+  if (supportLink) {
+    supportLink.addEventListener('click', function () {
+      const supportLauncher = document.querySelector('#canSupportWidget [data-support-open]');
+      if (supportLauncher) supportLauncher.click();
+    });
+  }
 })();
 
 // ============================================================

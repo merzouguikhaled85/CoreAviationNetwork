@@ -1,8 +1,13 @@
-Options -Indexes
+Options -Indexes -MultiViews
 RewriteEngine On
 RewriteBase /
 
-# Fallbacks for hosts whose document root still points to the project root.
+# Refuser les sauvegardes et journaux, y compris les doubles extensions.
+<FilesMatch "(?i)(\.(?:bak|sql|log|old|orig|save|swp)(?:[.~]|$)|~$|^error_log$)">
+    Require all denied
+</FilesMatch>
+
+# public_html est la racine publique ; seuls les fichiers de web/ sont publics.
 ErrorDocument 400 /web/errors/error.html?code=400
 ErrorDocument 401 /web/errors/error.html?code=401
 ErrorDocument 403 /web/errors/error.html?code=403
@@ -20,6 +25,27 @@ ErrorDocument 502 /web/errors/error.html?code=502
 ErrorDocument 503 /web/errors/error.html?code=503
 ErrorDocument 504 /web/errors/error.html?code=504
 
-RewriteCond %{REQUEST_FILENAME} !-f
-RewriteCond %{REQUEST_FILENAME} !-d
-RewriteRule ^ index.php [L]
+# Bloquer les fichiers cachés, sauf ceux utilisés pour valider les certificats.
+RewriteRule (^|/)\.(?!well-known(?:/|$)) - [F,L]
+
+# Bloquer le code source, les dépendances, les journaux et les fichiers de déploiement.
+RewriteRule ^(?:commands|components|config|controllers|docs|mail|migrations|models|runtime|scripts|tests|vagrant|vendor|views|widgets|cgi-bin)(?:/|$) - [F,L,NC]
+RewriteRule ^(?:web/)?(?:index-test\.php|maintenance\.flag)(?:/|$) - [F,L,NC]
+
+# Les URL /web/ et les pages d'erreur restent gérées par web/.htaccess.
+RewriteRule ^web(?:/|$) - [L]
+
+# Autoriser les fichiers existants de validation des certificats à la racine.
+RewriteCond %{REQUEST_FILENAME} -f
+RewriteRule ^\.well-known/ - [L]
+
+# Servir les ressources de web/, même si un dossier du même nom existe à la racine.
+RewriteCond %{DOCUMENT_ROOT}/web/$1 -f
+RewriteRule ^(.+)$ web/$1 [L]
+
+# Bloquer les autres fichiers existants à la racine (composer.json, README, yii, etc.).
+RewriteCond %{REQUEST_FILENAME} -f
+RewriteRule ^ - [F,L]
+
+# Envoyer toutes les routes, y compris l'accueil, vers le script d'entrée réel.
+RewriteRule ^ web/index.php [L]

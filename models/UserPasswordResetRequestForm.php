@@ -52,10 +52,8 @@ public function sendEmail()
     }
 
     // Generate a new secure password reset token
-    $user->generatePasswordResetToken();
-
-    // Save only the token without running full model validation
-    if (!$user->save(false)) {
+    $publicToken = $user->generatePasswordResetToken();
+    if (!$publicToken) {
         Yii::$app->session->setFlash('error', 'Unable to generate reset token.');
         return false;
     }
@@ -63,7 +61,7 @@ public function sendEmail()
     // Create absolute reset link
     $resetLink = Yii::$app->urlManager->createAbsoluteUrl([
         'site/reset-password',
-        'token' => $user->password_reset_token,
+        'token' => $publicToken,
         'type' => $this->usertype,
     ]);
 

@@ -16,6 +16,7 @@ use app\models\Aircrafts;
 use app\models\AircraftModel;
 use app\models\AoNotificationsPreferences;
 use app\models\AoProfile;
+use app\models\AdminProfile;
 use app\models\MroProfile;
 use app\models\Certificates;
 use app\models\Cities;
@@ -55,10 +56,10 @@ class SiteController extends Controller
         return [
             'access' => [
                 'class' => AccessControl::class,
-                'only' => ['logout'],
+                'only' => ['logout', 'logout-all-devices'],
                 'rules' => [
                     [
-                        'actions' => ['logout'],
+                        'actions' => ['logout', 'logout-all-devices'],
                         'allow' => true,
                         'roles' => ['@'],
                     ],
@@ -68,6 +69,7 @@ class SiteController extends Controller
                 'class' => VerbFilter::class,
                 'actions' => [
                     'logout' => ['post'],
+                    'logout-all-devices' => ['post'],
                     'join-network' => ['post'],
                     'confirm-prelaunch' => ['get'],
                     'unsubscribe-prelaunch' => ['get', 'post'],
@@ -127,7 +129,7 @@ class SiteController extends Controller
         }
 
         /* Reject malformed or honeypot submissions before calling Turnstile. */
-        $challenge = $this->validatePrelaunchChallenge();
+        $challenge = $this->validateTurnstileChallenge('early_access', 'early access registration');
         if (!$challenge['valid']) {
             Yii::$app->session->setFlash('error', $challenge['message']);
             Yii::$app->response->statusCode = $challenge['status'];
@@ -420,7 +422,7 @@ class SiteController extends Controller
     /**
      * Validates the Turnstile token without ever logging the token or secret.
      */
-    private function validatePrelaunchChallenge()
+    private function validateTurnstileChallenge($expectedAction, $context)
     {
         if (YII_ENV_TEST) {
             return ['valid' => true, 'status' => 200, 'message' => ''];
@@ -432,7 +434,7 @@ class SiteController extends Controller
             Yii::$app->params['turnstileExpectedHostname'] ?? ''
         )), '.'));
         if ($secret === '' || $siteKey === '' || $expectedHostname === '') {
-            Yii::error('Turnstile is not configured for early access registrations.', __METHOD__);
+            Yii::error("Turnstile is not configured for {$context}.", __METHOD__);
             return [
                 'valid' => false,
                 'status' => 503,
@@ -450,7 +452,7 @@ class SiteController extends Controller
         }
 
         if (!function_exists('curl_init')) {
-            Yii::error('cURL is unavailable for early access Turnstile validation.', __METHOD__);
+            Yii::error("cURL is unavailable for {$context} Turnstile validation.", __METHOD__);
             return [
                 'valid' => false,
                 'status' => 503,
@@ -483,7 +485,7 @@ class SiteController extends Controller
 
         if ($rawResponse === false || $transportError !== '' || $httpCode !== 200) {
             Yii::warning([
-                'message' => 'Turnstile transport failed for an early access registration.',
+                'message' => "Turnstile transport failed for {$context}.",
                 'httpCode' => $httpCode,
                 'transportError' => $transportError,
             ], __METHOD__);
@@ -495,7 +497,7 @@ class SiteController extends Controller
         }
 
         $result = json_decode((string) $rawResponse, true);
-        $verifiedAction = is_array($result) ? ($result['action'] ?? 'early_access') : null;
+        $verifiedAction = is_array($result) ? ($result['action'] ?? $expectedAction) : null;
         $verifiedHostname = is_array($result)
             ? strtolower(rtrim(trim((string) ($result['hostname'] ?? '')), '.'))
             : '';
@@ -506,7 +508,7 @@ class SiteController extends Controller
          */
         $usesOfficialDevelopmentTestKey = YII_ENV_DEV
             && hash_equals('1x00000000000000000000AA', $siteKey);
-        $actionIsValid = $verifiedAction === 'early_access'
+        $actionIsValid = $verifiedAction === $expectedAction
             || (YII_ENV_DEV && $verifiedAction === 'test');
         $hostnameIsValid = $usesOfficialDevelopmentTestKey
             || ($verifiedHostname !== '' && hash_equals($expectedHostname, $verifiedHostname));
@@ -518,7 +520,7 @@ class SiteController extends Controller
             || !$hostnameIsValid
         ) {
             Yii::warning([
-                'message' => 'Turnstile rejected an early access registration.',
+                'message' => "Turnstile rejected {$context}.",
                 'errorCodes' => is_array($result) ? ($result['error-codes'] ?? []) : ['invalid-json'],
                 'hostnameMatches' => $hostnameIsValid,
             ], __METHOD__);
@@ -1498,73 +1500,117 @@ $this->layout = 'login';
     $loginSubmitted = $model->load(Yii::$app->request->post());
     $normalizedUsername = mb_strtolower(trim((string) $model->username), 'UTF-8');
     $loginRateKey = 'login-rate:' . hash('sha256', $normalizedUsername . '|' . Yii::$app->request->userIP);
-    $loginFailures = $loginSubmitted ? (int) Yii::$app->cache->get($loginRateKey) : 0;
-    $loginRateLimited = $loginSubmitted && $loginFailures >= 5;
+    $cachedRateState = $loginSubmitted ? Yii::$app->cache->get($loginRateKey) : null;
+    $loginRateState = is_array($cachedRateState)
+        ? $cachedRateState
+        : ['failures' => (int) $cachedRateState, 'nextAllowedAt' => 0];
+    $loginFailures = (int) ($loginRateState['failures'] ?? 0);
+    $retryAfter = max(0, (int) ($loginRateState['nextAllowedAt'] ?? 0) - time());
+    $captchaRequired = $loginSubmitted && $loginFailures >= 3;
+    $loginRateLimited = $loginSubmitted && $loginFailures >= 10;
+    $restrictedAccountHandled = false;
+    $captchaError = false;
 
-    /* Une fenêtre glissante simple limite les essais automatisés par compte et adresse IP. */
-    $registerLoginFailure = static function () use ($loginRateKey, $loginFailures) {
-        Yii::$app->cache->set($loginRateKey, $loginFailures + 1, 900);
+    /*
+     * Temporisation exponentielle non bloquante : aucun sleep() ne monopolise
+     * un worker PHP. Le prochain POST est refuse jusqu'a nextAllowedAt.
+     */
+    $registerLoginFailure = static function () use ($loginRateKey, $loginFailures, &$captchaRequired) {
+        $newFailureCount = $loginFailures + 1;
+        $captchaRequired = $newFailureCount >= 3;
+        $delaySeconds = min(60, 2 ** min(6, max(0, $newFailureCount - 1)));
+        Yii::$app->cache->set($loginRateKey, [
+            'failures' => $newFailureCount,
+            'nextAllowedAt' => time() + $delaySeconds,
+        ], 900);
     };
 
+    $captchaPassed = true;
     if ($loginRateLimited) {
-        $model->addError('password', 'Too many login attempts. Please try again in 15 minutes.');
+        Yii::$app->response->statusCode = 429;
+        Yii::$app->response->headers->set('Retry-After', '900');
+        $model->addError('password', 'Too many sign-in attempts. Please try again later.');
+    } elseif ($retryAfter > 0) {
+        Yii::$app->response->statusCode = 429;
+        Yii::$app->response->headers->set('Retry-After', (string) $retryAfter);
+        $model->addError('password', "Please wait {$retryAfter} seconds before trying again.");
+    } elseif ($captchaRequired) {
+        $challenge = $this->validateTurnstileChallenge('login', 'login');
+        $captchaPassed = $challenge['valid'];
+        if (!$captchaPassed) {
+            $captchaError = true;
+            Yii::$app->response->statusCode = $challenge['status'];
+            $model->addError('password', $challenge['message']);
+        }
     }
 
-    if ($loginSubmitted && !$loginRateLimited && $model->login()) {
+    if (
+        $loginSubmitted
+        && !$loginRateLimited
+        && $retryAfter === 0
+        && $captchaPassed
+        && $model->login()
+    ) {
         $user = Yii::$app->user->identity;
         if ($user) {
             if ($user->status == 'banned') {
                 $registerLoginFailure();
                 Yii::$app->auditService->record('LOGIN_FAILED', [
                     'username' => $model->username,
-                    'new_values' => ['reason' => 'INVALID_CREDENTIALS_OR_ACCOUNT_NOT_ALLOWED'],
+                    'new_values' => ['reason' => 'ACCOUNT_BANNED'],
                 ]);
                 Yii::$app->user->logout(); // Deconnecter immediatement un compte bloque.
-                Yii::$app->session->setFlash('error', 'Your account has been banned. Please contact support for assistance.');
-                return $this->refresh();
-            }
-            if ($user->getUserType() !== 'admin' && $user->email_verified == 0) {
+                $restrictedAccountHandled = true;
+                $model->addError(
+                    'password',
+                    'Incorrect username or password.'
+                );
+            } elseif ($user->getUserType() !== 'admin' && $user->email_verified == 0) {
                 $registerLoginFailure();
                 Yii::$app->auditService->record('LOGIN_FAILED', [
                     'username' => $model->username,
-                    'new_values' => ['reason' => 'INVALID_CREDENTIALS_OR_ACCOUNT_NOT_ALLOWED'],
+                    'new_values' => ['reason' => 'EMAIL_NOT_VERIFIED'],
                 ]);
                 Yii::$app->user->logout(); // Deconnecter un compte qui n'est pas encore verifie.
-                Yii::$app->session->setFlash('error', 'Your account is not verified. Please contact support for assistance.');
-                return $this->refresh();
+                $restrictedAccountHandled = true;
+                $model->addError(
+                    'password',
+                    'Incorrect username or password.'
+                );
+            } else {
+                $userType = $user->getUserType();
+                if ($userType == 'mro') {
+                    Yii::$app->session->set('mro_id', $user->mro_id);
+                    Yii::$app->session->set('username', $user->username);
+                    Yii::$app->session->set('isLoggedIn', true);
+                } elseif ($userType == 'admin') {
+                    Yii::$app->session->set('admin_id', $user->admin_id);
+                    Yii::$app->session->set('username', $user->username);
+                    Yii::$app->session->set('isLoggedIn', true);
+                } elseif ($userType == 'ao') {
+                    Yii::$app->session->set('ao_id', $user->ao_id);
+                    Yii::$app->session->set('username', $user->username);
+                    Yii::$app->session->set('isLoggedIn', true);
+                }
+
+                Yii::$app->cache->delete($loginRateKey);
+                Yii::$app->session->set('auth_version', (int) ($user->auth_version ?? 1));
+                Yii::$app->auditService->record('LOGIN');
+                return $this->redirect(['dashboard/home']);
             }
-            
-            $userType = $user->getUserType();
-            if ($userType == 'mro') {
-                Yii::$app->session->set('mro_id', $user->mro_id);
-                Yii::$app->session->set('username', $user->username);
-                Yii::$app->session->set('isLoggedIn', true);
-
-
-            } elseif ($userType == 'admin') {
-                Yii::$app->session->set('admin_id', $user->admin_id);
-                Yii::$app->session->set('username', $user->username);
-                Yii::$app->session->set('isLoggedIn', true);
-
-
-            } elseif ($userType == 'ao') {
-                Yii::$app->session->set('ao_id', $user->ao_id);
-                Yii::$app->session->set('username', $user->username);
-                Yii::$app->session->set('isLoggedIn', true);
-
-
-            }
-            
-            Yii::$app->cache->delete($loginRateKey);
-            Yii::$app->auditService->record('LOGIN');
-            //Yii::$app->session->setFlash('message', 'You have successfully logged in. ' );
-            return $this->redirect(['dashboard/home']);
         } else {
             Yii::$app->session->setFlash('error', 'Failed to set user identity.');
         }
     }
 
-    if ($loginSubmitted && Yii::$app->user->isGuest) {
+    if (
+        $loginSubmitted
+        && Yii::$app->user->isGuest
+        && !$restrictedAccountHandled
+        && !$loginRateLimited
+        && $retryAfter === 0
+        && $captchaPassed
+    ) {
         if (!$loginRateLimited) {
             $registerLoginFailure();
         }
@@ -1580,6 +1626,8 @@ $this->layout = 'login';
     $model->password = '';
     return $this->render('login', [
         'model' => $model,
+        'captchaRequired' => $captchaRequired,
+        'captchaError' => $captchaError,
     ]);
 }
 
@@ -1596,6 +1644,44 @@ $this->layout = 'login';
         Yii::$app->user->logout();
 
         return $this->goHome();
+    }
+
+    /** Revokes every active session and persistent identity cookie for this account. */
+    public function actionLogoutAllDevices()
+    {
+        $identity = Yii::$app->user->identity;
+        $profileClass = null;
+        $profileId = null;
+
+        if ($identity && $identity->admin_id !== null) {
+            $profileClass = AdminProfile::class;
+            $profileId = (int) $identity->admin_id;
+        } elseif ($identity && $identity->mro_id !== null) {
+            $profileClass = MroProfile::class;
+            $profileId = (int) $identity->mro_id;
+        } elseif ($identity && $identity->ao_id !== null) {
+            $profileClass = AoProfile::class;
+            $profileId = (int) $identity->ao_id;
+        }
+
+        if ($profileClass === null || $profileId < 1) {
+            throw new BadRequestHttpException('Unable to revoke sessions for this account.');
+        }
+
+        $primaryKey = $profileClass::primaryKey()[0];
+        $updated = $profileClass::updateAllCounters(
+            ['auth_version' => 1],
+            [$primaryKey => $profileId]
+        );
+        if ($updated !== 1) {
+            throw new BadRequestHttpException('Unable to revoke sessions for this account.');
+        }
+
+        Yii::$app->auditService->record('LOGOUT_ALL_DEVICES');
+        Yii::$app->user->logout(true);
+        Yii::$app->session->setFlash('success', 'You have been signed out from all devices.');
+
+        return $this->redirect(['site/login']);
     }
 
     /**
@@ -1627,22 +1713,116 @@ $this->layout = 'login';
     }
 
    
+    /**
+     * Applies progressive IP throttling, adaptive Turnstile and a per-address
+     * delivery cooldown without revealing whether the address exists.
+     */
+    private function consumeRecoveryRequest($purpose, $email)
+    {
+        $ipHash = hash('sha256', (string) Yii::$app->request->userIP);
+        $rateKey = "recovery-rate:{$purpose}:{$ipHash}";
+        $state = Yii::$app->cache->get($rateKey);
+        $state = is_array($state) ? $state : ['attempts' => 0, 'nextAllowedAt' => 0];
+        $attempts = (int) ($state['attempts'] ?? 0);
+        $retryAfter = max(0, (int) ($state['nextAllowedAt'] ?? 0) - time());
+        $captchaRequired = $attempts >= 3;
+
+        if ($attempts >= 10) {
+            Yii::$app->response->headers->set('Retry-After', '900');
+            return [
+                'allowed' => false,
+                'deliver' => false,
+                'captchaRequired' => true,
+                'captchaError' => false,
+                'status' => 429,
+                'message' => 'Too many recovery requests. Please try again later.',
+            ];
+        }
+
+        if ($retryAfter > 0) {
+            Yii::$app->response->headers->set('Retry-After', (string) $retryAfter);
+            return [
+                'allowed' => false,
+                'deliver' => false,
+                'captchaRequired' => $captchaRequired,
+                'captchaError' => false,
+                'status' => 429,
+                'message' => "Please wait {$retryAfter} seconds before trying again.",
+            ];
+        }
+
+        if ($captchaRequired) {
+            $challenge = $this->validateTurnstileChallenge(
+                $purpose . '_recovery',
+                $purpose . ' recovery'
+            );
+            if (!$challenge['valid']) {
+                return [
+                    'allowed' => false,
+                    'deliver' => false,
+                    'captchaRequired' => true,
+                    'captchaError' => true,
+                    'status' => $challenge['status'],
+                    'message' => $challenge['message'],
+                ];
+            }
+        }
+
+        $newAttemptCount = $attempts + 1;
+        $delaySeconds = min(60, 2 ** min(6, max(0, $newAttemptCount - 1)));
+        Yii::$app->cache->set($rateKey, [
+            'attempts' => $newAttemptCount,
+            'nextAllowedAt' => time() + $delaySeconds,
+        ], 900);
+
+        $normalizedEmail = mb_strtolower(trim($email), 'UTF-8');
+        $cooldownKey = 'recovery-mail:' . $purpose . ':' . hash('sha256', $normalizedEmail);
+        $deliver = Yii::$app->cache->get($cooldownKey) === false;
+        // The same cooldown is recorded for existing and unknown addresses.
+        Yii::$app->cache->set($cooldownKey, true, 300);
+
+        return [
+            'allowed' => true,
+            'deliver' => $deliver,
+            'captchaRequired' => $newAttemptCount >= 3,
+            'captchaError' => false,
+            'status' => 200,
+            'message' => '',
+        ];
+    }
+
     public function actionRequestPasswordReset()
     {
         $this->layout = 'auth';
         $model = new PasswordResetRequestForm();
+        $captchaRequired = false;
+        $captchaError = false;
     
         if ($model->load(Yii::$app->request->post()) && $model->validate()) {
-            if ($model->sendEmail()) {
-                Yii::$app->session->setFlash('success', 'Check your email for further instructions.');
-                return $this->goHome();
-            } else {
-                Yii::$app->session->setFlash('error', 'Sorry, we are unable to reset the password for the provided email address.');
+            $protection = $this->consumeRecoveryRequest('password', (string) $model->email);
+            $captchaRequired = $protection['captchaRequired'];
+            $captchaError = $protection['captchaError'];
+
+            if (!$protection['allowed']) {
+                Yii::$app->response->statusCode = $protection['status'];
+                $model->addError('email', $protection['message']);
+            } elseif ($protection['deliver'] && !$model->sendEmail()) {
+                Yii::warning('A password reset request could not be delivered.', __METHOD__);
+            }
+
+            if ($protection['allowed']) {
+                Yii::$app->session->setFlash(
+                    'success',
+                    'If an eligible account matches those details, password reset instructions will be sent.'
+                );
+                return $this->redirect(['site/login']);
             }
         }
     
         return $this->render('requestPasswordResetToken', [
             'model' => $model,
+            'captchaRequired' => $captchaRequired,
+            'captchaError' => $captchaError,
         ]);
     }
 
@@ -1691,38 +1871,41 @@ $this->layout = 'login';
     {
         $this->layout = 'auth';
         $model = new UsernameResetRequestForm();
+        $captchaRequired = false;
+        $captchaError = false;
         
         if ($model->load(Yii::$app->request->post()) && $model->validate()) {
-            if ($model->sendEmail()) {
-                Yii::$app->session->setFlash('success', 'Check your email for your username.');
-                return $this->goHome();
-            } else {
-                Yii::$app->session->setFlash('error', 'Sorry, we are unable to send the username for the provided email address.');
+            $protection = $this->consumeRecoveryRequest('username', (string) $model->email);
+            $captchaRequired = $protection['captchaRequired'];
+            $captchaError = $protection['captchaError'];
+
+            if (!$protection['allowed']) {
+                Yii::$app->response->statusCode = $protection['status'];
+                $model->addError('email', $protection['message']);
+            } elseif ($protection['deliver'] && !$model->sendEmail()) {
+                Yii::warning('A username reminder request could not be delivered.', __METHOD__);
+            }
+
+            if ($protection['allowed']) {
+                Yii::$app->session->setFlash(
+                    'success',
+                    'If an eligible account matches those details, a username reminder will be sent.'
+                );
+                return $this->redirect(['site/login']);
             }
         }
 
         return $this->render('requestUsernameReset', [
             'model' => $model,
+            'captchaRequired' => $captchaRequired,
+            'captchaError' => $captchaError,
         ]);
     }
 
 
     public function actionRequestUsernameReset1()
     {
-        $model = new UsernameResetRequestForm();
-        
-        if ($model->load(Yii::$app->request->post()) && $model->validate()) {
-            if ($model->sendEmail()) {
-                Yii::$app->session->setFlash('success', 'Check your email for your username.');
-                return $this->goHome();
-            } else {
-                Yii::$app->session->setFlash('error', 'Sorry, we are unable to send the username for the provided email address.');
-            }
-        }
-
-        return $this->render('requestUsernameReset', [
-            'model' => $model,
-        ]);
+        return $this->actionRequestUsernameReset();
     }
     public function actionLoadCities()
     {

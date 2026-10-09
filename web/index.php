@@ -55,4 +55,14 @@ require __DIR__ . '/../vendor/yiisoft/yii2/Yii.php';
 
 $config = require __DIR__ . '/../config/web.php';
 
+// Si public_html est public, les URL à la racine sont réécrites vers web/.
+// Adapter l'analyse des routes et les URL générées par Yii à la racine publique.
+$documentRoot = realpath($_SERVER['DOCUMENT_ROOT'] ?? '');
+$requestPath = parse_url($_SERVER['REQUEST_URI'] ?? '/', PHP_URL_PATH);
+if ($documentRoot === dirname(__DIR__)
+    && !preg_match('#^/web(?:/|$)#', $requestPath ?: '/')) {
+    $config['components']['request']['baseUrl'] = '';
+    $config['components']['request']['scriptUrl'] = '/index.php';
+}
+
 (new yii\web\Application($config))->run();

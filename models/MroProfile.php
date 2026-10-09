@@ -6,9 +6,12 @@ use Yii;
 use yii\db\ActiveRecord;
 use app\models\Certificates;
 use app\models\MroNotificationsPreferences;
+use app\components\PasswordResetTokenService;
 
 class MroProfile extends ActiveRecord
 {
+    use RevokesSessionsOnPasswordChange;
+
     public $terms;
     public $confirm_password;
 
@@ -173,12 +176,13 @@ public function scenarios()
 
     public static function findByPasswordResetToken($token)
     {
-        return static::findOne(['password_reset_token' => $token]);
+        return PasswordResetTokenService::findForModel((string) $token, static::class);
     }
 
 public function generatePasswordResetToken()
 {
-    $this->password_reset_token = Yii::$app->security->generateRandomString() . '_' . time();
+    $token = PasswordResetTokenService::issue();
+    $this->password_reset_token = $token['storedToken'];
 
     if (!$this->save(false)) {
         Yii::error([
@@ -189,7 +193,7 @@ public function generatePasswordResetToken()
         return false;
     }
 
-    return true;
+    return $token['publicToken'];
 }
 
     public function resetPassword($newPassword)

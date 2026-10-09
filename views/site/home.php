@@ -3008,6 +3008,7 @@ CSS
                 data-sitekey="<?= Html::encode($prelaunchTurnstileSiteKey) ?>"
                 data-action="early_access"
                 data-theme="light"
+                data-language="en"
               ></div>
             </div>
           <?php else: ?>

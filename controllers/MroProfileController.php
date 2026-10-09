@@ -615,7 +615,8 @@ public function actionGetModelsByManufacturer($manufacturer = null)
             throw new NotFoundHttpException('User not found.');
         }
     
-        if ($user->generatePasswordResetToken() && $this->sendPasswordResetEmail($user)) {
+        $publicToken = $user->generatePasswordResetToken();
+        if ($publicToken && $this->sendPasswordResetEmail($user, $publicToken)) {
             Yii::$app->session->setFlash('message', 'Password reset email sent successfully.');
         } else {
             Yii::$app->session->setFlash('error', 'Failed to send password reset email.');
@@ -624,13 +625,13 @@ public function actionGetModelsByManufacturer($manufacturer = null)
         return $this->redirect(['index']); // Redirect to the index or any other appropriate page
     }
     
-    protected function sendPasswordResetEmail($user)
+    protected function sendPasswordResetEmail($user, $publicToken)
     {
         return Yii::$app->mailer->compose()
             ->setTo($user->email)
             ->setFrom([Yii::$app->params['adminEmail'] => Yii::$app->name])
             ->setSubject('Password reset')
-            ->setTextBody('Follow the link to reset your password: ' . Yii::$app->urlManager->createAbsoluteUrl(['site/reset-password', 'token' => $user->password_reset_token]))
+            ->setTextBody('Follow the link to reset your password: ' . Yii::$app->urlManager->createAbsoluteUrl(['site/reset-password', 'token' => $publicToken]))
             ->send();
     }
 

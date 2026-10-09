@@ -1,6 +1,19 @@
+Options -Indexes -MultiViews
 RewriteEngine on
 
-# Static fallbacks remain available when PHP/Yii cannot render its error view.
+# Refuser les sauvegardes et journaux dans tous les dossiers publics.
+<FilesMatch "(?i)(\.(?:bak|sql|log|old|orig|save|swp)(?:[.~]|$)|~$|^error_log$)">
+    Require all denied
+</FilesMatch>
+
+# Refuser les scripts téléversés, même si le fichier demandé n'existe pas.
+RewriteRule ^uploads/.*\.(?:php[0-9]*|phtml|pht|phar|cgi|pl|py|sh|shtml)(?:[./]|$) - [F,L,NC]
+
+# Bloquer les fichiers cachés et le script réservé aux tests.
+RewriteRule (^|/)\.(?!well-known(?:/|$)) - [F,L]
+RewriteRule ^(?:index-test\.php|maintenance\.flag)(?:/|$) - [F,L,NC]
+
+# Ces pages statiques restent disponibles si PHP/Yii ne peut pas afficher l'erreur.
 ErrorDocument 400 /errors/error.html?code=400
 ErrorDocument 401 /errors/error.html?code=401
 ErrorDocument 403 /errors/error.html?code=403

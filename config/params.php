@@ -15,6 +15,17 @@ return [
     'urlIdSecret' => 'CAN_2026_UrlIdSecret_f83a9d71c2b44e1a9f6e7d8c5b3a1209_7Kq9Lm4Xp2Vr8Ts6',
 
     /*
+     * Cle dediee a l'empreinte des jetons de reinitialisation. Elle est derivee
+     * du secret serveur existant, sans reutiliser directement ce secret dans le
+     * service et reste disponible pour les applications Web et console.
+     */
+    'passwordResetTokenKey' => hash_hmac(
+        'sha256',
+        'password-reset-token-v2',
+        $environment['cookieValidationKey']
+    ),
+
+    /*
      * DESTINATAIRE DES TICKETS SUPPORT :
      * la variable d'environnement permet de changer la boite de reception sans
      * modifier le code. L'adresse existante sert uniquement de repli local.

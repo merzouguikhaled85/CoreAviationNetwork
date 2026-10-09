@@ -16,7 +16,7 @@ $config = [
     'name' => 'Core Aviation Network',
     'basePath' => dirname(__DIR__),
       'homeUrl' => ['site/index'],
-    'bootstrap' => ['log', 'auditTrail'],
+    'bootstrap' => ['log', 'auditTrail', 'sessionSecurity'],
     'aliases' => [
         '@bower' => '@vendor/bower-asset',
         '@npm'   => '@vendor/npm-asset',
@@ -44,7 +44,7 @@ $config = [
             'csrfCookie' => [
                 'httpOnly' => true,
                 'secure' => YII_ENV_PROD,
-                'sameSite' => 'Lax',
+                'sameSite' => 'Strict',
             ],
 
             /*
@@ -73,7 +73,7 @@ $config = [
             'cookieParams' => [
                 'httpOnly' => true,
                 'secure' => YII_ENV_PROD,
-                'sameSite' => 'Lax',
+                'sameSite' => 'Strict',
             ],
         ],
         'response' => [
@@ -108,14 +108,22 @@ $config = [
         'auditTrail' => [
             'class' => 'app\components\AuditTrailBootstrap',
         ],
+        'sessionSecurity' => [
+            'class' => 'app\components\SessionSecurityBootstrap',
+        ],
         'user' => [
             'identityClass' => 'app\models\User',
             'enableAutoLogin' => true,
+            /* 30 minutes d'inactivite et 12 heures maximum par session active. */
+            'authTimeout' => 1800,
+            'absoluteAuthTimeout' => 43200,
+            /* La date d'expiration du cookie persistant ne glisse pas a chaque requete. */
+            'autoRenewCookie' => false,
             'identityCookie' => [
                 'name' => '_identity',
                 'httpOnly' => true,
                 'secure' => YII_ENV_PROD,
-                'sameSite' => 'Lax',
+                'sameSite' => 'Strict',
             ],
             'loginUrl' => ['site/login'], // Redirect to login page if not authenticated
         ],

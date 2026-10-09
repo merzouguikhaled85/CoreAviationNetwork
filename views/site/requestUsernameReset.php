@@ -2,6 +2,8 @@
 
 /** @var yii\web\View $this */
 /** @var app\models\UsernameRequestForm $model */
+/** @var bool $captchaRequired */
+/** @var bool $captchaError */
 
 use yii\bootstrap5\ActiveForm;
 use yii\bootstrap5\Html;
@@ -9,24 +11,20 @@ use yii\helpers\Url;
 
 $this->title = 'Request username';
 $this->params['breadcrumbs'][] = $this->title;
+$captchaRequired = $captchaRequired ?? false;
+$captchaError = $captchaError ?? false;
+$turnstileSiteKey = trim((string) (Yii::$app->params['turnstileSiteKey'] ?? ''));
+$turnstileHostname = trim((string) (Yii::$app->params['turnstileExpectedHostname'] ?? ''));
+$turnstileConfigured = $turnstileSiteKey !== '' && $turnstileHostname !== '';
+if ($captchaRequired && $turnstileConfigured) {
+    $this->registerJsFile('https://challenges.cloudflare.com/turnstile/v0/api.js', [
+        'async' => true,
+        'defer' => true,
+    ]);
+}
 
-// Icônes
-$this->registerCssFile(
-    'https://cdn.jsdelivr.net/npm/remixicon@3.5.0/fonts/remixicon.css',
-    ['rel' => 'stylesheet', 'position' => \yii\web\View::POS_HEAD]
-);
-
-$this->registerCssFile(
-    'https://cdn.jsdelivr.net/npm/lucide-static@latest/font/lucide.css',
-    ['rel' => 'stylesheet', 'position' => \yii\web\View::POS_HEAD]
-);
-
-// CSS login
-//$this->registerCssFile('@web/css/login.css');
 ?>
-<!-- ================== FLASH MESSAGES ================== -->
 <?php
-// Mapping type Flash → classe Bootstrap + icône
 $flashMap = [
     'success'       => ['class' => 'alert-success', 'icon' => 'ri-check-line'],
     'message'       => ['class' => 'alert-success', 'icon' => 'ri-check-line'],
@@ -36,21 +34,8 @@ $flashMap = [
     'warning'       => ['class' => 'alert-warning', 'icon' => 'ri-alert-line'],
     'info'          => ['class' => 'alert-info',    'icon' => 'ri-information-line'],
 ];
-
-foreach ($flashMap as $key => $cfg):
-    if (Yii::$app->session->hasFlash($key)):
 ?>
-    <div class="alert <?= $cfg['class'] ?> alert-dismissible fade show d-flex align-items-center gap-2 mb-3" role="alert">
-        <i class="<?= $cfg['icon'] ?>"></i>
-        <span><?= Yii::$app->session->getFlash($key) ?></span>
-        <button type="button" class="btn-close ms-auto" data-bs-dismiss="alert" aria-label="Close"></button>
-    </div>
-<?php
-    endif;
-endforeach;
-?>
-<!-- ================== END FLASH MESSAGES ================== -->
-<section class="hero-login">
+<section class="hero-login username-recovery-page">
   <div class="auth-wrap">
     <div class="auth-card" role="region" aria-label="Request username">
       <div class="brand">
@@ -58,20 +43,28 @@ endforeach;
           src="<?= Yii::getAlias('@web/logo/can-logo-main.png') ?>"
           alt="CAN — Core Aviation Network"
           class="img-fluid"
-          style="max-height:120px"
         />
-        <h1 class="title">
-          <i class="ri-lock-line"></i>
-          <?= Html::encode(Yii::$app->name) ?>
-        </h1>
-        <p class="mt-2 mb-0 small">
-          Enter your email and user type, we’ll send you your login username.
-        </p>
+        <p class="auth-eyebrow">Account recovery</p>
+        <h1 class="title">Find your username</h1>
+        <p class="auth-subtitle">Enter your email and account type to receive your username.</p>
       </div>
+
+      <?php foreach ($flashMap as $key => $cfg): ?>
+        <?php if (Yii::$app->session->hasFlash($key)): ?>
+          <div class="alert <?= $cfg['class'] ?> alert-dismissible fade show d-flex align-items-center gap-2 mb-3" role="alert">
+            <i class="<?= $cfg['icon'] ?>" aria-hidden="true"></i>
+            <span><?= Html::encode(Yii::$app->session->getFlash($key)) ?></span>
+            <button type="button" class="btn-close ms-auto" data-bs-dismiss="alert" aria-label="Close"></button>
+          </div>
+        <?php endif; ?>
+      <?php endforeach; ?>
 
       <?php $form = ActiveForm::begin([
           'id' => 'request-username-form',
           'options' => ['novalidate' => true],
+          'fieldConfig' => [
+              'errorOptions' => ['class' => 'invalid-feedback d-block small'],
+          ],
       ]); ?>
 
       <div class="mb-3">
@@ -86,7 +79,7 @@ endforeach;
       </div>
 
       <div class="mb-3">
-        <?= $form->field($model, 'usertype') // ⚠ vérifier que la propriété s’appelle bien userType dans le modèle
+        <?= $form->field($model, 'usertype')
             ->label('<i class="ri-user-settings-line"></i> User type', ['class' => 'form-label'])
             ->dropDownList([ 'mro' => 'MRO', 'ao' => 'AO', ],
                 [
@@ -98,24 +91,48 @@ endforeach;
             ) ?>
       </div>
 
+      <?php if ($captchaRequired): ?>
+        <div class="login-challenge"<?= $captchaError ? ' data-recovery-captcha-error' : '' ?>>
+          <?php if ($turnstileConfigured): ?>
+            <div
+              class="cf-turnstile"
+              data-sitekey="<?= Html::encode($turnstileSiteKey) ?>"
+              data-action="username_recovery"
+              data-theme="light"
+              data-language="en"
+              data-callback="onUsernameRecoveryChallenge"
+            ></div>
+          <?php else: ?>
+            <p class="login-challenge-unavailable" role="alert">
+              Visitor verification is temporarily unavailable. Please contact support.
+            </p>
+          <?php endif; ?>
+        </div>
+      <?php endif; ?>
+
 
       <div class="form-group mb-3">
         <?= Html::submitButton(
-            '<i class="ri-mail-check-line"></i> <span class="btn-text">Send</span>',
+            '<i class="ri-mail-send-line btn-icon" aria-hidden="true"></i>'
+                . '<span class="btn-spinner" aria-hidden="true"></span>'
+                . '<span class="btn-text">Send my username</span>',
             [
                 'class' => 'btn btn-primary w-100',
                 'id'    => 'submitBtn',
-                'disabled' => true, // Désactivé au départ
+                'disabled' => true,
+                'data-loading-text' => 'Sending…',
             ]
         ) ?>
       </div>
 
-      <div class="d-flex justify-content-between align-items-center mt-2">
-        <a class="link" href="<?= Url::to(['site/login']) ?>">⬅ Back to sign in</a>
-        <a class="link" href="<?= Url::to(['site/request-password-reset']) ?>">
-          Forgot password?
+      <nav class="auth-recovery-links recovery-navigation mt-2" aria-label="Account recovery navigation">
+        <a class="link" href="<?= Url::to(['site/login']) ?>">
+          <i class="ri-arrow-left-line" aria-hidden="true"></i> Back to sign in
         </a>
-      </div>
+        <a class="link" href="<?= Url::to(['site/request-password-reset']) ?>">
+          <i class="ri-key-2-line" aria-hidden="true"></i> Forgot password?
+        </a>
+      </nav>
 
       <footer class="login-footer mt-3">
         © <?= date('Y') ?>
@@ -128,6 +145,8 @@ endforeach;
 </section>
 
 <?php
+$captchaRequiredJs = $captchaRequired ? 'true' : 'false';
+$turnstileConfiguredJs = $turnstileConfigured ? 'true' : 'false';
 $js = <<<JS
 (function(){
 
@@ -137,6 +156,9 @@ $js = <<<JS
   const email     = document.getElementById('ru-email');
   const userType  = document.getElementById('ru-type');
   const submitBtn = document.getElementById('submitBtn');
+  const challengeRequired = {$captchaRequiredJs};
+  const challengeConfigured = {$turnstileConfiguredJs};
+  let challengeComplete = !challengeRequired;
 
   function isValidEmail(value){
     return /^\\S+@\\S+\\.\\S+\$/.test(value.trim());
@@ -145,8 +167,18 @@ $js = <<<JS
   function checkForm(){
     const emailValid = isValidEmail(email.value);
     const typeValid  = userType.value.trim() !== '';
-    submitBtn.disabled = !(emailValid && typeValid);
+    submitBtn.disabled = !(emailValid && typeValid)
+      || (challengeRequired && (!challengeConfigured || !challengeComplete));
   }
+
+  window.onUsernameRecoveryChallenge = function(){
+    challengeComplete = true;
+    const challengeError = document.querySelector('[data-recovery-captcha-error]');
+    if (challengeError) challengeError.removeAttribute('data-recovery-captcha-error');
+    email.classList.remove('is-invalid');
+    email.removeAttribute('aria-invalid');
+    checkForm();
+  };
 
   // Vérification initiale
   checkForm();
@@ -155,6 +187,23 @@ $js = <<<JS
   email.addEventListener('input', checkForm);
   email.addEventListener('blur', checkForm);
   userType.addEventListener('change', checkForm);
+
+  const startSubmitting = function(){
+    submitBtn.disabled = true;
+    submitBtn.classList.add('is-loading');
+    submitBtn.setAttribute('aria-busy', 'true');
+    const text = submitBtn.querySelector('.btn-text');
+    if (text) text.textContent = submitBtn.dataset.loadingText;
+  };
+
+  if (window.jQuery && window.jQuery.fn.yiiActiveForm) {
+    window.jQuery(form).on('beforeSubmit.usernameRecovery', function(){
+      startSubmitting();
+      return true;
+    });
+  } else {
+    form.addEventListener('submit', startSubmitting);
+  }
 
 })();
 JS;

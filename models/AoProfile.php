@@ -5,9 +5,12 @@ use Yii;
 use yii\db\ActiveRecord;
 use yii\web\NotFoundHttpException;
 use yii\web\UploadedFile;
+use app\components\PasswordResetTokenService;
 
 class AoProfile extends ActiveRecord
 {
+    use RevokesSessionsOnPasswordChange;
+
     public $terms;
     public $confirm_password;
 
@@ -74,12 +77,13 @@ class AoProfile extends ActiveRecord
     // Method to find user by password reset token
     public static function findByPasswordResetToken($token)
     {
-        return static::findOne(['password_reset_token' => $token]);
+        return PasswordResetTokenService::findForModel((string) $token, static::class);
     }
 
 public function generatePasswordResetToken()
 {
-    $this->password_reset_token = Yii::$app->security->generateRandomString() . '_' . time();
+    $token = PasswordResetTokenService::issue();
+    $this->password_reset_token = $token['storedToken'];
 
     if (!$this->save(false)) {
         Yii::error([
@@ -90,7 +94,7 @@ public function generatePasswordResetToken()
         return false;
     }
 
-    return true;
+    return $token['publicToken'];
 }
 
     // Custom validation method to check username uniqueness

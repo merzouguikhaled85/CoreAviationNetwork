@@ -44,6 +44,7 @@ class User extends BaseObject implements IdentityInterface
      public $profile_photo;
 
      public $authKey; // Add this line
+     public $auth_version = 1;
      public $verification_token;
      public $password_reset_token;
 
@@ -161,7 +162,7 @@ class User extends BaseObject implements IdentityInterface
 
          return hash_hmac(
              'sha256',
-             $this->getId() . '|' . $this->password,
+             $this->getId() . '|' . $this->password . '|' . (int) $this->auth_version,
              Yii::$app->request->cookieValidationKey
          );
      }

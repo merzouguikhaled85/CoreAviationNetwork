@@ -6,6 +6,7 @@ use yii\base\Model;
 use app\models\AoProfile;
 use app\models\MroProfile;
 use yii\helpers\VarDumper;
+use app\components\PasswordResetTokenService;
 
 class PasswordResetRequestForm extends Model
 {
@@ -18,46 +19,6 @@ class PasswordResetRequestForm extends Model
             [['email'], 'email'],
         ];
     }
-public function sendEmail1()
-{
-    $user = AoProfile::findOne([
-        'email' => $this->email,
-        'status' => 'active',
-    ]);
-
-    if (!$user) {
-        $user = MroProfile::findOne([
-            'email' => $this->email,
-            'status' => 'active',
-        ]);
-    }
-
-    if (!$user) {
-        return false;
-    }
-
-    $user->password_reset_token =
-        Yii::$app->security->generateRandomString() . '_' . time();
-
-    if (!$user->save(false)) {
-        return false;
-    }
-
-    $resetLink = Yii::$app->urlManager->createAbsoluteUrl([
-        'site/reset-password',
-        'token' => $user->password_reset_token
-    ]);
-
-    $result = Yii::$app->mailer->compose()
-        ->setTo($this->email)
-        ->setSubject('Password reset')
-        ->setTextBody($resetLink)
-        ->send();
-
-    return $result;   // 🔥 THIS IS THE FIX
-}
-
-
 public function sendEmail()
 {
     $user = AoProfile::findOne([
@@ -76,7 +37,8 @@ public function sendEmail()
         return false;
     }
 
-    $user->password_reset_token = Yii::$app->security->generateRandomString() . '_' . time();
+    $token = PasswordResetTokenService::issue();
+    $user->password_reset_token = $token['storedToken'];
 
     if (!$user->save(false)) {
         return false;
@@ -84,7 +46,7 @@ public function sendEmail()
 
     $resetLink = Yii::$app->urlManager->createAbsoluteUrl([
         'site/reset-password',
-        'token' => $user->password_reset_token,
+        'token' => $token['publicToken'],
     ]);
 
     // Résolution du nom affiché

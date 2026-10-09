@@ -1,0 +1,10 @@
+# Protection Apache compatible avec l'hébergement GoDaddy cPanel.
+# Refuser l'accès aux scripts, sans dépendre du gestionnaire PHP choisi par cPanel.
+<FilesMatch "(?i)\.(?:php[0-9]*|phtml|pht|phar|cgi|pl|py|sh|shtml)(?:\.|$)">
+    Require all denied
+</FilesMatch>
+
+# Les sauvegardes, journaux et fichiers cachés ne sont jamais publics.
+<FilesMatch "(?i)(^\.|\.(?:bak|sql|log|old|orig|save|swp)(?:[.~]|$)|~$|^error_log$)">
+    Require all denied
+</FilesMatch>

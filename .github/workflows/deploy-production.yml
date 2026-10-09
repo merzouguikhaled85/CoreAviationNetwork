@@ -128,6 +128,11 @@ jobs:
 
           mkdir -p web/uploads
           cp -a "$PERSISTENT_UPLOADS/." web/uploads/
+          # Restaurer les règles suivies par Git après la copie des anciens uploads.
+          if git ls-files --error-unmatch web/uploads/.htaccess >/dev/null 2>&1; then
+            git show HEAD:web/uploads/.htaccess > web/uploads/.htaccess
+            chmod 644 web/uploads/.htaccess
+          fi
           bash scripts/deploy-production.sh
           REMOTE_COMMANDS
 

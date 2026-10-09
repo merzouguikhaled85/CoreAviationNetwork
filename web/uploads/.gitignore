@@ -1,3 +1,4 @@
 # Ce dossier est alimenté par l'application et sauvegardé séparément du code.
 *
 !.gitignore
+!.htaccess

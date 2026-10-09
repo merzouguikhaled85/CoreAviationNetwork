@@ -8,6 +8,29 @@ Root du sous-domaine `can.coreaviationnetwork.com` doit pointer précisément ve
 `public_html/can/web`. Cette séparation empêche l'accès web direct à `config`,
 `vendor`, `runtime`, `migrations` et aux autres sources internes de Yii2.
 
+### Cas où `public_html` reste la racine publique
+
+Si le projet est installé directement dans `~/public_html` et que ce dossier
+est la racine publique, le `.htaccess` principal réécrit les URL vers `web/` et
+bloque les fichiers internes. `web/index.php` adapte les URL de Yii à ce cas.
+Les anciennes URL commençant par `/web/` restent utilisables.
+
+Les fichiers `.htaccess`, `web/.htaccess` et `web/uploads/.htaccess` doivent
+être déployés ensemble. La protection des uploads refuse les scripts PHP et
+autres scripts exécutables, ainsi que les sauvegardes et journaux. Les images
+et PDF restent accessibles. Ces règles utilisent Apache 2.4, sans directive
+`php_flag`, pour rester indépendantes du gestionnaire PHP sélectionné dans cPanel.
+Le fichier `web/uploads/.htaccess` est suivi par Git et restauré après chaque
+copie des uploads pour éviter qu'une ancienne sauvegarde l'écrase.
+
+Ces protections ne contrôlent pas les droits métier sur les pièces jointes :
+un document confidentiel doit être servi par une action Yii autorisée.
+
+Après transfert sur GoDaddy, vérifier une page de l'application, une image et
+un PDF, puis confirmer qu'un fichier factice `uploads/verification.php` et un
+fichier `verification.sql` répondent avec le statut 403. Supprimer les fichiers
+de vérification ensuite. Conserver les blocs de sélection PHP ajoutés par cPanel.
+
 ## 1. Préparer l'authentification SSH GoDaddy
 
 Cette offre Web Hosting cPanel accepte la connexion SSH avec le mot de passe du

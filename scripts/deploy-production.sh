@@ -49,6 +49,15 @@ normalize_public_asset_permissions() {
         done
 }
 
+# Restaurer la protection versionnée après la copie des pièces jointes.
+# Une ancienne sauvegarde des uploads ne doit pas écraser les règles courantes.
+restore_upload_protection() {
+    if git ls-files --error-unmatch web/uploads/.htaccess >/dev/null 2>&1; then
+        git show HEAD:web/uploads/.htaccess > web/uploads/.htaccess
+        chmod 644 web/uploads/.htaccess
+    fi
+}
+
 cleanup_secrets() {
     if [[ -n "$MYSQL_CONFIG" && -f "$MYSQL_CONFIG" ]]; then
         rm -f "$MYSQL_CONFIG"
@@ -139,6 +148,7 @@ rollback_deployment() {
     if [[ -d "$PERSISTENT_UPLOAD_DIR" ]]; then
         mkdir -p "$UPLOAD_DIR"
         cp -a "$PERSISTENT_UPLOAD_DIR/." "$UPLOAD_DIR/" || rollback_failed=1
+        restore_upload_protection || rollback_failed=1
     fi
 
     if [[ "$rollback_failed" -eq 0 ]]; then
@@ -306,6 +316,7 @@ normalize_public_asset_permissions
 
 mkdir -p "$UPLOAD_DIR"
 cp -a "$PERSISTENT_UPLOAD_DIR/." "$UPLOAD_DIR/"
+restore_upload_protection
 
 mkdir -p runtime/logs web/assets "$UPLOAD_DIR"
 chmod 775 runtime runtime/logs web/assets "$UPLOAD_DIR"

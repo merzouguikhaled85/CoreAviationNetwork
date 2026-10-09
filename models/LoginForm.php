@@ -9,7 +9,8 @@ class LoginForm extends Model
 {
     public $username;
     public $password;
-    public $rememberMe = true;
+    /* Une session persistante exige toujours un choix explicite de l'utilisateur. */
+    public $rememberMe = false;
 
     private $_user = false;
 
@@ -37,7 +38,7 @@ class LoginForm extends Model
         if ($this->validate()) {
             $user = $this->getUser();
             if ($user) {
-                return Yii::$app->user->login($user, $this->rememberMe ? 3600*24*30 : 0);
+                return Yii::$app->user->login($user, $this->rememberMe ? 3600 * 24 * 14 : 0);
             }
         }
         return false;
@@ -51,4 +52,3 @@ class LoginForm extends Model
         return $this->_user;
     }
 }
-

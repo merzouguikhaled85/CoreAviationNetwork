@@ -9,6 +9,7 @@ vendor/
 # Les pièces jointes appartiennent aux utilisateurs et persistent hors de Git.
 web/uploads/*
 !web/uploads/.gitignore
+!web/uploads/.htaccess
 
 # Ce marqueur temporaire est créé uniquement pendant un déploiement.
 web/maintenance.flag
