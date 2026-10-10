@@ -42,6 +42,7 @@ class AppAsset extends AssetBundle
         // afin que toutes les listes, y compris les demandes disponibles MRO, puissent
         // informer l'utilisateur sans dépendre d'un chargement propre à chaque vue.
         'https://cdn.jsdelivr.net/npm/sweetalert2@11',
+        'js/logout-confirmation.js',
 
         // SYNCHRONISATION DES DEMANDES : ce module global reste inactif par defaut
         // et demarre uniquement lorsqu'une vue declare data-request-sync-context.

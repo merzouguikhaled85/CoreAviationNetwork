@@ -1100,7 +1100,7 @@ if (!Yii::$app->user->isGuest && $userType === 'admin') {
 
                         <?= Html::beginForm(['site/logout-all-devices'], 'post', [
                             'class' => 'logout-form m-0',
-                            'onsubmit' => "return confirm('Sign out from all devices?');",
+                            'data-confirm-logout-all' => 'true',
                         ]) ?>
                         <?= Html::submitButton('<i class="fas fa-laptop"></i> Sign out from all devices', ['class' => 'btn btn-link logout-button']) ?>
                         <?= Html::endForm() ?>

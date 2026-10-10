@@ -126,7 +126,7 @@ if (!$isGuest && Yii::$app->user->identity !== null) {
             -->
             <?= Html::beginForm(['/site/logout-all-devices'], 'post', [
                 'class' => 'can-navbar-logout-form',
-                'onsubmit' => "return confirm('Sign out from all devices?');",
+                'data-confirm-logout-all' => 'true',
             ]) ?>
               <?= Html::submitButton(
                   '<i class="ri-device-line"></i> Sign out from all devices',
@@ -207,7 +207,7 @@ if (!$isGuest && Yii::$app->user->identity !== null) {
     <?php else: ?>
       <?= Html::beginForm(['/site/logout-all-devices'], 'post', [
           'class' => 'can-navbar-logout-form',
-          'onsubmit' => "return confirm('Sign out from all devices?');",
+          'data-confirm-logout-all' => 'true',
       ]) ?>
         <?= Html::submitButton(
             '<i class="ri-device-line"></i> Sign out from all devices',
