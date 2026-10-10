@@ -18,13 +18,22 @@
                     title: 'Sign out from all devices?',
                     text: 'You will be signed out on all devices, including this one.',
                     showCancelButton: true,
-                    confirmButtonText: 'Yes, sign out',
-                    cancelButtonText: 'Cancel',
+                    confirmButtonText: '<i class="fas fa-sign-out-alt" aria-hidden="true"></i> Yes, sign out',
+                    cancelButtonText: '<i class="fas fa-times" aria-hidden="true"></i> Cancel',
                     confirmButtonColor: '#e63946',
                     cancelButtonColor: '#6c757d',
                     focusCancel: true,
                     reverseButtons: true,
-                    width: 420
+                    width: 380,
+                    customClass: {
+                        popup: 'can-status-swal can-logout-swal',
+                        icon: 'can-status-swal-icon',
+                        title: 'can-status-swal-title',
+                        htmlContainer: 'can-status-swal-message',
+                        actions: 'can-status-swal-actions',
+                        confirmButton: 'can-status-swal-confirm',
+                        cancelButton: 'can-status-swal-close'
+                    }
                 });
                 confirmed = result.isConfirmed;
             } else {

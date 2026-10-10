@@ -1115,6 +1115,11 @@
     background: #e8eef5 !important;
 }
 
+.swal2-popup.can-logout-swal .can-status-swal-confirm {
+    background: #e63946 !important;
+    box-shadow: 0 7px 16px rgba(230, 57, 70, 0.22) !important;
+}
+
 .swal2-popup.can-status-swal .can-status-swal-confirm i,
 .swal2-popup.can-status-swal .can-status-swal-close i {
     margin-right: 5px;
