@@ -1101,6 +1101,7 @@ if (!Yii::$app->user->isGuest && $userType === 'admin') {
                         <?= Html::beginForm(['site/logout-all-devices'], 'post', [
                             'class' => 'logout-form m-0',
                             'data-confirm-logout-all' => 'true',
+                            'data-no-spinner' => 'true',
                         ]) ?>
                         <?= Html::submitButton('<i class="fas fa-laptop"></i> Sign out from all devices', ['class' => 'btn btn-link logout-button']) ?>
                         <?= Html::endForm() ?>
@@ -1491,13 +1492,4 @@ document.addEventListener('DOMContentLoaded', function() {
 JS;
 
 $this->registerJs($js, yii\web\View::POS_END);
-?>
-
-<?php
-$jsLogout = <<<JS
-    \$(document).on('click', '.logout-form button[type="submit"]', function(e) {
-        \$(this).closest('form').submit();
-    });
-JS;
-$this->registerJs($jsLogout);
 ?>

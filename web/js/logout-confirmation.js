@@ -31,8 +31,9 @@
                 // Conserver une confirmation si le CDN SweetAlert est indisponible.
                 confirmed = window.confirm('Sign out from all devices?');
             }
-            if (confirmed) {
+            if (confirmed === true) {
                 // Soumettre le POST avec son jeton CSRF sans rouvrir la confirmation.
+                if (window.canSpinner) window.canSpinner.show();
                 HTMLFormElement.prototype.submit.call(form);
             }
         } finally {
