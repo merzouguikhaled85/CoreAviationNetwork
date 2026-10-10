@@ -131,16 +131,13 @@ if ($captchaRequired && $loginTurnstileConfigured) {
       ]); ?>
 
       <?php if ($model->hasErrors()): ?>
-        <div class="auth-form-alert" role="alert" aria-live="assertive" tabindex="-1"<?= $captchaError ? ' data-login-captcha-error' : '' ?>>
-          <i class="ri-error-warning-line" aria-hidden="true"></i>
-          <div>
-            <strong>We couldn't sign you in</strong>
-            <?= $form->errorSummary($model, [
-                'header' => '',
-                'class' => 'auth-error-summary',
-            ]) ?>
-          </div>
-        </div>
+        <?= $form->errorSummary($model, array_merge([
+            'header' => '',
+            'class' => 'auth-error-summary',
+            'role' => 'alert',
+            'aria-live' => 'assertive',
+            'tabindex' => '-1',
+        ], $captchaError ? ['data-login-captcha-error' => ''] : [])) ?>
       <?php endif; ?>
 
       <!-- ===== CHAMP USERNAME ===== -->
@@ -339,7 +336,7 @@ $js = <<<JS
   const password = document.getElementById('password');
   const capsWarning = document.getElementById('capsLockWarning');
   const submitButton = document.getElementById('submitBtn');
-  const formAlert = document.querySelector('.auth-form-alert');
+  const formAlert = document.querySelector('.auth-error-summary');
   const supportLink = document.getElementById('loginSupportLink');
 
   window.onLoginTurnstileSuccess = function () {

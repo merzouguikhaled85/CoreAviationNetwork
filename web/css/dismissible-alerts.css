@@ -1,0 +1,38 @@
+/* Croix commune aux messages Bootstrap, avec une zone reservee dans le texte. */
+.alert.can-dismissible-alert {
+    position: relative;
+    padding-right: 48px !important;
+}
+
+.alert.can-dismissible-alert > .can-alert-close {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 30px;
+    height: 30px;
+    margin: 0;
+    padding: 0;
+    border: 0;
+    border-radius: 6px;
+    background: transparent;
+    color: inherit;
+    font-family: inherit;
+    font-size: 24px;
+    line-height: 1;
+    opacity: .65;
+    cursor: pointer;
+}
+
+.alert.can-dismissible-alert > .can-alert-close:hover {
+    background: rgba(0, 0, 0, .06);
+    opacity: 1;
+}
+
+.alert.can-dismissible-alert > .can-alert-close:focus-visible {
+    outline: 2px solid currentColor;
+    outline-offset: 2px;
+    opacity: 1;
+}

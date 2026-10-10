@@ -31,10 +31,12 @@ class AppAsset extends AssetBundle
         // 'css/demo.css',
         // 'css/demo.min.css',
         'css/spur.css',
+        'css/dismissible-alerts.css',
         // 'css/spur.min.css',
     ];
     public $js = [
         'js/can.js',
+        'js/dismissible-alerts.js',
         'js/spur.js',
         'js/chart-js-config.js',
 

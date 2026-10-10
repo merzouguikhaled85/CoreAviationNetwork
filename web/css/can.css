@@ -3267,24 +3267,9 @@ body.login-layout[data-theme="light"] .auth-card::after {
 body.login-layout[data-theme="light"] .auth-eyebrow { color: #1262b3; }
 body.login-layout[data-theme="light"] .auth-subtitle { color: #64748b; }
 
-.auth-form-alert {
-  display: flex;
-  gap: 10px;
-  margin-bottom: 16px;
-  padding: 11px 13px;
-  border: 1px solid rgba(248, 113, 113, 0.52);
-  border-radius: 12px;
-  background: rgba(127, 29, 29, 0.2);
-  color: #fee2e2;
-  font-size: 0.82rem;
-  line-height: 1.4;
-}
-
-.auth-form-alert:focus { outline: 2px solid rgba(248, 113, 113, 0.65); outline-offset: 2px; }
-.auth-form-alert > i { margin-top: 2px; color: #fca5a5; font-size: 1.1rem; }
-.auth-error-summary { margin: 2px 0 0; padding: 0; }
+.auth-error-summary { margin: 0 0 16px; }
+.auth-error-summary:focus { outline: 2px solid rgba(248, 113, 113, 0.65); outline-offset: 2px; }
 .auth-error-summary ul { margin: 0; padding: 0; list-style: none; }
-body.login-layout[data-theme="light"] .auth-form-alert { background: #fff1f2; color: #9f1239; }
 
 .caps-lock-warning {
   display: flex;
