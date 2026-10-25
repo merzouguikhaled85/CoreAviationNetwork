@@ -201,9 +201,9 @@ $this->registerJs($jsFooter);
 
     <div class="social-links">
       <a aria-label="Facebook" href="#"><i class="ri-facebook-circle-line"></i></a>
-      <a aria-label="X" href="#"><i class="ri-twitter-x-line"></i></a>
+      <!-- <a aria-label="X" href="#"><i class="ri-twitter-x-line"></i></a> -->
       <a aria-label="LinkedIn" href="#"><i class="ri-linkedin-box-line"></i></a>
-      <a aria-label="Instagram" href="#"><i class="ri-instagram-line"></i></a>
+      <!-- <a aria-label="Instagram" href="#"><i class="ri-instagram-line"></i></a> -->
     </div>
 
     <div class=" text-center">
