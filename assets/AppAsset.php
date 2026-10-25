@@ -38,7 +38,6 @@ class AppAsset extends AssetBundle
         'js/can.js',
         'js/dismissible-alerts.js',
         'js/spur.js',
-        'js/chart-js-config.js',
 
         // ALERTES HARMONISEES : SweetAlert est chargé avant le module de synchronisation
         // afin que toutes les listes, y compris les demandes disponibles MRO, puissent

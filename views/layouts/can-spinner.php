@@ -206,17 +206,15 @@ $jsSpinner = <<<JS
     });
 
     // Pjax support
-    $(document).on('pjax:send', function() { 
-        showLoader(); 
-    });
-
-    $(document).on('pjax:complete', function() { 
-        hideLoader(); 
-    });
+    if (window.jQuery) {
+        window.jQuery(document).on('pjax:send', showLoader);
+        window.jQuery(document).on('pjax:complete', hideLoader);
+    }
 })();
 JS;
 
-$this->registerJs($jsSpinner);
+// Start the native fallback without waiting for jQuery's ready callbacks.
+$this->registerJs($jsSpinner, \yii\web\View::POS_END);
 ?>
 
 <!-- HTML du Spinner -->

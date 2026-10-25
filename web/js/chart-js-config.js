@@ -5,7 +5,10 @@
  * https://hackerthemes.com
  */
 
-Chart.defaults.global.defaultFontFamily = "'Open Sans', 'sans-serif'";
+// Keep pages usable if the Chart.js CDN is unavailable.
+if (window.Chart && window.Chart.defaults && window.Chart.defaults.global) {
+    window.Chart.defaults.global.defaultFontFamily = "'Open Sans', 'sans-serif'";
+}
 
 window.chartColors = {
     primary: '#3F84FC',

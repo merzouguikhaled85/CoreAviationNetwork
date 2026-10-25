@@ -413,6 +413,15 @@ class SupportController extends Controller
          * les delais courts evitent qu'une panne externe reproduise les blocages SMTP
          * deja observes. En cas d'indisponibilite, aucun ticket non verifie n'est cree.
          */
+        if (!function_exists('curl_init')) {
+            Yii::error('cURL is unavailable for guest support Turnstile validation.', __METHOD__);
+            return [
+                'valid' => false,
+                'status' => 503,
+                'message' => 'Visitor verification is temporarily unavailable. Please try again later.',
+            ];
+        }
+
         $handle = curl_init('https://challenges.cloudflare.com/turnstile/v0/siteverify');
         $curlOptions = [
             CURLOPT_POST => true,
