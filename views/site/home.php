@@ -12,7 +12,7 @@ use yii\widgets\ActiveForm;
 $this->title = 'Core Aviation Network';
 
 $this->registerCssFile(
-    '@web/css/prelaunch.css?v=20260926-1',
+    '@web/css/prelaunch.css?v=20261025-2',
     ['depends' => [\yii\bootstrap5\BootstrapAsset::class]]
 );
 $this->registerJsFile(

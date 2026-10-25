@@ -222,12 +222,18 @@
     color: #a5e7ff;
     font-size: 13px;
     font-weight: 800;
-    animation: early-access-launch-pulse 2.4s ease-in-out infinite;
+    animation: early-access-launch-pulse 1.8s ease-in-out infinite;
 }
 
 @keyframes early-access-launch-pulse {
-    0%, 100% { opacity: 1; }
-    50% { opacity: .65; }
+    0%, 100% {
+        opacity: 1;
+        box-shadow: 0 0 16px rgba(98, 210, 255, .4);
+    }
+    50% {
+        opacity: .3;
+        box-shadow: 0 0 0 rgba(98, 210, 255, 0);
+    }
 }
 
 @media (prefers-reduced-motion: reduce) {
