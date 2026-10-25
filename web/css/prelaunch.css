@@ -55,6 +55,21 @@
     line-height: .98;
 }
 
+.early-access-launch-date {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    margin: 22px 0 0;
+    padding: 12px 18px;
+    border: 1px solid rgba(99, 212, 255, .4);
+    border-radius: 12px;
+    background: rgba(99, 212, 255, .1);
+    color: #a5e7ff;
+    font-size: clamp(20px, 3vw, 28px);
+    font-weight: 800;
+    line-height: 1.3;
+}
+
 .early-access-lead {
     max-width: 520px;
     margin: 24px 0 30px;

@@ -2888,10 +2888,14 @@ CSS
       <div class="early-access-shell">
         <div class="early-access-copy">
           <p class="early-access-eyebrow"><i class="ri-radar-line" aria-hidden="true"></i> Early access</p>
-          <h2 id="early-access-title">Launching Soon</h2>
+          <h2 id="early-access-title">Official Launch</h2>
+          <p class="early-access-launch-date">
+            <i class="ri-calendar-check-line" aria-hidden="true"></i>
+            <time datetime="2027-01-04">4 January 2027</time>
+          </p>
           <p class="early-access-lead">
             Be among the first aviation professionals to join Core Aviation Network.
-            We&apos;ll notify you when CAN goes live.
+            CAN officially goes live on 4 January 2027. Join the early access list for launch updates and priority onboarding.
           </p>
 
           <div class="early-access-benefits" aria-label="Early access benefits">
