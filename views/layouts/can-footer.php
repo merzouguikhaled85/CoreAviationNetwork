@@ -208,7 +208,8 @@ $this->registerJs($jsFooter);
 
     <div class=" text-center">
       <p>📧 <a href="mailto:support@coreaviationnetwork.com">support@coreaviationnetwork.com</a></p>
-      <p>☎️ <a href="tel:+441234567890">+447 824 388 362</a></p>
+      <p>☎️ <a href="tel:+447824388362">+447 824 388 362</a></p>
+      <p><i class="ri-whatsapp-line" aria-hidden="true"></i> <a href="https://wa.me/447824388362" target="_blank" rel="noopener noreferrer">WhatsApp : +447 824 388 362</a></p>
     </div>
 
     <address class=" text-center">
