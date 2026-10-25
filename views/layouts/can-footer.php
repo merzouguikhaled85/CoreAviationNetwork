@@ -216,12 +216,12 @@ $this->registerJs($jsFooter);
       Registered in England and Wales · Company No. 15789027
     </address>
 
-    <ul class="legal-links">
+    <!-- <ul class="legal-links">
       <li><a href="<?= \yii\helpers\Url::to(['site/terms']) ?>">Terms (MRO)</a></li>
       <li><a href="<?= \yii\helpers\Url::to(['site/terms']) ?>">Terms (Aircraft Operators)</a></li>
       <li><a href="<?= \yii\helpers\Url::to(['site/privacy-policy']) ?>">Privacy Policy</a></li>
       <li><a href="<?= \yii\helpers\Url::to(['site/cookie-policy']) ?>">Cookie Policy</a></li>
-    </ul>
+    </ul> -->
 
     <p class="small">
       © <?= date('Y') ?> <strong>Core Aviation Network</strong>. All Rights Reserved.
