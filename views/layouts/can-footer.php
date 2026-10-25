@@ -212,7 +212,7 @@ $this->registerJs($jsFooter);
     </div>
 
     <address class=" text-center">
-      5 Stavedown Road, South Wanston, Winchester, SO21 3HA – United Kingdom<br>
+      Stavedown Road, South Wanston, Winchester, SO21 3HA – United Kingdom<br>
       Registered in England and Wales · Company No. 15789027
     </address>
 
