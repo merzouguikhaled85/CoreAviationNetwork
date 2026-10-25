@@ -212,6 +212,28 @@
     line-height: 1.45;
 }
 
+.early-access-form-header .early-access-form-launch {
+    display: inline-block;
+    margin-top: 12px;
+    padding: 7px 11px;
+    border: 1px solid rgba(98, 210, 255, .45);
+    border-radius: 8px;
+    background: rgba(98, 210, 255, .12);
+    color: #a5e7ff;
+    font-size: 13px;
+    font-weight: 800;
+    animation: early-access-launch-pulse 2.4s ease-in-out infinite;
+}
+
+@keyframes early-access-launch-pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: .65; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .early-access-form-header .early-access-form-launch { animation: none; }
+}
+
 .early-access-form-trust {
     display: grid;
     grid-template-columns: repeat(3, 1fr);

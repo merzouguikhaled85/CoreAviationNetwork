@@ -2945,6 +2945,7 @@ CSS
               <p>Private launch list</p>
               <h3>Register for go live</h3>
               <span>Complete the form and confirm your business email.</span>
+              <span class="early-access-form-launch">Official launch: <time datetime="2027-01-04">4 January 2027</time></span>
             </div>
           </header>
 
