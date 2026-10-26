@@ -201,7 +201,17 @@ $jsSpinner = <<<JS
     }
 
     // Show when leaving the page
+    // External contact links open another application without loading a site page.
+    var contactLinkNavigation = false;
+    document.addEventListener('click', function(event) {
+        var link = event.target.closest ? event.target.closest('a[href]') : null;
+        contactLinkNavigation = !!(link && /^(mailto|tel):/i.test(link.getAttribute('href').trim()));
+    }, true);
+    document.addEventListener('submit', function() {
+        contactLinkNavigation = false;
+    }, true);
     window.addEventListener('beforeunload', function() {
+        if (contactLinkNavigation) return;
         showLoader();
     });
 

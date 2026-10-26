@@ -787,9 +787,13 @@ $this->registerCss(<<<CSS
 }
 
 .home-hero-title{
+    display:flex;
+    flex-wrap:nowrap;
+    gap:.2em;
+    white-space:nowrap;
     margin:0;
     max-width:480px;
-    font-size:clamp(34px, 3.1vw, 46px);
+    font-size:clamp(28px, 2.8vw, 40px);
     font-weight:850;
     letter-spacing:-.04em;
     line-height:1.02;
@@ -798,7 +802,7 @@ $this->registerCss(<<<CSS
 .home-hero-title > span:first-child{
     display:block;
     white-space:nowrap;
-    font-size:clamp(30px, 2.8vw, 43px);
+    font-size:inherit;
 }
 
 .home-hero-title [data-hero-highlight]{
@@ -1240,7 +1244,7 @@ $this->registerCss(<<<CSS
         overflow:hidden;
         background:linear-gradient(135deg, rgba(5,20,39,.68), rgba(13,50,97,.44));
     }
-    .home-hero-title{font-size:clamp(30px, 9vw, 39px);}
+    .home-hero-title{font-size:clamp(24px, 5vw, 36px);}
     .home-hero-actions{gap:8px;}
     .home-hero-action{flex:1 1 145px;}
     .slider-nav{display:none;}
@@ -1254,8 +1258,7 @@ $this->registerCss(<<<CSS
      * une seule colonne garantit que les deux libelles et leurs icones restent
      * visibles, y compris avec une langue plus longue ou un zoom navigateur.
      */
-    .home-hero-title{font-size:clamp(28px, 8.5vw, 35px); overflow-wrap:anywhere;}
-    .home-hero-title > span:first-child{font-size:clamp(23px, 7.4vw, 32px);}
+    .home-hero-title{font-size:clamp(16px, 5vw, 28px);}
     .home-hero-text{overflow-wrap:anywhere;}
     .home-hero-actions{display:grid; grid-template-columns:1fr;}
     .home-hero-action{width:100%; box-sizing:border-box;}
@@ -1475,8 +1478,8 @@ $this->registerCss(<<<CSS
     grid-template-columns:minmax(0, 50%) minmax(360px, 50%);
     gap:clamp(20px, 2.2vw, 34px);
     align-items:stretch;
-    height:clamp(520px, calc(100svh - 190px), 600px);
-    min-height:0;
+    height:auto;
+    min-height:clamp(520px, calc(100svh - 190px), 600px);
 }
 
 .about .about-copy-column{
@@ -1490,7 +1493,7 @@ $this->registerCss(<<<CSS
 
 .about .about-copy-inner{
     width:100%;
-    height:100%;
+    min-height:100%;
     display:flex;
     flex-direction:column;
 }
@@ -2219,13 +2222,12 @@ CSS
     -->
     <div class="home-hero-message">
       <div class="home-hero-panel" aria-live="polite">
-        <p class="home-hero-kicker">Aircraft maintenance coordination</p>
         <h1 class="home-hero-title" id="home-hero-title">
-          <span>Aircraft Maintenance.</span>
-          <span data-hero-highlight>One Network. One Workflow.</span>
+          <span>One World,</span>
+          <span data-hero-highlight>One Network.</span>
         </h1>
-        <p class="home-hero-text">Connect aircraft operators and CAMOs with relevant MRO capabilities—from request and quotation to work completion.</p>
-        <p class="home-hero-proof">One request. One history. Full traceability.</p>
+        <p class="home-hero-text">Connect aircraft operators and CAMOs with relevant MRO capabilities—from request and quotation to work completion and CRS.</p>
+        <p class="home-hero-proof">Request to Release, full traceability.</p>
         <div class="home-hero-actions">
           <?= Html::a(
               '<i class="' . Html::encode($heroPrimaryIcon) . '"></i><span>' . Html::encode($heroPrimaryLabel) . '</span>',
@@ -2439,8 +2441,8 @@ CSS
     <div class="container">
       <header class="home-section-heading">
         <p class="home-section-eyebrow">Who CAN is for</p>
-        <h2 id="network-audience-title">Two sides. One controlled maintenance network.</h2>
-        <p>Core Aviation Network connects operational demand with relevant maintenance capabilities while keeping every exchange attached to the same request.</p>
+        <h2 id="network-audience-title">One controlled maintenance network.</h2>
+        <p>Core Aviation Network connects aviation demand with maintenance capability, providing a single place to manage enquiries, responses and opportunities from start to finish.</p>
       </header>
 
       <div class="audience-network-grid">
@@ -2457,7 +2459,7 @@ CSS
           <div class="audience-card-divider" aria-hidden="true"><span>What you can do</span></div>
           <ul class="audience-benefits">
             <li><i class="ri-arrow-right-line" aria-hidden="true"></i> Submit structured maintenance requests</li>
-            <li><i class="ri-arrow-right-line" aria-hidden="true"></i> Compare relevant MRO quotations</li>
+            <li><i class="ri-arrow-right-line" aria-hidden="true"></i> Compare quotes, capability, availability and turnaround times.</li>
             <li><i class="ri-arrow-right-line" aria-hidden="true"></i> Track documents, decisions and progress</li>
           </ul>
         </article>
@@ -2472,11 +2474,11 @@ CSS
             <span class="audience-card-icon" aria-hidden="true"><i class="ri-building-2-line"></i></span>
             <h3>For MROs</h3>
           </div>
-          <p class="audience-card-summary">Receive requests aligned with your maintenance capabilities and manage commercial and operational responses in one place.</p>
+          <p class="audience-card-summary">Connect with operators seeking your capabilities and manage the entire response process from enquiry to release.</p>
           <div class="audience-card-divider" aria-hidden="true"><span>What you can do</span></div>
           <ul class="audience-benefits">
             <li><i class="ri-arrow-right-line" aria-hidden="true"></i> Review relevant maintenance opportunities</li>
-            <li><i class="ri-arrow-right-line" aria-hidden="true"></i> Prepare controlled quotations</li>
+            <li><i class="ri-arrow-right-line" aria-hidden="true"></i> Submit quotations with availability and turnaround times</li>
             <li><i class="ri-arrow-right-line" aria-hidden="true"></i> Coordinate work, reports and CRS records</li>
           </ul>
         </article>
@@ -2503,12 +2505,13 @@ CSS
             </div>
             <div class="about-teaser-copy">
               <p class="about-teaser-eyebrow">About Core Aviation Network</p>
-              <h2 id="about-title" class="about-teaser-title">A controlled environment for aircraft maintenance.</h2>
-              <p class="about-teaser-summary">CAN connects operational demand with relevant maintenance capability while keeping each exchange attached to the same request.</p>
+              <h2 id="about-title" class="about-teaser-title">Connecting the aviation maintenance industry.</h2>
+              <p class="about-teaser-summary">Core Aviation Network brings Aircraft Operators, CAMOs and MRO providers together in one professional platform built specifically for maintenance sourcing and collaboration.</p>
+              <p class="about-teaser-summary">Whether you're searching for maintenance support or looking to secure new business opportunities, CAN helps you connect with the right organisations, compare options with confidence and manage every opportunity from enquiry to aircraft release.</p>
               <ul class="about-teaser-benefits">
-                <li><i class="ri-arrow-right-line" aria-hidden="true"></i> Relevant maintenance connections</li>
-                <li><i class="ri-arrow-right-line" aria-hidden="true"></i> One structured workflow</li>
-                <li><i class="ri-arrow-right-line" aria-hidden="true"></i> Traceable decisions and records</li>
+                <li><i class="ri-arrow-right-line" aria-hidden="true"></i> Built for aviation.</li>
+                <li><i class="ri-arrow-right-line" aria-hidden="true"></i> Designed for efficiency.</li>
+                <li><i class="ri-arrow-right-line" aria-hidden="true"></i> Powered by collaboration</li>
               </ul>
               <a class="about-teaser-link" href="<?= Url::to(['/site/about']) ?>">
                 <span>Discover Core Aviation Network</span>
@@ -2888,14 +2891,13 @@ CSS
       <div class="early-access-shell">
         <div class="early-access-copy">
           <p class="early-access-eyebrow"><i class="ri-radar-line" aria-hidden="true"></i> Early access</p>
-          <h2 id="early-access-title">Official Launch</h2>
+          <h2 id="early-access-title">Planned Launch</h2>
           <p class="early-access-launch-date">
             <i class="ri-calendar-check-line" aria-hidden="true"></i>
             <time datetime="2027-01-04">4 January 2027</time>
           </p>
           <p class="early-access-lead">
-            Be among the first aviation professionals to join Core Aviation Network.
-            CAN officially goes live on 4 January 2027. Join the early access list for launch updates and priority onboarding.
+            The estimated launch date for Core Aviation Network is 4 January 2027, but access may become available earlier as the platform is introduced to founding members. Register your interest now to receive launch updates, priority onboarding and the opportunity to join the network before public rollout.
           </p>
 
           <div class="early-access-benefits" aria-label="Early access benefits">
@@ -2945,7 +2947,7 @@ CSS
               <p>Private launch list</p>
               <h3>Register for go live</h3>
               <span>Complete the form and confirm your business email.</span>
-              <span class="early-access-form-launch">Official launch: <time datetime="2027-01-04">4 January 2027</time></span>
+              <span class="early-access-form-launch">Estimated launch date: <time datetime="2027-01-04">4 January 2027</time></span>
             </div>
           </header>
 

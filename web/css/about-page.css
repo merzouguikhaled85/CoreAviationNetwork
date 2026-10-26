@@ -169,12 +169,16 @@
     margin-bottom: 40px;
 }
 
-.can-about-heading p:last-child {
+.can-about-heading p:not(.can-about-kicker) {
     max-width: 660px;
     margin: 18px 0 0;
     color: var(--about-muted);
     font-size: 16px;
     line-height: 1.72;
+}
+
+.can-about-heading .keep-together {
+    white-space: nowrap;
 }
 
 .can-about-audiences {

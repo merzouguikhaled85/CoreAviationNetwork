@@ -49,7 +49,8 @@
 .early-access-copy h2 {
     margin: 0;
     color: #fff;
-    font-size: clamp(42px, 6vw, 72px);
+    font-size: clamp(28px, 3.6vw, 52px);
+    white-space: nowrap;
     font-weight: 900;
     letter-spacing: -.045em;
     line-height: .98;
@@ -430,7 +431,7 @@
     .early-access-form-trust span:last-child { border-bottom: 0; }
     .early-access-network-preview { grid-template-columns: 1fr; gap: 10px; }
     .early-access-network-link { justify-content: center; transform: rotate(90deg); }
-    .early-access-copy h2 { font-size: clamp(38px, 13vw, 52px); }
+    .early-access-copy h2 { font-size: clamp(28px, 8vw, 44px); }
     .early-access-turnstile { overflow-x: auto; }
 }
 

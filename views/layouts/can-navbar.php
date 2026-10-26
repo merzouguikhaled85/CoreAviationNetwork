@@ -42,7 +42,7 @@ if (!$isGuest && Yii::$app->user->identity !== null) {
       </a>
       <div>
         <div class="logo-text-main">Core Aviation Network</div>
-        <div class="logo-text-sub">Aircraft Services Network</div>
+        <div class="logo-text-sub">AVIATION SERVICES NETWORK</div>
       </div>
     </div>
 
