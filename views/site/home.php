@@ -737,14 +737,15 @@ $this->registerCss(<<<CSS
     z-index:15;
     top:50%;
     left:clamp(34px, 5vw, 88px);
-    width:min(560px, calc(100% - 120px));
+    width:min(760px, calc(100% - 144px));
     transform:translateY(-50%);
     color:#fff;
 }
 
-/* HERO GLASS 2026: smaller translucent panel so the aircraft remains visible. */
+/* Spacious hero panel with fluid typography and wrapping content. */
 .home-hero-panel{
-    padding:clamp(20px, 2.3vw, 29px);
+    box-sizing:border-box;
+    padding:clamp(28px, 3vw, 46px);
     border:1px solid rgba(255,255,255,.30);
     border-radius:20px;
     background:linear-gradient(135deg, rgba(5,20,39,.62), rgba(13,50,97,.38));
@@ -788,20 +789,21 @@ $this->registerCss(<<<CSS
 
 .home-hero-title{
     display:flex;
-    flex-wrap:nowrap;
-    gap:.2em;
-    white-space:nowrap;
+    flex-wrap:wrap;
+    gap:0 .2em;
+    overflow-wrap:anywhere;
+    white-space:normal;
     margin:0;
-    max-width:480px;
-    font-size:clamp(28px, 2.8vw, 40px);
+    max-width:100%;
+    font-size:clamp(36px, 3.2vw, 56px);
     font-weight:850;
     letter-spacing:-.04em;
-    line-height:1.02;
+    line-height:1.1;
 }
 
 .home-hero-title > span:first-child{
     display:block;
-    white-space:nowrap;
+    white-space:normal;
     font-size:inherit;
 }
 
@@ -811,12 +813,12 @@ $this->registerCss(<<<CSS
 }
 
 .home-hero-text{
-    max-width:450px;
-    margin:12px 0 0;
+    max-width:60ch;
+    margin:20px 0 0;
     color:#dbeafe;
-    font-size:clamp(13px, 1.1vw, 15px);
+    font-size:clamp(16px, 1.2vw, 19px);
     font-weight:600;
-    line-height:1.5;
+    line-height:1.6;
 }
 
 
@@ -825,13 +827,14 @@ $this->registerCss(<<<CSS
     display:inline-flex;
     align-items:center;
     gap:8px;
-    margin:13px 0 0;
+    margin:20px 0 0;
     color:#e0f2fe;
-    font-size:11px;
+    font-size:13px;
     font-weight:800;
     letter-spacing:.04em;
 }
 .home-hero-proof::before{
+    flex-shrink:0;
     width:7px;
     height:7px;
     border-radius:50%;
@@ -843,20 +846,20 @@ $this->registerCss(<<<CSS
     display:flex;
     flex-wrap:wrap;
     gap:9px;
-    margin-top:17px;
+    margin-top:26px;
 }
 
 .home-hero-action{
-    min-height:44px;
+    min-height:50px;
     display:inline-flex;
     align-items:center;
     justify-content:center;
     gap:7px;
     border:1px solid rgba(255,255,255,.34);
     border-radius:10px;
-    padding:10px 16px;
+    padding:13px 22px;
     color:#fff !important;
-    font-size:12.5px;
+    font-size:15px;
     font-weight:800;
     text-decoration:none !important;
     transition:transform .2s ease, background .2s ease, box-shadow .2s ease;
@@ -1226,25 +1229,36 @@ $this->registerCss(<<<CSS
      * minimale provenant de la navigation ne puisse plus pousser la carte hors
      * de l'ecran. Le contenu reste lisible sans defilement horizontal.
      */
-    .hero-slider{height:100vh; height:100svh; min-height:540px;}
+    .hero-slider{
+        display:flex;
+        align-items:center;
+        height:auto;
+        min-height:100vh;
+        min-height:100svh;
+        box-sizing:border-box;
+        padding:120px 24px 80px;
+    }
     .hero-scene-video{display:none;}
     .hero-video-fallback{display:block;}
     .slide.active .hero-scene-image{animation:none !important; transform:none !important;}
     .home-hero-message{
-        left:50%;
+        position:relative;
+        top:auto;
+        left:auto;
         right:auto;
-        width:min(420px, calc(100vw - 32px));
-        max-width:none;
-        transform:translate(-50%, -50%);
+        width:min(600px, 100%);
+        min-width:0;
+        margin-inline:auto;
+        transform:none;
     }
     .home-hero-panel{
         width:100%;
         box-sizing:border-box;
-        padding:18px 17px;
+        padding:clamp(24px, 5vw, 36px);
         overflow:hidden;
         background:linear-gradient(135deg, rgba(5,20,39,.68), rgba(13,50,97,.44));
     }
-    .home-hero-title{font-size:clamp(24px, 5vw, 36px);}
+    .home-hero-title{font-size:clamp(34px, 5.5vw, 44px);}
     .home-hero-actions{gap:8px;}
     .home-hero-action{flex:1 1 145px;}
     .slider-nav{display:none;}
@@ -1258,7 +1272,8 @@ $this->registerCss(<<<CSS
      * une seule colonne garantit que les deux libelles et leurs icones restent
      * visibles, y compris avec une langue plus longue ou un zoom navigateur.
      */
-    .home-hero-title{font-size:clamp(16px, 5vw, 28px);}
+    .hero-slider{padding:112px 16px 72px;}
+    .home-hero-title{font-size:clamp(30px, 7.5vw, 40px);}
     .home-hero-text{overflow-wrap:anywhere;}
     .home-hero-actions{display:grid; grid-template-columns:1fr;}
     .home-hero-action{width:100%; box-sizing:border-box;}
@@ -2985,7 +3000,7 @@ CSS
                 'maxlength' => true,
                 'autocomplete' => 'url',
                 'inputmode' => 'url',
-                'placeholder' => 'https://company.com',
+                'placeholder' => 'www.company.com',
             ])->label('Company Website <span>Optional</span>', ['encode' => false]) ?>
             <?= $earlyAccessForm->field($prelaunchSubscriber, 'company_type')->dropDownList(
                 PrelaunchSubscriber::companyTypeOptions(),

@@ -72,6 +72,7 @@ class PrelaunchSubscriber extends ActiveRecord
                 ['company_website'],
                 'url',
                 'validSchemes' => ['http', 'https'],
+                'defaultScheme' => 'https',
                 'skipOnEmpty' => true,
             ],
             [['company_type'], 'in', 'range' => array_keys(self::companyTypeOptions())],
