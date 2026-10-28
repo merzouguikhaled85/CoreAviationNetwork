@@ -53,7 +53,7 @@ $attachmentDisplayName = $ticket->attachment_path
         <article><span>Status</span><strong><?= Html::encode(SupportTicket::statusOptions()[$ticket->status] ?? $ticket->status) ?></strong></article>
         <article><span>Priority</span><strong class="<?= $ticket->priority === 'urgent' ? 'urgent-text' : '' ?>"><?= Html::encode(SupportTicket::priorityOptions()[$ticket->priority] ?? $ticket->priority) ?></strong></article>
         <article><span>Category</span><strong><?= Html::encode(SupportTicket::categoryOptions()[$ticket->category] ?? $ticket->category) ?></strong></article>
-        <article><span>Submitted</span><strong><?= Yii::$app->formatter->asDatetime($ticket->created_at, 'php:d M Y H:i') ?></strong></article>
+        <article><span>Submitted (UTC)</span><strong><?= Html::encode($ticket->submittedAtUtc) ?></strong></article>
     </section>
 
     <div class="ticket-layout">
@@ -116,7 +116,7 @@ $attachmentDisplayName = $ticket->attachment_path
             <section class="ticket-panel">
                 <header><i class="fas fa-history"></i><h2>Activity history</h2></header>
                 <div class="ticket-timeline">
-                    <article><span class="timeline-dot"><i class="fas fa-plus"></i></span><div><strong>Ticket created</strong><p>Submitted by <?= Html::encode($ticket->name) ?>.</p><time><?= Yii::$app->formatter->asDatetime($ticket->created_at, 'php:d M Y H:i') ?></time></div></article>
+                    <article><span class="timeline-dot"><i class="fas fa-plus"></i></span><div><strong>Ticket created</strong><p>Submitted by <?= Html::encode($ticket->name) ?>.</p><time><?= Html::encode($ticket->submittedAtUtc) ?></time></div></article>
                     <?php foreach ($history as $event): ?>
                         <article><span class="timeline-dot"><i class="fas fa-pen"></i></span><div>
                             <strong><?= Html::encode($adminName($event->admin)) ?></strong>

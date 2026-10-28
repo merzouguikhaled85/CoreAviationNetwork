@@ -119,6 +119,7 @@ CSS);
 $supportWidget = $this->render('_support-widget');
 ?>
 
+<?php $this->render('_favicon'); ?>
 <?php $this->beginPage() ?>
 <!DOCTYPE html>
 <html lang="<?= Yii::$app->language ?>" class="h-100">

@@ -56,8 +56,7 @@ class AdminSupportTicketsController extends Controller
     }
 
     /**
-     * Liste filtrable. Les urgences arrivent avant les priorites normales, puis
-     * les tickets les plus anciens afin de limiter l'attente operationnelle.
+     * Liste filtrable, du ticket le plus recent au plus ancien.
      */
     public function actionIndex()
     {
@@ -80,6 +79,7 @@ class AdminSupportTicketsController extends Controller
 
         $query = SupportTicket::find()
             ->alias('ticket')
+            ->select(['ticket.*', 'submitted_at_unix' => new Expression('UNIX_TIMESTAMP(ticket.created_at)')])
             ->with('assignedAdmin');
 
         if ($search !== '') {
@@ -113,17 +113,11 @@ class AdminSupportTicketsController extends Controller
             $query->andWhere(['ticket.assigned_admin_id' => (int) $assignedAdminId]);
         }
 
-        /*
-         * ORDONNANCEMENT OPERATIONNEL : l'expression SQL unique evite d'utiliser un
-         * objet Expression comme cle de tableau PHP. Les urgences et les tickets actifs
-         * restent prioritaires, puis l'anciennete garantit un traitement equitable.
-         */
-        $query->orderBy(new Expression(
-            "CASE WHEN ticket.priority = 'urgent' THEN 0 ELSE 1 END ASC, "
-            . "CASE ticket.status WHEN 'new' THEN 0 WHEN 'in_progress' THEN 1 "
-            . "WHEN 'waiting_user' THEN 2 WHEN 'resolved' THEN 3 ELSE 4 END ASC, "
-            . 'ticket.created_at ASC, ticket.id ASC'
-        ));
+        // Newest tickets first; ID makes pagination stable for matching timestamps.
+        $query->orderBy([
+            'ticket.created_at' => SORT_DESC,
+            'ticket.id' => SORT_DESC,
+        ]);
 
         $pagination = new Pagination([
             'totalCount' => (clone $query)->count(),
@@ -450,7 +444,10 @@ class AdminSupportTicketsController extends Controller
     private function findTicket($encodedId)
     {
         $id = UrlIdHelper::decodeOrFail($encodedId, 'Invalid support ticket link.');
-        $ticket = SupportTicket::find()->with('assignedAdmin')->where(['id' => $id])->one();
+        $ticket = SupportTicket::find()
+            ->alias('ticket')
+            ->select(['ticket.*', 'submitted_at_unix' => new Expression('UNIX_TIMESTAMP(ticket.created_at)')])
+            ->with('assignedAdmin')->where(['ticket.id' => $id])->one();
         if ($ticket === null) {
             throw new NotFoundHttpException('Support ticket not found.');
         }

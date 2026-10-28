@@ -14,6 +14,7 @@ AppAsset::register($this); // charge CSS / JS global (dont Bootstrap)
  */
 $supportWidget = $this->render('_support-widget');
 ?>
+<?php $this->render('_favicon'); ?>
 <?php $this->beginPage() ?>
 <!DOCTYPE html>
 <html lang="<?= Yii::$app->language ?>">

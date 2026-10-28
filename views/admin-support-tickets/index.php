@@ -75,7 +75,7 @@ $lastTicket = min((int) $pagination->offset + count($tickets), $totalTickets);
     <section class="support-table-card">
         <div class="support-table-scroll">
             <table class="support-ticket-table">
-                <thead><tr><th>Ticket</th><th>Submitted</th><th>Sender</th><th>Category</th><th>Priority</th><th>Status</th><th>Assigned to</th><th>Email delivery</th><th>Actions</th></tr></thead>
+                <thead><tr><th>Ticket</th><th>Submitted (UTC)</th><th>Sender</th><th>Category</th><th>Priority</th><th>Status</th><th>Assigned to</th><th>Email delivery</th><th>Actions</th></tr></thead>
                 <tbody>
                 <?php if (empty($tickets)): ?>
                     <tr><td class="support-empty" colspan="9"><i class="fas fa-inbox"></i><span>No support tickets found.</span></td></tr>
@@ -91,7 +91,7 @@ $lastTicket = min((int) $pagination->offset + count($tickets), $totalTickets);
                     ?>
                     <tr class="<?= $ticket->priority === 'urgent' ? 'urgent-row' : '' ?>">
                         <td><a class="ticket-reference" href="<?= Url::to(['admin-support-tickets/view', 'id' => $encodedId]) ?>"><?= Html::encode($ticket->publicReference) ?></a><small title="<?= Html::encode($ticket->subject) ?>"><?= Html::encode($ticket->subject) ?></small></td>
-                        <td class="nowrap"><?= Yii::$app->formatter->asDatetime($ticket->created_at, 'php:d M Y H:i') ?></td>
+                        <td class="nowrap"><?= Html::encode($ticket->submittedAtUtc) ?></td>
                         <td><span><?= Html::encode($ticket->name) ?></span><small><?= Html::encode($ticket->email) ?></small></td>
                         <td><span class="category"><i class="fas fa-tag"></i><?= Html::encode(SupportTicket::categoryOptions()[$ticket->category] ?? $ticket->category) ?></span></td>
                         <td><span class="priority <?= $ticket->priority === 'urgent' ? 'urgent' : '' ?>"><i class="fas <?= $ticket->priority === 'urgent' ? 'fa-bolt' : 'fa-minus' ?>"></i><?= Html::encode(SupportTicket::priorityOptions()[$ticket->priority] ?? $ticket->priority) ?></span></td>

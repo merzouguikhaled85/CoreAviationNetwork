@@ -11,11 +11,7 @@ $this->registerMetaTag([
     'content' => 'width=device-width, initial-scale=1, viewport-fit=cover',
 ]);
 $this->registerMetaTag(['name' => 'robots', 'content' => 'noindex, nofollow']);
-$this->registerLinkTag([
-    'rel' => 'icon',
-    'type' => 'image/x-icon',
-    'href' => Yii::getAlias('@web/favicon.ico'),
-]);
+$this->render('_favicon');
 ?>
 <?php $this->beginPage() ?>
 <!DOCTYPE html>

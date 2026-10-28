@@ -12,6 +12,17 @@ use yii\db\ActiveRecord;
  */
 class SupportTicket extends ActiveRecord
 {
+    /** @var int|string|null Absolute submission time selected by MySQL. */
+    public $submitted_at_unix;
+
+    /** Display TIMESTAMP values in UTC independently of PHP/MySQL session zones. */
+    public function getSubmittedAtUtc()
+    {
+        return $this->submitted_at_unix === null
+            ? '—'
+            : gmdate('d M Y H:i', (int) $this->submitted_at_unix) . ' UTC';
+    }
+
     /** @var \yii\web\UploadedFile|null Fichier temporaire recu du formulaire. */
     public $attachment;
 
