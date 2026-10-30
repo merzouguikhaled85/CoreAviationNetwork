@@ -17,6 +17,15 @@ $this->registerCssFile(
     ['depends' => [\yii\bootstrap5\BootstrapAsset::class]]
 );
 
+$this->registerCss(<<<'CSS'
+.prelaunch-stat-card > span:last-child{
+    white-space:normal;
+    overflow-wrap:anywhere;
+    line-height:1.4;
+}
+CSS
+);
+
 $subscriptionClass = static function ($status) {
     return [
         PrelaunchSubscriber::STATUS_PENDING_CONFIRMATION => 'pending',
@@ -64,7 +73,7 @@ $exportUrl = Url::to(array_merge(
         <?php foreach ([
             ['Total registrations', $stats['total'], 'fa-users', 'blue'],
             ['MRO', $stats['mro'], 'fa-wrench', 'cyan'],
-            ['Aircraft Operators', $stats['aircraft_operator'], 'fa-plane', 'violet'],
+            [PrelaunchSubscriber::companyTypeOptions()[PrelaunchSubscriber::TYPE_AIRCRAFT_OPERATOR], $stats['aircraft_operator'], 'fa-plane', 'violet'],
             ['Confirmed', $stats['confirmed'], 'fa-user-check', 'green'],
             ['Pending', $stats['pending'], 'fa-hourglass-half', 'amber'],
             ['Delivery failed', $stats['delivery_failed'], 'fa-exclamation-triangle', 'red'],
