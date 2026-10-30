@@ -611,6 +611,7 @@ $renderAwaitingRow = function ($repairReport, $statusLabel) {
                             'class' => 'action-btn btn-notify',
                             'title' => 'Notify AO',
                             'data-bs-toggle' => 'tooltip',
+                            'data' => ['method' => 'post'],
                         ]
                     ) ?>
 
@@ -622,6 +623,7 @@ $renderAwaitingRow = function ($repairReport, $statusLabel) {
                             'class' => 'action-btn btn-notify',
                             'title' => 'Notify MRO',
                             'data-bs-toggle' => 'tooltip',
+                            'data' => ['method' => 'post'],
                         ]
                     ) ?>
 

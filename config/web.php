@@ -341,16 +341,16 @@ $config = [
                 'aircrafts/create' => 'aircrafts/create',
 
                 'mro-profile/index' => 'mro-profile/index',
-                'mro-profile/view/<id:\d+>' => 'mro-profile/view',
+                'mro-profile/view/<id:[A-Za-z0-9]+>' => 'mro-profile/view',
                 'mro-profile/create' => 'mro-profile/create',
-                'mro-profile/update/<id:\d+>' => 'mro-profile/update',
+                'mro-profile/update/<id:[A-Za-z0-9]+>' => 'mro-profile/update',
                 'mro-profile/delete/<id:\d+>' => 'mro-profile/delete',
 
                 // Route patterns for AO profiles
                 'ao-profile' => 'ao-profile/index',
                 'ao-profile/create' => 'ao-profile/create',
-                'ao-profile/update/<id:\d+>' => 'ao-profile/update',
-                'ao-profile/view/<id:\d+>' => 'ao-profile/view',
+                'ao-profile/update/<id:[A-Za-z0-9]+>' => 'ao-profile/update',
+                'ao-profile/view/<id:[A-Za-z0-9]+>' => 'ao-profile/view',
                 'ao-profile/delete/<id:\d+>' => 'ao-profile/delete',
                 
                 'advert' => 'advert/index',

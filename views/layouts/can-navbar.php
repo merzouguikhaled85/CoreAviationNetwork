@@ -58,16 +58,6 @@ if (!$isGuest && Yii::$app->user->identity !== null) {
       <a href="<?= Url::to(['/site/index', '#' => 'early-access']) ?>">
         <i class="ri-flight-takeoff-line"></i> Early Access
       </a>
-  <?php else: ?>
-      <a href="<?= Url::to(['/site/become-mro']) ?>"
-         class="<?= $navActive('site/become-mro') ?>">
-        <i class="ri-building-2-line"></i> MRO Signup
-      </a>
-
-      <a href="<?= Url::to(['/site/become-ao']) ?>"
-         class="<?= $navActive('site/become-ao') ?>">
-        <i class="ri-plane-line"></i> Operator Signup
-      </a>
   <?php endif; ?>
 <?php endif; ?>
       <a href="<?= Url::to(['/site/about']) ?>"
@@ -106,8 +96,13 @@ if (!$isGuest && Yii::$app->user->identity !== null) {
       <?php if ($isGuest): ?>
         <a class="btn-login <?= $navActive('site/login') ?>"
            href="<?= Url::to(['/site/login']) ?>">
-          <i class="ri-login-box-line"></i> Login
+          <i class="ri-login-box-line" aria-hidden="true"></i> Sign In
         </a>
+        <?php if (!$prelaunchMode): ?>
+        <button type="button" class="btn-register-now" data-registration-open aria-haspopup="dialog" aria-controls="canRegistrationDialog">
+          <span>Register Now</span><i class="ri-arrow-right-line" aria-hidden="true"></i>
+        </button>
+        <?php endif; ?>
       <?php else: ?>
         <!-- Menu user avec dropdown -->
         <div class="user-menu">
@@ -165,16 +160,6 @@ if (!$isGuest && Yii::$app->user->identity !== null) {
     <a href="<?= Url::to(['/site/index', '#' => 'early-access']) ?>">
       <i class="ri-flight-takeoff-line"></i> Early Access
     </a>
-  <?php else: ?>
-    <a href="<?= Url::to(['/site/become-mro']) ?>"
-       class="<?= $navActive('site/become-mro') ?>">
-      <i class="ri-building-2-line"></i> MRO Signup
-    </a>
-
-    <a href="<?= Url::to(['/site/become-ao']) ?>"
-       class="<?= $navActive('site/become-ao') ?>">
-      <i class="ri-plane-line"></i> Operator Signup
-    </a>
   <?php endif; ?>
     <?php endif; ?>
 
@@ -203,8 +188,13 @@ if (!$isGuest && Yii::$app->user->identity !== null) {
     <?php if ($isGuest): ?>
       <a href="<?= Url::to(['/site/login']) ?>"
          class="<?= $navActive('site/login') ?>">
-        <i class="ri-login-box-line"></i> Login
+        <i class="ri-login-box-line" aria-hidden="true"></i> Sign In
       </a>
+      <?php if (!$prelaunchMode): ?>
+      <button type="button" class="btn-register-now mobile-register-now" data-registration-open aria-haspopup="dialog" aria-controls="canRegistrationDialog">
+        <span>Register Now</span><i class="ri-arrow-right-line" aria-hidden="true"></i>
+      </button>
+      <?php endif; ?>
     <?php else: ?>
       <?= Html::beginForm(['/site/logout-all-devices'], 'post', [
           'class' => 'can-navbar-logout-form',

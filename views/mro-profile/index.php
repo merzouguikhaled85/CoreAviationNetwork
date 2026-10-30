@@ -1,6 +1,7 @@
 <?php
 
 use yii\helpers\Html;
+use app\components\UrlIdHelper;
 use yii\widgets\LinkPager;
 
 $this->title = 'MRO Profiles';
@@ -1083,7 +1084,7 @@ JS, \yii\web\View::POS_READY);
                                     <td data-label="ID">
                                         <?= Html::a(
                                             '#' . Html::encode($mroProfile->mro_id),
-                                            ['view', 'id' => $mroProfile->mro_id],
+                                            ['view', 'id' => UrlIdHelper::encode($mroProfile->mro_id)],
                                             ['class' => 'request-link']
                                         ) ?>
                                     </td>
@@ -1229,7 +1230,7 @@ JS, \yii\web\View::POS_READY);
                                             <!-- View button -->
                                             <?= Html::a(
                                                 '<i class="bi bi-eye"></i>',
-                                                ['view', 'id' => $mroProfile->mro_id],
+                                                ['view', 'id' => UrlIdHelper::encode($mroProfile->mro_id)],
                                                 [
                                                     'class' => 'action-btn btn-view',
                                                     'title' => 'View',
@@ -1240,7 +1241,7 @@ JS, \yii\web\View::POS_READY);
                                             <!-- Update button -->
                                             <?= Html::a(
                                                 '<i class="bi bi-pencil"></i>',
-                                                ['update', 'id' => $mroProfile->mro_id],
+                                                ['update', 'id' => UrlIdHelper::encode($mroProfile->mro_id)],
                                                 [
                                                     'class' => 'action-btn btn-update',
                                                     'title' => 'Update',

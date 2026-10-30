@@ -84,6 +84,7 @@ class MroProfileController extends Controller
                 'actions' => [
                     'delete' => ['POST'],
                     'toggle-status' => ['POST'],
+                    'send-password-reset' => ['POST'],
                 ],
             ],
         ];
@@ -627,12 +628,7 @@ public function actionGetModelsByManufacturer($manufacturer = null)
     
     protected function sendPasswordResetEmail($user, $publicToken)
     {
-        return Yii::$app->mailer->compose()
-            ->setTo($user->email)
-            ->setFrom([Yii::$app->params['adminEmail'] => Yii::$app->name])
-            ->setSubject('Password reset')
-            ->setTextBody('Follow the link to reset your password: ' . Yii::$app->urlManager->createAbsoluteUrl(['site/reset-password', 'token' => $publicToken]))
-            ->send();
+        return \app\components\PasswordResetEmail::compose($user, $publicToken)->send();
     }
 
     public function actionUpdateInsurance($id)

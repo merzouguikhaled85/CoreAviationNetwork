@@ -9,6 +9,8 @@ use app\models\MroProfile;
 use Yii;
 use yii\web\Controller;
 use yii\filters\AccessControl;
+use yii\filters\VerbFilter;
+use app\models\User;
 use app\models\RepairReport;
 use yii\data\ActiveDataProvider;
 use yii\helpers\VarDumper;
@@ -17,6 +19,35 @@ use yii\web\NotFoundHttpException;
 class AwaitingRequestResponseController extends Controller
 {
 
+    /** Protect every action, including administrative reminders, before business queries. */
+    public function behaviors()
+    {
+        return [
+            'access' => [
+                'class' => AccessControl::class,
+                'rules' => [[
+                    'allow' => true,
+                    'roles' => ['@'],
+                    'matchCallback' => static function () {
+                        $identity = Yii::$app->user->identity;
+                        return $identity instanceof User && (int) $identity->admin_id > 0;
+                    },
+                ]],
+            ],
+            'verbs' => [
+                'class' => VerbFilter::class,
+                'actions' => [
+                    'index' => ['GET', 'HEAD'],
+                    'ban-ao' => ['POST'],
+                    'unban-ao' => ['POST'],
+                    'ban-mro' => ['POST'],
+                    'unban-mro' => ['POST'],
+                    'notify-ao' => ['POST'],
+                    'notify-mro' => ['POST'],
+                ],
+            ],
+        ];
+    }
 
     public function actionIndex()
     {
@@ -132,10 +163,15 @@ class AwaitingRequestResponseController extends Controller
     public function actionNotifyMro($id)
     {
         $mro = MroProfile::findOne($id);
+        if (!$mro) {
+            throw new NotFoundHttpException('Profile not found.');
+        }
+        $emailSent = null;
+        $platformSaved = null;
         
         $notificationPreferences = MroNotificationsPreferences::findOne(['mro_id' => $mro->mro_id]);
         if ($notificationPreferences && $notificationPreferences->notify_by_email) {
-            Yii::$app->mailer->compose('awaiting_mro_send_new_crs', ['mro' => $mro])
+            $emailSent = Yii::$app->mailer->compose('awaiting_mro_send_new_crs', ['mro' => $mro])
             ->setTo($mro->email)
             
             ->setSubject('Awaiting new CRS')
@@ -144,7 +180,7 @@ class AwaitingRequestResponseController extends Controller
           //platform notification
           if ($notificationPreferences && $notificationPreferences->notify_by_platform) {
             // Call the action to save the notification
-                Yii::$app->runAction('notification/save-notification', [
+                $platformSaved = Yii::$app->runAction('notification/save-notification', [
                     'recipientType' => 'mro',
                     'recipientId' => $mro->mro_id,
                     'message' => 'Awaiting for your new CRS',
@@ -154,6 +190,8 @@ class AwaitingRequestResponseController extends Controller
                 ]);
             }
 
+        $this->recordReminderAudit($mro, $emailSent, $platformSaved);
+
         Yii::$app->session->setFlash('success', 'Notification sent to Mro successfully.');
 
         return $this->redirect(['index']);
@@ -162,10 +200,15 @@ class AwaitingRequestResponseController extends Controller
     public function actionNotifyAo($id)
     {
         $ao = AoProfile::findOne($id);
+        if (!$ao) {
+            throw new NotFoundHttpException('Profile not found.');
+        }
+        $emailSent = null;
+        $platformSaved = null;
         
         $notificationPreferences = AoNotificationsPreferences::findOne(['ao_id' => $ao->ao_id]);
         if ($notificationPreferences && $notificationPreferences->notify_by_email) {
-            Yii::$app->mailer->compose('awaiting_ao_crs_response', ['ao' => $ao])
+            $emailSent = Yii::$app->mailer->compose('awaiting_ao_crs_response', ['ao' => $ao])
             ->setTo($ao->email)
             
             ->setSubject('Awaiting CRS Response')
@@ -174,7 +217,7 @@ class AwaitingRequestResponseController extends Controller
           //platform notification
           if ($notificationPreferences && $notificationPreferences->notify_by_platform) {
             // Call the action to save the notification
-                Yii::$app->runAction('notification/save-notification', [
+                $platformSaved = Yii::$app->runAction('notification/save-notification', [
                     'recipientType' => 'ao',
                     'recipientId' => $ao->ao_id,
                     'message' => 'Awaiting for your response to CRS',
@@ -183,9 +226,24 @@ class AwaitingRequestResponseController extends Controller
                 ]);
             } 
 
+        $this->recordReminderAudit($ao, $emailSent, $platformSaved);
+
         Yii::$app->session->setFlash('success', 'Notification sent to Ao successfully.');
 
         return $this->redirect(['index']);
     }
     
+    /** Status changes are already captured by AuditTrailBootstrap; reminders need an explicit event. */
+    private function recordReminderAudit($profile, $emailSent, $platformSaved): void
+    {
+        Yii::$app->auditService->record('ADMIN_REMINDER', [
+            'model' => get_class($profile),
+            'record_id' => $profile->getPrimaryKey(),
+            'new_values' => [
+                'operation' => $this->action->id,
+                'email_sent' => $emailSent,
+                'platform_saved' => $platformSaved,
+            ],
+        ]);
+    }
 }

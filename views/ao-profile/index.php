@@ -1,6 +1,7 @@
 <?php
 
 use yii\helpers\Html;
+use app\components\UrlIdHelper;
 use yii\widgets\LinkPager;
 
 $this->title = 'AO Profiles';
@@ -1079,7 +1080,7 @@ JS, \yii\web\View::POS_READY);
                                     <td data-label="ID">
                                         <?= Html::a(
                                             '#' . Html::encode($aoProfile->ao_id),
-                                            ['view', 'id' => $aoProfile->ao_id],
+                                            ['view', 'id' => UrlIdHelper::encode($aoProfile->ao_id)],
                                             ['class' => 'request-link']
                                         ) ?>
                                     </td>
@@ -1200,7 +1201,7 @@ JS, \yii\web\View::POS_READY);
                                             <!-- View button -->
                                             <?= Html::a(
                                                 '<i class="bi bi-eye"></i>',
-                                                ['view', 'id' => $aoProfile->ao_id],
+                                                ['view', 'id' => UrlIdHelper::encode($aoProfile->ao_id)],
                                                 [
                                                     'class' => 'action-btn btn-view',
                                                     'title' => 'View',
@@ -1211,7 +1212,7 @@ JS, \yii\web\View::POS_READY);
                                             <!-- Update button -->
                                             <?= Html::a(
                                                 '<i class="bi bi-pencil"></i>',
-                                                ['update', 'id' => $aoProfile->ao_id],
+                                                ['update', 'id' => UrlIdHelper::encode($aoProfile->ao_id)],
                                                 [
                                                     'class' => 'action-btn btn-update',
                                                     'title' => 'Update',

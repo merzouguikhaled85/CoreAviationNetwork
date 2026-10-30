@@ -188,6 +188,9 @@ public function actionUpdate($id)
         throw new NotFoundHttpException('Invalid request link.');
     }
     $aoProfile = AoProfile::findOne($id);
+    if ($aoProfile === null) {
+        throw new NotFoundHttpException('AO profile not found.');
+    }
 
     $countries = Countries::find()->orderBy('country_name')->all();
 
@@ -252,7 +255,11 @@ public function actionCitiesByCountry($country_id)
      */
     public function actionView($id)
     {
+        $id = UrlIdHelper::decodeOrFail($id, 'Invalid AO profile link.');
         $aoProfile = AoProfile::findOne($id);
+        if ($aoProfile === null) {
+            throw new NotFoundHttpException('AO profile not found.');
+        }
 
         return $this->render('view', [
             'aoProfile' => $aoProfile,

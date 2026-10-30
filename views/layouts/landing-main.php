@@ -72,6 +72,7 @@ $bodyClass = trim(
  * Son HTML sera insere en fin de body, au-dessus du carrousel sans changer celui-ci.
  */
 $supportWidget = $this->render('_support-widget');
+$registrationChoice = $this->render('_registration-choice');
 ?>
 
 <?php $this->beginPage() ?>
@@ -243,6 +244,7 @@ $this->registerCss("
 
 <!-- Bulle Support disponible sur l'accueil et les pages publiques. -->
 <?= $supportWidget ?>
+<?= $registrationChoice ?>
 <?php $this->endBody() ?>
 </body>
 </html>

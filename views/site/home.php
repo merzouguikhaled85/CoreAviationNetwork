@@ -10,6 +10,7 @@ use yii\widgets\ActiveForm;
 /** @var PrelaunchSubscriber $prelaunchSubscriber */
 
 $this->title = 'Core Aviation Network';
+$prelaunchMode = PrelaunchMode::isEnabled();
 
 $this->registerCssFile(
     '@web/css/prelaunch.css?v=20261025-2',
@@ -24,7 +25,7 @@ $prelaunchTurnstileSiteKey = trim((string) (Yii::$app->params['turnstileSiteKey'
 $prelaunchTurnstileConfigured = $prelaunchTurnstileSiteKey !== ''
     && trim((string) (Yii::$app->params['turnstileSecretKey'] ?? '')) !== ''
     && trim((string) (Yii::$app->params['turnstileExpectedHostname'] ?? '')) !== '';
-if ($prelaunchTurnstileConfigured) {
+if ($prelaunchMode && $prelaunchTurnstileConfigured) {
     $this->registerJsFile(
         'https://challenges.cloudflare.com/turnstile/v0/api.js',
         [
@@ -121,7 +122,6 @@ $this->registerLinkTag([
  */
 $isGuest = Yii::$app->user->isGuest;
 $homeUserType = (string) Yii::$app->session->get('user_type');
-$prelaunchMode = PrelaunchMode::isEnabled();
 
 if ($isGuest && $prelaunchMode) {
     $heroPrimaryUrl = '#early-access';
@@ -638,7 +638,7 @@ $this->registerCss(<<<CSS
 }
 
 .hero-slider .slide::before{
-    background:linear-gradient(90deg, rgba(2,8,23,.30) 0%, rgba(2,8,23,.13) 42%, rgba(2,8,23,.02) 75%, transparent 100%);
+    background:linear-gradient(90deg, rgba(2,8,23,.50) 0%, rgba(2,8,23,.32) 38%, rgba(2,8,23,.10) 62%, rgba(2,8,23,.02) 80%, transparent 100%);
     z-index:3;
 }
 
@@ -737,21 +737,23 @@ $this->registerCss(<<<CSS
     z-index:15;
     top:50%;
     left:clamp(34px, 5vw, 88px);
-    width:min(760px, calc(100% - 144px));
+    width:min(900px, calc(100% - 144px));
     transform:translateY(-50%);
     color:#fff;
 }
 
-/* Spacious hero panel with fluid typography and wrapping content. */
+/* Transparent hero content with fluid typography. */
 .home-hero-panel{
+    font-family:inherit;
+    container-type:inline-size;
     box-sizing:border-box;
     padding:clamp(28px, 3vw, 46px);
-    border:1px solid rgba(255,255,255,.30);
-    border-radius:20px;
-    background:linear-gradient(135deg, rgba(5,20,39,.62), rgba(13,50,97,.38));
-    box-shadow:0 20px 48px rgba(2,8,23,.28);
-    backdrop-filter:blur(9px) saturate(118%);
-    -webkit-backdrop-filter:blur(9px) saturate(118%);
+    border:0;
+    border-radius:0;
+    background:transparent;
+    box-shadow:none;
+    backdrop-filter:none;
+    -webkit-backdrop-filter:none;
 }
 
 /*
@@ -788,90 +790,117 @@ $this->registerCss(<<<CSS
 }
 
 .home-hero-title{
-    display:flex;
-    flex-wrap:wrap;
-    gap:0 .2em;
-    overflow-wrap:anywhere;
-    white-space:normal;
+    display:block;
+    white-space:nowrap;
     margin:0;
     max-width:100%;
-    font-size:clamp(36px, 3.2vw, 56px);
-    font-weight:850;
-    letter-spacing:-.04em;
-    line-height:1.1;
+    font-family:"Segoe UI", "Open Sans", sans-serif;
+    font-size:clamp(14px, 7cqi, 58px);
+    font-weight:700;
+    letter-spacing:-.035em;
+    line-height:1.12;
+    font-kerning:normal;
+    text-shadow:0 2px 16px rgba(0,8,20,.4);
 }
 
 .home-hero-title > span:first-child{
-    display:block;
-    white-space:normal;
+    display:inline;
     font-size:inherit;
 }
 
 .home-hero-title [data-hero-highlight]{
-    display:block;
+    display:inline;
     color:#38bdf8;
 }
 
 .home-hero-text{
-    max-width:60ch;
-    margin:20px 0 0;
-    color:#dbeafe;
-    font-size:clamp(16px, 1.2vw, 19px);
+    max-width:54ch;
+    margin:18px 0 0;
+    font-family:"Segoe UI", "Open Sans", sans-serif;
+    color:#fff;
+    font-size:clamp(16px, 2.75cqi, 22px);
     font-weight:600;
-    line-height:1.6;
+    letter-spacing:-.01em;
+    line-height:1.5;
+    text-shadow:0 1px 10px rgba(0,8,20,.45);
 }
 
 
-/* PREUVE DU HERO : resume la promesse de tracabilite sans suivre le carrousel. */
+/* Supporting copy remains lighter than the main hero message. */
 .home-hero-proof{
-    display:inline-flex;
-    align-items:center;
-    gap:8px;
-    margin:20px 0 0;
-    color:#e0f2fe;
-    font-size:13px;
-    font-weight:800;
-    letter-spacing:.04em;
+    max-width:66ch;
+    margin:16px 0 0;
+    font-family:"Segoe UI", "Open Sans", sans-serif;
+    color:rgba(240,247,255,.9);
+    font-size:clamp(14px, 2.1cqi, 17px);
+    font-weight:400;
+    letter-spacing:.005em;
+    line-height:1.65;
+    text-shadow:0 1px 10px rgba(0,8,20,.45);
 }
-.home-hero-proof::before{
-    flex-shrink:0;
-    width:7px;
-    height:7px;
-    border-radius:50%;
-    background:#22c55e;
-    box-shadow:0 0 0 5px rgba(34,197,94,.14);
-    content:"";
-}
+
 .home-hero-actions{
     display:flex;
     flex-wrap:wrap;
-    gap:9px;
-    margin-top:26px;
+    gap:20px;
+    margin-top:28px;
 }
 
 .home-hero-action{
-    min-height:50px;
+    box-sizing:border-box;
+    min-height:56px;
+    min-width:148px;
     display:inline-flex;
     align-items:center;
     justify-content:center;
-    gap:7px;
-    border:1px solid rgba(255,255,255,.34);
-    border-radius:10px;
-    padding:13px 22px;
+    gap:9px;
+    border:1px solid rgba(255,255,255,.65);
+    border-radius:6px;
+    padding:14px 28px;
     color:#fff !important;
-    font-size:15px;
-    font-weight:800;
+    font-family:inherit;
+    font-size:16px;
+    font-weight:700;
+    line-height:1.4;
     text-decoration:none !important;
+    cursor:pointer;
     transition:transform .2s ease, background .2s ease, box-shadow .2s ease;
+}
+
+.home-hero-trust{
+    display:flex;
+    flex-wrap:wrap;
+    align-items:center;
+    gap:14px 28px;
+    margin:32px 0 0;
+    padding:0;
+    list-style:none;
+    color:rgba(255,255,255,.88);
+    font-size:clamp(11px, 1.6cqi, 13px);
+    font-weight:600;
+    line-height:1.4;
+}
+.home-hero-trust li{
+    display:flex;
+    align-items:center;
+    gap:7px;
+}
+.home-hero-trust i{
+    flex-shrink:0;
+    color:#38bdf8;
+    font-size:28px;
+    font-weight:400;
+    line-height:1;
 }
 
 .home-hero-action:hover{transform:translateY(-2px);}
 .home-hero-action.is-primary{
-    border-color:transparent;
-    background:linear-gradient(135deg, #2563eb, #0ea5e9);
-    box-shadow:0 12px 30px rgba(14,165,233,.3);
+    min-width:220px;
+    border-color:#0ea5e9;
+    background:linear-gradient(135deg, #00b7ee, #079bdf);
+    box-shadow:0 8px 24px rgba(14,165,233,.25);
 }
-.home-hero-action.is-secondary{background:rgba(255,255,255,.08);}
+.home-hero-action.is-secondary{background:rgba(7,20,38,.28);}
 .home-hero-action.is-secondary:hover{background:rgba(255,255,255,.16);}
 
 /*
@@ -918,13 +947,172 @@ $this->registerCss(<<<CSS
     .nav-aviation .btn-login{padding:10px 20px; font-size:14px; font-weight:700;}
 }
 
+/* Continue the same vertical texture over the existing dark early-access background. */
+.site-index > .early-access-section::before{
+    opacity:1;
+    background-image:repeating-linear-gradient(90deg, rgba(255,255,255,.03) 0 1px, transparent 1px 64px);
+    background-size:auto;
+    mask-image:none;
+    -webkit-mask-image:none;
+}
+/* ===== PLATFORM INTRODUCTION ===== */
+.platform-intro{
+    padding:48px 0 54px;
+    background:
+        repeating-linear-gradient(90deg, rgba(15,23,42,.025) 0 1px, transparent 1px 64px),
+        linear-gradient(135deg, #f8fbfe 0%, #fff 52%, #f0f5fa 100%);
+    color:#0f172a;
+}
+.platform-intro-inner{
+    max-width:1160px;
+    margin:0 auto;
+}
+.platform-intro-heading{
+    max-width:1020px;
+    margin:0 auto;
+    text-align:center;
+}
+.platform-intro-eyebrow{
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    gap:8px;
+    margin:0 0 12px;
+    color:#64748b;
+    font-size:clamp(11px, 1.15vw, 16px);
+    font-weight:800;
+    letter-spacing:.16em;
+    text-transform:uppercase;
+}
+.platform-intro-eyebrow::before,
+.platform-intro-eyebrow::after{
+    flex-shrink:0;
+    width:24px;
+    height:1px;
+    background:#38bdf8;
+    content:"";
+}
+.platform-intro-heading h2{
+    margin:0 0 16px;
+    color:#0b1e3a;
+    font-size:clamp(26px, 2.6vw, 38px);
+    font-weight:850;
+    line-height:1.15;
+    letter-spacing:-.035em;
+}
+.platform-intro-copy p{
+    margin:0 0 10px;
+    color:#475569;
+    font-size:16px;
+    line-height:1.5;
+}
+.platform-intro-link{
+    display:inline-flex;
+    align-items:center;
+    justify-content:center;
+    gap:12px;
+    margin-top:4px;
+    color:#075985;
+    font-size:14px;
+    font-weight:750;
+    text-decoration:none;
+}
+.platform-intro-link:hover{color:#0369a1; text-decoration:underline;}
+.platform-intro-link:focus-visible{outline:3px solid #0ea5e9; outline-offset:5px;}
+.platform-intro-cards{
+    display:grid;
+    grid-template-columns:repeat(3, minmax(0, 1fr));
+    gap:16px;
+    margin-top:24px;
+}
+.platform-intro-card{
+    box-sizing:border-box;
+    min-height:190px;
+    display:flex;
+    align-items:center;
+    gap:20px;
+    padding:24px;
+    border:1px solid #e2eaf2;
+    border-radius:8px;
+    background:#fff;
+    box-shadow:0 4px 16px rgba(15,49,82,.07);
+}
+.platform-intro-icon{
+    display:inline-flex;
+    flex:0 0 72px;
+    align-items:center;
+    justify-content:center;
+    width:72px;
+    height:72px;
+    border-radius:50%;
+    background:#e0f2fe;
+    color:#0ea5e9;
+    font-size:36px;
+    line-height:1;
+}
+.platform-intro-card--connections .platform-intro-icon{background:#fef3c7; color:#a1840a;}
+.platform-intro-card--growth .platform-intro-icon{background:#dcfce7; color:#10b981;}
+.platform-intro-card h3{
+    margin:0 0 8px;
+    color:#0b1e3a;
+    font-size:18px;
+    font-family:"Segoe UI", "Open Sans", sans-serif;
+    font-weight:700;
+    line-height:1.3;
+}
+.platform-intro-card p{
+    margin:0;
+    color:#475569;
+    font-size:14px;
+    line-height:1.5;
+}
+/* Subtle feedback for the three introduction cards. */
+.platform-intro-card{
+    transition:transform .28s ease, box-shadow .28s ease, border-color .28s ease;
+}
+.platform-intro-icon,
+.platform-intro-icon i{
+    transition:transform .32s ease;
+}
+.platform-intro-icon i{display:inline-block;}
+@media (hover:hover) and (pointer:fine){
+    .platform-intro-card:hover{
+        transform:translateY(-6px);
+        border-color:#7dd3fc;
+        box-shadow:0 14px 30px rgba(15,49,82,.13);
+    }
+    .platform-intro-card--connections:hover{border-color:#e6cf72;}
+    .platform-intro-card--growth:hover{border-color:#6ee7b7;}
+    .platform-intro-card:hover .platform-intro-icon{transform:scale(1.08);}
+    .platform-intro-card:hover .ri-search-line{transform:rotate(-12deg);}
+    .platform-intro-card:hover .ri-team-fill{transform:scale(1.12);}
+    .platform-intro-card:hover .ri-bar-chart-fill{transform:translateY(-4px);}
+}
+@media (prefers-reduced-motion:reduce){
+    .platform-intro-card,
+    .platform-intro-icon,
+    .platform-intro-icon i{transition:none;}
+    .platform-intro-card:hover,
+    .platform-intro-card:hover .platform-intro-icon,
+    .platform-intro-card:hover .platform-intro-icon i{transform:none;}
+}
+@media (min-width:768px) and (max-width:1199.98px){
+    .platform-intro-card{gap:12px; padding:20px 16px;}
+    .platform-intro-icon{flex-basis:54px; width:54px; height:54px; font-size:29px;}
+    .platform-intro-card h3{font-size:16px;}
+}
+@media (max-width:767.98px){
+    .platform-intro{padding:36px 0 40px;}
+    .platform-intro-cards{grid-template-columns:1fr; gap:12px;}
+    .platform-intro-card{min-height:160px; padding:24px 20px;}
+    .platform-intro-icon{flex-basis:60px; width:60px; height:60px; font-size:30px;}
+}
 /* ===== PUBLICS DU RESEAU : operateurs/CAMO, CAN et MRO ===== */
 .network-audience-section{
     padding:clamp(72px, 8vw, 112px) 0;
     background:
-        linear-gradient(90deg, rgba(15,23,42,.035) 1px, transparent 1px),
+        repeating-linear-gradient(90deg, rgba(15,23,42,.025) 0 1px, transparent 1px 64px),
         linear-gradient(180deg, #f8fafc 0%, #ffffff 100%);
-    background-size:64px 100%, auto;
 }
 .home-section-heading{
     max-width:760px;
@@ -1039,9 +1227,10 @@ $this->registerCss(<<<CSS
     margin:0;
     color:#0f172a;
     font-size:clamp(20px, 2vw, 25px);
-    font-weight:800;
+    font-family:"Segoe UI", "Open Sans", sans-serif;
+    font-weight:700;
     letter-spacing:-.025em;
-    line-height:1.18;
+    line-height:1.25;
 }
 .audience-card-summary{
     min-height:78px;
@@ -1109,9 +1298,16 @@ $this->registerCss(<<<CSS
     padding:clamp(72px, 8vw, 108px) 0;
     border-top:1px solid #e2e8f0;
     background:
-        linear-gradient(90deg, rgba(15,23,42,.025) 1px, transparent 1px),
+        repeating-linear-gradient(90deg, rgba(15,23,42,.025) 0 1px, transparent 1px 64px),
         #f8fafc;
-    background-size:64px 100%;
+}
+/* Section padding controls vertical spacing; cancel legacy service-container padding. */
+.site-index > .workflow-section > .container{
+    padding-top:0;
+    padding-bottom:0;
+}
+.workflow-heading.home-section-heading .home-section-eyebrow{
+    margin:0 0 12px;
 }
 .workflow-heading.home-section-heading{
     display:block;
@@ -1129,12 +1325,12 @@ $this->registerCss(<<<CSS
     max-width:1120px;
     margin:0 auto;
     grid-template-columns:repeat(3, minmax(0, 1fr));
-    gap:1px;
-    overflow:hidden;
-    border:1px solid #d7e0e8;
-    border-radius:6px;
-    background:#d7e0e8;
-    box-shadow:0 14px 34px rgba(15,23,42,.07);
+    gap:clamp(16px, 2vw, 24px);
+    overflow:visible;
+    border:0;
+    border-radius:0;
+    background:transparent;
+    box-shadow:none;
 }
 
 .workflow-card{
@@ -1144,8 +1340,11 @@ $this->registerCss(<<<CSS
     min-height:250px;
     overflow:hidden;
     padding:0 28px 30px;
+    border:1px solid #dce5ee;
+    border-radius:10px;
     background:#fff;
-    transition:background-color .18s ease;
+    box-shadow:0 4px 16px rgba(15,23,42,.045);
+    transition:transform .25s ease, box-shadow .25s ease, border-color .25s ease;
 }
 
 .workflow-card:nth-child(n+4){
@@ -1162,8 +1361,19 @@ $this->registerCss(<<<CSS
     content:"";
 }
 
-.workflow-card:hover{
-    background:#fbfdff;
+@media (hover:hover) and (pointer:fine){
+    .workflow-card:hover{
+        transform:translateY(-6px);
+        border-color:color-mix(in srgb, var(--workflow-accent) 45%, white);
+        box-shadow:0 14px 30px rgba(15,49,82,.12);
+    }
+    .workflow-card:hover .workflow-icon{
+        transform:translateY(-2px) rotate(-4deg) scale(1.05);
+    }
+}
+@media (prefers-reduced-motion:reduce){
+    .workflow-card,.workflow-icon{transition:none;}
+    .workflow-card:hover,.workflow-card:hover .workflow-icon{transform:none;}
 }
 
 .workflow-card-meta{
@@ -1201,13 +1411,15 @@ $this->registerCss(<<<CSS
     background:var(--workflow-accent-soft);
     color:var(--workflow-accent);
     font-size:22px;
+    transition:transform .3s ease;
 }
 
 .workflow-card h3{
     margin:19px 0 9px;
     color:#0f172a;
     font-size:19px;
-    font-weight:800;
+    font-family:"Segoe UI", "Open Sans", sans-serif;
+    font-weight:700;
     letter-spacing:-.02em;
 }
 
@@ -1256,9 +1468,8 @@ $this->registerCss(<<<CSS
         box-sizing:border-box;
         padding:clamp(24px, 5vw, 36px);
         overflow:hidden;
-        background:linear-gradient(135deg, rgba(5,20,39,.68), rgba(13,50,97,.44));
+        background:transparent;
     }
-    .home-hero-title{font-size:clamp(34px, 5.5vw, 44px);}
     .home-hero-actions{gap:8px;}
     .home-hero-action{flex:1 1 145px;}
     .slider-nav{display:none;}
@@ -1273,10 +1484,10 @@ $this->registerCss(<<<CSS
      * visibles, y compris avec une langue plus longue ou un zoom navigateur.
      */
     .hero-slider{padding:112px 16px 72px;}
-    .home-hero-title{font-size:clamp(30px, 7.5vw, 40px);}
     .home-hero-text{overflow-wrap:anywhere;}
-    .home-hero-actions{display:grid; grid-template-columns:1fr;}
-    .home-hero-action{width:100%; box-sizing:border-box;}
+    .home-hero-actions{display:grid; grid-template-columns:repeat(2, minmax(0, 1fr));}
+    .home-hero-action{width:100%; min-width:0; padding:12px 10px; font-size:14px;}
+    .home-hero-action.is-primary{min-width:0;}
     .workflow-grid{grid-template-columns:1fr;}
     .workflow-card{min-height:0;}
 }
@@ -1285,7 +1496,9 @@ $this->registerCss(<<<CSS
 .maintenance-priority-section{
     padding:clamp(72px, 8vw, 108px) 0;
     border-top:1px solid #e5edf6;
-    background:#f7f9fc;
+    background:
+        repeating-linear-gradient(90deg, rgba(15,23,42,.025) 0 1px, transparent 1px 64px),
+        #f7f9fc;
 }
 
 .maintenance-priority-grid{
@@ -1365,7 +1578,8 @@ $this->registerCss(<<<CSS
     margin:24px 0 6px;
     color:#0f172a;
     font-size:24px;
-    font-weight:850;
+    font-family:"Segoe UI", "Open Sans", sans-serif;
+    font-weight:700;
     letter-spacing:-.025em;
 }
 
@@ -1475,6 +1689,7 @@ $this->registerCss(<<<CSS
     padding:clamp(22px, 3.5vh, 42px) 0;
     overflow:hidden;
     background:
+        repeating-linear-gradient(90deg, rgba(15,23,42,.025) 0 1px, transparent 1px 64px),
         radial-gradient(
             circle at 85% 10%,
             rgba(0,178,255,.08),
@@ -1488,9 +1703,45 @@ $this->registerCss(<<<CSS
     max-width:1540px;
 }
 
+.about-network-heading{
+    max-width:800px;
+    margin:0 auto 44px;
+    text-align:center;
+}
+.about-network-heading h2{
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    gap:8px;
+    margin:0;
+    color:#64748b;
+    font-size:clamp(11px, 1.15vw, 16px);
+    font-weight:800;
+    letter-spacing:.16em;
+    line-height:1.4;
+    text-transform:uppercase;
+}
+.about-network-heading h2::before,
+.about-network-heading h2::after{
+    flex-shrink:0;
+    width:24px;
+    height:1px;
+    background:#38bdf8;
+    content:"";
+}
+.about-network-heading p{
+    margin:16px auto 0;
+    color:#64748b;
+    font-size:16px;
+    line-height:1.7;
+}
+@media (max-width:575.98px){
+    .about-network-heading{margin-bottom:36px;}
+    .about-network-heading p{font-size:15px;}
+}
 .about .about-ad-layout{
     display:grid;
-    grid-template-columns:minmax(0, 50%) minmax(360px, 50%);
+    grid-template-columns:repeat(2, minmax(0, 1fr));
     gap:clamp(20px, 2.2vw, 34px);
     align-items:stretch;
     height:auto;
@@ -1558,9 +1809,10 @@ $this->registerCss(<<<CSS
     margin:0;
     color:#0f172a;
     font-size:clamp(25px, 2.6vw, 36px);
-    font-weight:850;
+    font-family:"Segoe UI", "Open Sans", sans-serif;
+    font-weight:700;
     letter-spacing:-.04em;
-    line-height:1.08;
+    line-height:1.25;
 }
 
 .about-teaser-summary{
@@ -1643,6 +1895,7 @@ $this->registerCss(<<<CSS
 }
 
 .about .about-ad-column{
+    position:relative;
     min-width:0;
     min-height:0;
     display:flex;
@@ -1651,6 +1904,9 @@ $this->registerCss(<<<CSS
 }
 
 .about-ad-label{
+    position:absolute;
+    bottom:calc(100% + 9px);
+    left:0;
     flex:0 0 auto;
     display:flex;
     align-items:center;
@@ -1713,12 +1969,13 @@ $this->registerCss(<<<CSS
     position:relative;
     z-index:2;
     display:flex;
-    width:min(74%, 510px);
+    box-sizing:border-box;
+    width:100%;
     height:100%;
     align-items:flex-start;
     justify-content:center;
     flex-direction:column;
-    padding:clamp(28px, 4.5vw, 64px);
+    padding:clamp(28px, 3vw, 48px);
 }
 
 .about-early-access-kicker{
@@ -1738,19 +1995,22 @@ $this->registerCss(<<<CSS
 }
 
 .about-early-access-content h3{
-    max-width:470px;
+    max-width:600px;
     margin:0;
     color:#FFFFFF;
-    font-size:clamp(27px, 3.1vw, 46px);
-    font-weight:800;
-    line-height:1.08;
+    font-size:clamp(26px, 2.3vw, 38px);
+    font-family:"Segoe UI", "Open Sans", sans-serif;
+    font-weight:700;
+    line-height:1.25;
     letter-spacing:-.035em;
     text-wrap:balance;
 }
 
+.about-early-access-content h3 > span{display:block;}
+
 .about-early-access-content p{
     max-width:430px;
-    margin:18px 0 14px;
+    margin:18px 0 24px;
     color:rgba(235,247,255,.86);
     font-size:clamp(13px, 1.15vw, 16px);
     line-height:1.6;
@@ -2118,7 +2378,7 @@ $this->registerCss(<<<CSS
 
 @media (max-width:1199.98px){
     .about .about-ad-layout{
-        grid-template-columns:minmax(0, 50%) minmax(300px, 50%);
+        grid-template-columns:repeat(2, minmax(0, 1fr));
         gap:22px;
     }
 }
@@ -2200,6 +2460,19 @@ $this->registerCss(<<<CSS
     }
 }
 
+/* One spacing rhythm for every section below the hero, including the introduction. */
+@media screen{
+    .site-index{
+        --home-section-spacing:clamp(40px, 4vw, 64px);
+    }
+    .site-index > section:not(.hero-slider){
+        margin-block:0;
+        padding-block:var(--home-section-spacing);
+    }
+    .site-index > .about.section-padding{
+        min-height:0;
+    }
+}
 /* PHASE 9: sponsored content is intentionally excluded from printed pages. */
 @media print{
     .about .about-ad-column{
@@ -2241,9 +2514,10 @@ CSS
           <span>One World,</span>
           <span data-hero-highlight>One Network.</span>
         </h1>
-        <p class="home-hero-text">Connect aircraft operators and CAMOs with relevant MRO capabilities—from request and quotation to work completion and CRS.</p>
-        <p class="home-hero-proof">Request to Release, full traceability.</p>
+        <p class="home-hero-text">Connecting Operators, CAMOs and MROs through one aviation maintenance platform.</p>
+        <p class="home-hero-proof">Find trusted maintenance partners, discover new business opportunities and build valuable industry connections.</p>
         <div class="home-hero-actions">
+          <?php if (!$isGuest || $prelaunchMode): ?>
           <?= Html::a(
               '<i class="' . Html::encode($heroPrimaryIcon) . '"></i><span>' . Html::encode($heroPrimaryLabel) . '</span>',
               $heroPrimaryUrl,
@@ -2257,17 +2531,19 @@ CSS
               $heroSecondaryUrl,
               ['class' => 'home-hero-action is-secondary']
           ) ?>
+          <?php endif; ?>
           <?php if ($isGuest && !$prelaunchMode): ?>
-            <?= Html::a(
-                '<i class="ri-flight-takeoff-line"></i><span>Registration for early access</span>',
-                '#early-access',
-                [
-                    'class' => 'home-hero-action is-secondary',
-                    'data-early-access-link' => '1',
-                ]
-            ) ?>
+            <button type="button" class="home-hero-action is-primary" data-registration-open aria-haspopup="dialog" aria-controls="canRegistrationDialog">
+              <i class="ri-user-add-fill" aria-hidden="true"></i><span>Register Now</span>
+            </button>
+            <?= Html::a('Sign In', ['/site/login'], ['class' => 'home-hero-action is-secondary']) ?>
           <?php endif; ?>
         </div>
+        <ul class="home-hero-trust">
+          <li><i class="ri-shield-line" aria-hidden="true"></i><span>Trusted Network</span></li>
+          <li><i class="ri-global-line" aria-hidden="true"></i><span>Global Reach</span></li>
+          <li><i class="ri-team-fill" aria-hidden="true"></i><span>Built for Aviation Professionals</span></li>
+        </ul>
       </div>
     </div>
 
@@ -2451,6 +2727,48 @@ CSS
     </div>
   </section>
 
+  <section class="platform-intro" id="platform-introduction" aria-labelledby="platform-intro-title">
+    <div class="container">
+      <div class="platform-intro-inner">
+        <header class="platform-intro-heading">
+          <p class="platform-intro-eyebrow">The Aviation Maintenance Platform</p>
+          <h2 id="platform-intro-title">What is Core Aviation Network?</h2>
+          <div class="platform-intro-copy">
+            <p>Core Aviation Network is a dedicated aviation platform designed to connect Operators, CAMOs and MROs in a single professional environment.</p>
+            <p>Whether you're looking to source maintenance support, promote your services, build industry relationships or discover new business opportunities, Core Aviation Network helps bring the right people together faster and more efficiently.</p>
+            <p>Our mission is simple: make aviation maintenance collaboration more accessible, transparent and connected across the global aviation industry.</p>
+          </div>
+          <a class="platform-intro-link" href="<?= Url::to(['/site/about']) ?>">
+            <span>Learn more about our mission and vision</span>
+            <i class="ri-arrow-right-line" aria-hidden="true"></i>
+          </a>
+        </header>
+        <div class="platform-intro-cards">
+          <article class="platform-intro-card">
+            <span class="platform-intro-icon" aria-hidden="true"><i class="ri-search-line"></i></span>
+            <div>
+              <h3>Find Opportunities</h3>
+              <p>Connect with organisations looking for maintenance services and support.</p>
+            </div>
+          </article>
+          <article class="platform-intro-card platform-intro-card--connections">
+            <span class="platform-intro-icon" aria-hidden="true"><i class="ri-team-fill"></i></span>
+            <div>
+              <h3>Build Connections</h3>
+              <p>Grow your professional network across Operators, CAMOs and MROs.</p>
+            </div>
+          </article>
+          <article class="platform-intro-card platform-intro-card--growth">
+            <span class="platform-intro-icon" aria-hidden="true"><i class="ri-bar-chart-fill"></i></span>
+            <div>
+              <h3>Grow Your Business</h3>
+              <p>Increase visibility and create new maintenance business opportunities.</p>
+            </div>
+          </article>
+        </div>
+      </div>
+    </div>
+  </section>
   <!-- ================== PUBLICS DU RESEAU ================== -->
   <section class="network-audience-section" id="network" aria-labelledby="network-audience-title">
     <div class="container">
@@ -2503,8 +2821,12 @@ CSS
 
  
   <!-- ================== ABOUT CORE AVIATION NETWORK ================== -->
-  <section class="about section-padding" aria-labelledby="about-title" id="about">
+  <section class="about section-padding" aria-labelledby="about-network-title" id="about">
     <div class="container">
+      <header class="about-network-heading">
+        <h2 id="about-network-title">Be part of the network</h2>
+        <p>Connect with the right aviation partners and discover new opportunities for your business.</p>
+      </header>
       <div class="about-ad-layout">
 
         <!-- Teaser institutionnel : la page About porte désormais le contenu détaillé. -->
@@ -2538,10 +2860,12 @@ CSS
 
         <!-- PHASE 9: responsive sponsored zone, secondary to the product message. -->
         <div class="about-ad-column">
-          <p class="about-ad-label">
-            <i class="<?= $prelaunchMode ? 'ri-flight-takeoff-line' : 'ri-megaphone-line' ?>" aria-hidden="true"></i>
-            <span><?= $prelaunchMode ? 'Network access' : 'Sponsored placement' ?></span>
-          </p>
+          <?php if (!$prelaunchMode): ?>
+            <p class="about-ad-label">
+              <i class="ri-megaphone-line" aria-hidden="true"></i>
+              <span>Sponsored placement</span>
+            </p>
+          <?php endif; ?>
           <aside
             class="about-ad-zone"
             aria-label="<?= $prelaunchMode ? 'Core Aviation Network Early Access' : 'Sponsored aviation content' ?>"
@@ -2560,17 +2884,15 @@ CSS
                 <div class="about-early-access-content">
                   <span class="about-early-access-kicker">
                     <i class="ri-flight-takeoff-line" aria-hidden="true"></i>
-                    Be among the first
+                    Be part of the journey
                   </span>
-                  <h3>Get Early Access to Core Aviation Network</h3>
+                  <h3><span>Get Early Access</span> <span>to Core Aviation Network.</span></h3>
                   <p>
-                    Join the launch list for product updates and priority onboarding.
+                    Join the launch list to receive updates and be among the first to access the network.
                   </p>
-                  <span class="about-early-access-audience">
-                    For Aircraft Operators &amp; MROs
-                  </span>
+
                   <?= Html::a(
-                      '<span>Register for go live</span><i class="ri-arrow-right-line" aria-hidden="true"></i>',
+                      '<span>Register for Early Access</span><i class="ri-arrow-right-line" aria-hidden="true"></i>',
                       '#early-access',
                       [
                           'class' => 'about-early-access-button',
@@ -2900,6 +3222,7 @@ CSS
     </div>
   </section>
 
+  <?php if ($prelaunchMode): ?>
   <!-- ================== EARLY ACCESS ================== -->
   <section id="early-access" class="early-access-section" aria-labelledby="early-access-title">
     <div class="container">
@@ -3062,5 +3385,6 @@ CSS
       </div>
     </div>
   </section>
+  <?php endif; ?>
 
 </div>
