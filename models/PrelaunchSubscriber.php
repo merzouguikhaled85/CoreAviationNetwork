@@ -122,7 +122,7 @@ class PrelaunchSubscriber extends ActiveRecord
     {
         return [
             self::TYPE_MRO => 'MRO',
-            self::TYPE_AIRCRAFT_OPERATOR => 'Aircraft Operator',
+            self::TYPE_AIRCRAFT_OPERATOR => 'Aircraft Operator/CAMO and Representative',
         ];
     }
 

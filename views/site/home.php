@@ -947,6 +947,16 @@ $this->registerCss(<<<CSS
     .nav-aviation .btn-login{padding:10px 20px; font-size:14px; font-weight:700;}
 }
 
+/* Give long company details the full width of the registration form. */
+.early-access-grid > .field-prelaunchsubscriber-company_website,
+.early-access-grid > .field-prelaunchsubscriber-company_type{
+    grid-column:1 / -1;
+}
+.early-access-grid .field-prelaunchsubscriber-company_type select{
+    max-width:100%;
+    box-sizing:border-box;
+}
+
 /* Continue the same vertical texture over the existing dark early-access background. */
 .site-index > .early-access-section::before{
     opacity:1;
