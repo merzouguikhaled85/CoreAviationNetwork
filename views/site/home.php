@@ -125,7 +125,7 @@ $homeUserType = (string) Yii::$app->session->get('user_type');
 
 if ($isGuest && $prelaunchMode) {
     $heroPrimaryUrl = '#early-access';
-    $heroPrimaryLabel = 'Register for go live';
+    $heroPrimaryLabel = 'Register for Early Access';
     $heroPrimaryIcon = 'ri-flight-takeoff-line';
     $heroSecondaryUrl = ['/site/login'];
     $heroSecondaryLabel = 'Login';
@@ -818,7 +818,7 @@ $this->registerCss(<<<CSS
     margin:18px 0 0;
     font-family:"Segoe UI", "Open Sans", sans-serif;
     color:#fff;
-    font-size:clamp(16px, 2.75cqi, 22px);
+    font-size:clamp(18px, 3.25cqi, 26px);
     font-weight:600;
     letter-spacing:-.01em;
     line-height:1.5;
@@ -831,12 +831,53 @@ $this->registerCss(<<<CSS
     max-width:66ch;
     margin:16px 0 0;
     font-family:"Segoe UI", "Open Sans", sans-serif;
-    color:rgba(240,247,255,.9);
-    font-size:clamp(14px, 2.1cqi, 17px);
+    color:#fff;
+    font-size:clamp(16px, 2.5cqi, 20px);
     font-weight:400;
     letter-spacing:.005em;
     line-height:1.65;
     text-shadow:0 1px 10px rgba(0,8,20,.45);
+}
+
+.home-hero-workflow{
+    max-width:100%;
+    margin-top:48px;
+    color:rgba(240,247,255,.95);
+    font-family:"Segoe UI", "Open Sans", sans-serif;
+    font-size:clamp(14px, 2.1cqi, 17px);
+    font-weight:500;
+    line-height:1.6;
+}
+.home-hero-features{
+    display:grid;
+    grid-template-columns:repeat(2, minmax(0, 1fr));
+    grid-template-rows:repeat(3, auto);
+    grid-auto-flow:column;
+    column-gap:24px;
+    row-gap:4px;
+    margin:0;
+    padding:0;
+    list-style:none;
+}
+@media (max-width:767.98px){
+    .home-hero-features{
+        grid-template-columns:1fr;
+        grid-template-rows:none;
+        grid-auto-flow:row;
+    }
+}
+.home-hero-features li{
+    display:flex;
+    align-items:flex-start;
+    gap:10px;
+    padding:3px 0;
+}
+.home-hero-features i{
+    flex-shrink:0;
+    margin-top:.15em;
+    color:#38bdf8;
+    font-size:22px;
+    line-height:1;
 }
 
 .home-hero-actions{
@@ -2524,8 +2565,18 @@ CSS
           <span>One World,</span>
           <span data-hero-highlight>One Network.</span>
         </h1>
-        <p class="home-hero-text">Connecting Operators, CAMOs and MROs through one aviation maintenance platform.</p>
-        <p class="home-hero-proof">Find trusted maintenance partners, discover new business opportunities and build valuable industry connections.</p>
+        <p class="home-hero-text">From Requirement to CRS. One Platform. Every Step.</p>
+        <p class="home-hero-proof">Core Aviation Network enables Operators, CAMOs and MROs to manage maintenance requirements, quotations, purchase orders, work progress and documentation through a single platform, from initial requirement to final CRS.</p>
+        <div class="home-hero-workflow">
+          <ul class="home-hero-features" aria-label="Maintenance platform features">
+            <li><i class="ri-file-add-line" aria-hidden="true"></i><span>Submit maintenance requirements</span></li>
+            <li><i class="ri-file-list-3-line" aria-hidden="true"></i><span>Receive and submit quotations</span></li>
+            <li><i class="ri-shopping-bag-3-line" aria-hidden="true"></i><span>Issue and manage purchase orders</span></li>
+            <li><i class="ri-line-chart-line" aria-hidden="true"></i><span>Track work progress and status updates</span></li>
+            <li><i class="ri-folder-shield-2-line" aria-hidden="true"></i><span>Manage documentation &amp; CRS record</span></li>
+            <li><i class="ri-checkbox-circle-line" aria-hidden="true"></i><span>No annual subscription.</span></li>
+          </ul>
+        </div>
         <div class="home-hero-actions">
           <?php if (!$isGuest || $prelaunchMode): ?>
           <?= Html::a(
