@@ -144,6 +144,16 @@ class PrelaunchSubscriber extends ActiveRecord
         ];
     }
 
+    /** Seconds until another administrative confirmation attempt is allowed. */
+    public function confirmationResendWaitSeconds()
+    {
+        $lastAttempt = max(
+            (int) strtotime((string) $this->confirmation_attempted_at),
+            (int) strtotime((string) $this->confirmation_sent_at)
+        );
+        return max(0, $lastAttempt + 60 - time());
+    }
+
     public function attributeLabels()
     {
         return [

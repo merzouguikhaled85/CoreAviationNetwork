@@ -128,7 +128,7 @@ if ($isGuest && $prelaunchMode) {
     $heroPrimaryLabel = 'Register for Early Access';
     $heroPrimaryIcon = 'ri-flight-takeoff-line';
     $heroSecondaryUrl = ['/site/login'];
-    $heroSecondaryLabel = 'Login';
+    $heroSecondaryLabel = 'Sign In';
     $heroSecondaryIcon = 'ri-login-box-line';
 } elseif ($isGuest) {
     $heroPrimaryUrl = ['/site/become-ao'];
@@ -908,6 +908,22 @@ $this->registerCss(<<<CSS
     transition:transform .2s ease, background .2s ease, box-shadow .2s ease;
 }
 
+.home-hero-subscription{
+    display:flex;
+    align-items:center;
+    gap:8px;
+    margin:12px 0 0;
+    color:#f0f7ff;
+    font-size:14px;
+    font-weight:500;
+    line-height:1.5;
+}
+.home-hero-subscription i{
+    color:#38bdf8;
+    font-size:20px;
+    line-height:1;
+}
+
 .home-hero-trust{
     display:flex;
     flex-wrap:wrap;
@@ -1501,6 +1517,15 @@ $this->registerCss(<<<CSS
         box-sizing:border-box;
         padding:120px 24px 80px;
     }
+    .hero-slider .slide::before{
+        background:linear-gradient(180deg, rgba(2,8,23,.82) 0%, rgba(2,8,23,.78) 65%, rgba(2,8,23,.88) 100%);
+    }
+    .home-hero-text{font-size:20px; line-height:1.45; margin-top:16px;}
+    .home-hero-proof{font-size:16px; line-height:1.6; margin-top:14px;}
+    .home-hero-workflow{margin-top:24px; font-size:15px; line-height:1.5;}
+    .home-hero-features{row-gap:7px;}
+    .home-hero-actions{margin-top:24px;}
+    .home-hero-trust{margin-top:24px; gap:14px 20px; font-size:12px;}
     .hero-scene-video{display:none;}
     .hero-video-fallback{display:block;}
     .slide.active .hero-scene-image{animation:none !important; transform:none !important;}
@@ -1517,7 +1542,7 @@ $this->registerCss(<<<CSS
     .home-hero-panel{
         width:100%;
         box-sizing:border-box;
-        padding:clamp(24px, 5vw, 36px);
+        padding:20px 8px;
         overflow:hidden;
         background:transparent;
     }
@@ -1535,9 +1560,9 @@ $this->registerCss(<<<CSS
      * visibles, y compris avec une langue plus longue ou un zoom navigateur.
      */
     .hero-slider{padding:112px 16px 72px;}
-    .home-hero-text{overflow-wrap:anywhere;}
-    .home-hero-actions{display:grid; grid-template-columns:repeat(2, minmax(0, 1fr));}
-    .home-hero-action{width:100%; min-width:0; padding:12px 10px; font-size:14px;}
+    .home-hero-text{overflow-wrap:normal;}
+    .home-hero-actions{display:grid; grid-template-columns:1fr; gap:10px;}
+    .home-hero-action{width:100%; min-width:0; min-height:48px; padding:12px 16px; font-size:15px;}
     .home-hero-action.is-primary{min-width:0;}
     .workflow-grid{grid-template-columns:1fr;}
     .workflow-card{min-height:0;}
@@ -2565,7 +2590,7 @@ CSS
           <span>One World,</span>
           <span data-hero-highlight>One Network.</span>
         </h1>
-        <p class="home-hero-text">From Requirement to CRS. One Platform. Every Step.</p>
+        <p class="home-hero-text">From maintenance requirement to CRS — every step, one platform.</p>
         <p class="home-hero-proof">Core Aviation Network enables Operators, CAMOs and MROs to manage maintenance requirements, quotations, purchase orders, work progress and documentation through a single platform, from initial requirement to final CRS.</p>
         <div class="home-hero-workflow">
           <ul class="home-hero-features" aria-label="Maintenance platform features">
@@ -2573,8 +2598,7 @@ CSS
             <li><i class="ri-file-list-3-line" aria-hidden="true"></i><span>Receive and submit quotations</span></li>
             <li><i class="ri-shopping-bag-3-line" aria-hidden="true"></i><span>Issue and manage purchase orders</span></li>
             <li><i class="ri-line-chart-line" aria-hidden="true"></i><span>Track work progress and status updates</span></li>
-            <li><i class="ri-folder-shield-2-line" aria-hidden="true"></i><span>Manage documentation &amp; CRS record</span></li>
-            <li><i class="ri-checkbox-circle-line" aria-hidden="true"></i><span>No annual subscription.</span></li>
+            <li><i class="ri-folder-shield-2-line" aria-hidden="true"></i><span>Manage documentation &amp; CRS records</span></li>
           </ul>
         </div>
         <div class="home-hero-actions">
@@ -2600,6 +2624,7 @@ CSS
             <?= Html::a('Sign In', ['/site/login'], ['class' => 'home-hero-action is-secondary']) ?>
           <?php endif; ?>
         </div>
+        <p class="home-hero-subscription"><i class="ri-checkbox-circle-line" aria-hidden="true"></i><span>No annual subscription.</span></p>
         <ul class="home-hero-trust">
           <li><i class="ri-shield-line" aria-hidden="true"></i><span>Trusted Network</span></li>
           <li><i class="ri-global-line" aria-hidden="true"></i><span>Global Reach</span></li>

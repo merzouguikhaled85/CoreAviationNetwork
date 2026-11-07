@@ -192,6 +192,7 @@ $config = [
                 'admin/prelaunch-subscribers/index' => 'admin-prelaunch-subscribers/index',
                 'admin/prelaunch-subscribers/export' => 'admin-prelaunch-subscribers/export',
                 'admin/prelaunch-subscribers/view/<id:[A-Za-z0-9]+>' => 'admin-prelaunch-subscribers/view',
+                'POST admin/prelaunch-subscribers/resend/<id:[A-Za-z0-9]+>' => 'admin-prelaunch-subscribers/resend',
                 'admin/audit-log' => 'admin-audit-log/index',
                 'admin/audit-log/view/<id:[A-Za-z0-9]+>' => 'admin-audit-log/view',
                 'admin/audit-log/request/<requestId:[a-f0-9]{32}>' => 'admin-audit-log/request',

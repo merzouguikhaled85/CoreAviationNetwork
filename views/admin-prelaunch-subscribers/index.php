@@ -13,7 +13,7 @@ use yii\widgets\LinkPager;
 
 $this->title = 'Early Access Subscribers';
 $this->registerCssFile(
-    '@web/css/admin-prelaunch.css?v=20260926-1',
+    '@web/css/admin-prelaunch.css?v=20261107-1',
     ['depends' => [\yii\bootstrap5\BootstrapAsset::class]]
 );
 
@@ -24,6 +24,29 @@ $this->registerCss(<<<'CSS'
     line-height:1.4;
 }
 CSS
+);
+
+$this->registerJs(<<<'JS'
+document.querySelectorAll('[data-resend-wait]').forEach(function (button) {
+    var remaining = Number(button.dataset.resendWait);
+    var label = button.querySelector('span');
+    if (remaining > 0) {
+        var deadline = Date.now() + remaining * 1000;
+        var tick = function () {
+            remaining = Math.max(0, Math.ceil((deadline - Date.now()) / 1000));
+            button.disabled = remaining > 0;
+            label.textContent = remaining > 0 ? 'Resend in ' + remaining + 's' : 'Resend confirmation email';
+            if (!remaining) { clearInterval(timer); }
+        };
+        var timer = setInterval(tick, 1000);
+        tick();
+    }
+    button.form.addEventListener('submit', function () {
+        button.disabled = true;
+        label.textContent = 'Sending...';
+    });
+});
+JS
 );
 
 $subscriptionClass = static function ($status) {
@@ -180,6 +203,22 @@ $exportUrl = Url::to(array_merge(
                         </td>
                         <td class="nowrap"><?= $subscriber->confirmed_at ? Yii::$app->formatter->asDatetime($subscriber->confirmed_at, 'php:d M Y H:i') : '—' ?></td>
                         <td class="prelaunch-action-cell">
+                            <?php if ($subscriber->subscription_status === PrelaunchSubscriber::STATUS_PENDING_CONFIRMATION): ?>
+                                <?php $wait = $subscriber->confirmationResendWaitSeconds(); ?>
+                                <?= Html::beginForm(['/admin-prelaunch-subscribers/resend', 'id' => $encodedId], 'post', ['class' => 'prelaunch-resend-form']) ?>
+                                    <?php foreach (Yii::$app->request->queryParams as $key => $value): ?>
+                                        <?php if (is_scalar($value)): ?>
+                                            <?= Html::hiddenInput('filters[' . $key . ']', $value) ?>
+                                        <?php endif; ?>
+                                    <?php endforeach; ?>
+                                    <?= Html::submitButton('<i class="fas fa-envelope" aria-hidden="true"></i> <span>Resend confirmation email</span>', [
+                                        'class' => 'prelaunch-resend-button',
+                                        'disabled' => $wait > 0,
+                                        'data-resend-wait' => $wait,
+                                        'title' => 'Resend confirmation email',
+                                    ]) ?>
+                                <?= Html::endForm() ?>
+                            <?php endif; ?>
                             <?= Html::a(
                                 '<i class="fas fa-eye"></i>',
                                 ['/admin-prelaunch-subscribers/view', 'id' => $encodedId],

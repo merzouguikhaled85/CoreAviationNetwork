@@ -13,7 +13,7 @@ use yii\web\Controller;
 use yii\web\NotFoundHttpException;
 
 /**
- * Private read-only administration of early-access registrations.
+ * Private administration of early-access registrations.
  */
 class AdminPrelaunchSubscribersController extends Controller
 {
@@ -26,6 +26,7 @@ class AdminPrelaunchSubscribersController extends Controller
                     'index' => ['GET'],
                     'view' => ['GET'],
                     'export' => ['GET'],
+                    'resend' => ['POST'],
                 ],
             ],
             'access' => [
@@ -108,6 +109,58 @@ class AdminPrelaunchSubscribersController extends Controller
             'can-prelaunch-subscribers-' . gmdate('Ymd-His') . '.csv',
             ['mimeType' => 'text/csv; charset=UTF-8', 'inline' => false]
         );
+    }
+
+    public function actionResend($id)
+    {
+        $subscriber = $this->findSubscriber($id);
+        $returnUrl = ['/admin-prelaunch-subscribers/index'];
+        $filters = Yii::$app->request->post('filters', []);
+        if (is_array($filters)) {
+            foreach (['search', 'company_type', 'subscription_status', 'confirmation_email_status', 'date_from', 'date_to', 'page_size', 'page', 'sort'] as $key) {
+                if (isset($filters[$key]) && is_scalar($filters[$key])) { $returnUrl[$key] = $filters[$key]; }
+            }
+        }
+        $now = date('Y-m-d H:i:s');
+        $cutoff = date('Y-m-d H:i:s', time() - 60);
+        $confirmationToken = Yii::$app->security->generateRandomString(48);
+        $unsubscribeToken = Yii::$app->security->generateRandomString(48);
+
+        // Claim the attempt atomically so simultaneous clicks cannot send twice.
+        $claimed = PrelaunchSubscriber::updateAll([
+            'confirmation_token_hash' => hash('sha256', $confirmationToken),
+            'confirmation_token_expires_at' => date('Y-m-d H:i:s', time() + 86400),
+            'unsubscribe_token_hash' => hash('sha256', $unsubscribeToken),
+            'confirmation_attempted_at' => $now,
+            'confirmation_attempt_count' => new \yii\db\Expression('confirmation_attempt_count + 1'),
+            'confirmation_email_status' => PrelaunchSubscriber::EMAIL_PENDING,
+            'confirmation_last_error' => null,
+        ], ['and',
+            ['id' => $subscriber->id, 'subscription_status' => PrelaunchSubscriber::STATUS_PENDING_CONFIRMATION],
+            ['or', ['confirmation_attempted_at' => null], ['<=', 'confirmation_attempted_at', $cutoff]],
+            ['or', ['confirmation_sent_at' => null], ['<=', 'confirmation_sent_at', $cutoff]],
+        ]);
+        if (!$claimed) {
+            Yii::$app->session->setFlash('warning', 'Only pending registrations can be resent. Please allow 60 seconds between attempts.');
+            return $this->redirect($returnUrl);
+        }
+        $subscriber->refresh();
+        $delivery = \app\components\PrelaunchConfirmationMailer::send($subscriber, $confirmationToken, $unsubscribeToken);
+        $attributes = [
+            'confirmation_email_status' => $delivery['sent'] ? PrelaunchSubscriber::EMAIL_SENT : PrelaunchSubscriber::EMAIL_FAILED,
+            'confirmation_last_error' => $delivery['error'],
+        ];
+        if ($delivery['sent']) { $attributes['confirmation_sent_at'] = date('Y-m-d H:i:s'); }
+        // Do not overwrite diagnostics if a newer public signup replaced this token.
+        PrelaunchSubscriber::updateAll($attributes, [
+            'id' => $subscriber->id,
+            'confirmation_token_hash' => hash('sha256', $confirmationToken),
+        ]);
+        Yii::$app->session->setFlash(
+            $delivery['sent'] ? 'success' : 'error',
+            $delivery['sent'] ? 'Confirmation email resent.' : 'Confirmation email could not be sent. Please check the delivery details before trying again.'
+        );
+        return $this->redirect($returnUrl);
     }
 
     private function loadStats()
