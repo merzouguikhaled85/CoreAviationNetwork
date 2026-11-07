@@ -1,0 +1,24 @@
+.confirmation-body{margin:0;background:#f0f5fa;color:#102d4a;font-family:Arial,Helvetica,sans-serif;-webkit-font-smoothing:antialiased}
+.confirmation-page,.confirmation-page *{box-sizing:border-box}
+.confirmation-page{min-height:100vh;min-height:100svh;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:44px 20px;background:radial-gradient(ellipse at 50% 5%,#dfeffc 0,transparent 65%)}
+.confirmation-brand{display:flex;flex-direction:column;align-items:center;gap:12px;margin-bottom:30px;color:#35506a;text-decoration:none}
+.confirmation-logo{display:block;max-width:150px;height:82px;object-fit:contain}
+.confirmation-brand span{font-size:10px;font-weight:700;letter-spacing:.19em;text-align:center}
+.confirmation-card{width:100%;max-width:560px;padding:44px 42px 30px;border:1px solid #dce7f1;border-radius:24px;background:#fff;box-shadow:0 18px 60px rgba(18,57,91,.08);text-align:center}
+.confirmation-icon{display:grid;place-items:center;width:76px;height:76px;margin:0 auto 25px;border:8px solid #f1fbf5;border-radius:50%;background:#dcf6e8;color:#198552}
+.confirmation-icon svg{width:34px;height:34px;stroke:currentColor;stroke-width:2.5;stroke-linecap:round;stroke-linejoin:round}
+.is-warning .confirmation-icon{border-color:#fffaed;background:#fff0cf;color:#b37b14}
+.is-email .confirmation-icon{border-color:#eff8ff;background:#dceffc;color:#1478b6}
+.confirmation-kicker{margin:0 0 12px;color:#2878a9;font-size:10px;font-weight:700;letter-spacing:.17em}
+.confirmation-card h1{margin:0;color:#102d4a;font-size:30px;font-weight:700;letter-spacing:-.6px;line-height:1.2;overflow-wrap:anywhere}
+.confirmation-message{max-width:430px;margin:18px auto 28px;color:#647a91;font-size:15px;line-height:1.75}
+.confirmation-actions{display:flex;flex-direction:column;align-items:center;gap:18px}
+.confirmation-actions form{margin:0;width:100%}
+.confirmation-button{display:inline-flex;justify-content:center;align-items:center;gap:12px;max-width:100%;min-height:46px;padding:13px 22px;border:1px solid #0b78bb;border-radius:11px;background:#0b78bb;color:#fff;font:inherit;font-size:13px;font-weight:700;line-height:1.5;text-decoration:none;cursor:pointer;transition:background .15s,box-shadow .15s}
+.confirmation-button:hover{background:#086397;border-color:#086397;box-shadow:0 6px 16px rgba(11,120,187,.16)}
+.confirmation-home-link{color:#2878a9;font-size:13px;font-weight:600;text-decoration:none}
+.confirmation-home-link:hover{text-decoration:underline}
+.confirmation-button:focus-visible,.confirmation-home-link:focus-visible,.confirmation-brand:focus-visible{outline:3px solid #7bb9e2;outline-offset:5px}
+.confirmation-note{margin-top:30px;padding-top:20px;border-top:1px solid #edf1f5;color:#8291a1;font-size:11px;line-height:1.6}
+.confirmation-footer{margin:26px 0 0;color:#8291a1;font-size:11px;line-height:1.6;text-align:center}
+@media(max-width:540px){.confirmation-page{padding:28px 16px}.confirmation-brand{margin-bottom:24px}.confirmation-card{padding:32px 22px 24px;border-radius:19px}.confirmation-card h1{font-size:26px}.confirmation-message{font-size:14px}.confirmation-button{width:100%}}

@@ -11,6 +11,7 @@ use yii\widgets\LinkPager;
 /** @var array $summary */
 
 $this->title = 'Audit Trail';
+$this->registerCssFile('@web/css/admin-audit.css?v=20261107-1', ['depends' => [\yii\bootstrap5\BootstrapAsset::class]]);
 $actionOptions = [
     '' => 'All actions',
     'CREATE' => 'CREATE',
@@ -61,19 +62,58 @@ $resourceName = static function ($class) {
 
     <section class="audit-panel">
         <?= Html::beginForm(['admin-audit-log/index'], 'get', ['class' => 'audit-filters']) ?>
-            <?= Html::input('date', 'date_from', $searchModel->date_from, ['class' => 'form-control', 'aria-label' => 'Date from']) ?>
-            <?= Html::input('date', 'date_to', $searchModel->date_to, ['class' => 'form-control', 'aria-label' => 'Date to']) ?>
-            <?= Html::input('text', 'username', $searchModel->username, ['class' => 'form-control', 'placeholder' => 'Username']) ?>
-            <?= Html::input('number', 'user_id', $searchModel->user_id, ['class' => 'form-control', 'placeholder' => 'User ID']) ?>
-            <?= Html::input('text', 'company', $searchModel->company, ['class' => 'form-control', 'placeholder' => 'Company']) ?>
-            <?= Html::dropDownList('role', $searchModel->role, $roleOptions, ['class' => 'form-select']) ?>
-            <?= Html::dropDownList('action', $searchModel->action, $actionOptions, ['class' => 'form-select']) ?>
-            <?= Html::input('text', 'model', $searchModel->model, ['class' => 'form-control', 'placeholder' => 'Resource/model']) ?>
-            <?= Html::input('text', 'record_id', $searchModel->record_id, ['class' => 'form-control', 'placeholder' => 'Record ID']) ?>
-            <?= Html::input('text', 'ip_address', $searchModel->ip_address, ['class' => 'form-control', 'placeholder' => 'IP address']) ?>
-            <?= Html::input('text', 'country', $searchModel->country, ['class' => 'form-control', 'placeholder' => 'Country']) ?>
-            <?= Html::input('text', 'request_id', $searchModel->request_id, ['class' => 'form-control', 'placeholder' => 'Request ID']) ?>
-            <?= Html::dropDownList('page_size', $searchModel->page_size, [25 => '25 / page', 50 => '50 / page', 100 => '100 / page'], ['class' => 'form-select']) ?>
+            <div class="audit-field">
+                <label for="audit-date_from">Date from (UTC)</label>
+                <?= Html::input('date', 'date_from', $searchModel->date_from, ['id' => 'audit-date_from', 'class' => 'form-control', 'aria-label' => 'Date from']) ?>
+            </div>
+            <div class="audit-field">
+                <label for="audit-date_to">Date to (UTC)</label>
+                <?= Html::input('date', 'date_to', $searchModel->date_to, ['id' => 'audit-date_to', 'class' => 'form-control', 'aria-label' => 'Date to']) ?>
+            </div>
+            <div class="audit-field">
+                <label for="audit-username">Username</label>
+                <?= Html::input('text', 'username', $searchModel->username, ['id' => 'audit-username', 'class' => 'form-control', 'placeholder' => 'Username']) ?>
+            </div>
+            <div class="audit-field">
+                <label for="audit-user_id">User ID</label>
+                <?= Html::input('number', 'user_id', $searchModel->user_id, ['id' => 'audit-user_id', 'class' => 'form-control', 'placeholder' => 'User ID']) ?>
+            </div>
+            <div class="audit-field">
+                <label for="audit-company">Company</label>
+                <?= Html::input('text', 'company', $searchModel->company, ['id' => 'audit-company', 'class' => 'form-control', 'placeholder' => 'Company']) ?>
+            </div>
+            <div class="audit-field">
+                <label for="audit-role">Role</label>
+                <?= Html::dropDownList('role', $searchModel->role, $roleOptions, ['id' => 'audit-role', 'class' => 'form-select']) ?>
+            </div>
+            <div class="audit-field">
+                <label for="audit-action">Action</label>
+                <?= Html::dropDownList('action', $searchModel->action, $actionOptions, ['id' => 'audit-action', 'class' => 'form-select']) ?>
+            </div>
+            <div class="audit-field">
+                <label for="audit-model">Resource</label>
+                <?= Html::input('text', 'model', $searchModel->model, ['id' => 'audit-model', 'class' => 'form-control', 'placeholder' => 'Resource/model']) ?>
+            </div>
+            <div class="audit-field">
+                <label for="audit-record_id">Record ID</label>
+                <?= Html::input('text', 'record_id', $searchModel->record_id, ['id' => 'audit-record_id', 'class' => 'form-control', 'placeholder' => 'Record ID']) ?>
+            </div>
+            <div class="audit-field">
+                <label for="audit-ip_address">IP address</label>
+                <?= Html::input('text', 'ip_address', $searchModel->ip_address, ['id' => 'audit-ip_address', 'class' => 'form-control', 'placeholder' => 'IP address']) ?>
+            </div>
+            <div class="audit-field">
+                <label for="audit-country">Country</label>
+                <?= Html::input('text', 'country', $searchModel->country, ['id' => 'audit-country', 'class' => 'form-control', 'placeholder' => 'Country']) ?>
+            </div>
+            <div class="audit-field">
+                <label for="audit-request_id">Request ID</label>
+                <?= Html::input('text', 'request_id', $searchModel->request_id, ['id' => 'audit-request_id', 'class' => 'form-control', 'placeholder' => 'Request ID']) ?>
+            </div>
+            <div class="audit-field">
+                <label for="audit-page_size">Rows per page</label>
+                <?= Html::dropDownList('page_size', $searchModel->page_size, [25 => '25 / page', 50 => '50 / page', 100 => '100 / page'], ['id' => 'audit-page_size', 'class' => 'form-select']) ?>
+            </div>
             <div class="audit-filter-actions">
                 <?= Html::submitButton('<i class="fas fa-search"></i> Search', ['class' => 'btn btn-primary']) ?>
                 <?= Html::a('<i class="fas fa-undo"></i> Reset', ['admin-audit-log/index'], ['class' => 'btn btn-dark']) ?>
@@ -105,9 +145,21 @@ $resourceName = static function ($class) {
                 </tbody>
             </table>
         </div>
-        <div class="audit-pagination">
+        <footer class="audit-pagination">
             <span><?= number_format($dataProvider->getTotalCount()) ?> event(s)</span>
-            <?= LinkPager::widget(['pagination' => $dataProvider->pagination]) ?>
-        </div>
+            <nav aria-label="Audit trail pages">
+                <?= LinkPager::widget([
+                    'pagination' => $dataProvider->pagination,
+                    'maxButtonCount' => 5,
+                    'firstPageLabel' => '<i class="fas fa-angle-double-left" aria-hidden="true"></i>',
+                    'lastPageLabel' => '<i class="fas fa-angle-double-right" aria-hidden="true"></i>',
+                    'prevPageLabel' => '<i class="fas fa-chevron-left" aria-hidden="true"></i>',
+                    'nextPageLabel' => '<i class="fas fa-chevron-right" aria-hidden="true"></i>',
+                    'linkContainerOptions' => ['class' => 'page-item'],
+                    'linkOptions' => ['class' => 'page-link'],
+                    'disabledListItemSubTagOptions' => ['tag' => 'span', 'class' => 'page-link'],
+                ]) ?>
+            </nav>
+        </footer>
     </section>
 </div>

@@ -34,7 +34,7 @@ class PrelaunchConfirmationMailer
                 ]
             )
                 ->setTo($subscriber->business_email)
-                ->setSubject('Confirm your Core Aviation Network early access registration')
+                ->setSubject('Verify your email for Core Aviation Network early access')
                 ->send();
 
             return [

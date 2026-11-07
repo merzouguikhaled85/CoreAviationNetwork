@@ -72,6 +72,7 @@ class SiteController extends Controller
                     'logout-all-devices' => ['post'],
                     'join-network' => ['post'],
                     'confirm-prelaunch' => ['get'],
+                    'resend-prelaunch' => ['post'],
                     'unsubscribe-prelaunch' => ['get', 'post'],
                 ],
             ],
@@ -248,37 +249,95 @@ class SiteController extends Controller
     /**
      * Confirms a pending early-access address using a one-day token.
      */
-    public function actionConfirmPrelaunch($token)
+    public function actionConfirmPrelaunch($token = '')
     {
         $subscriber = $this->findPrelaunchSubscriberByToken($token, 'confirmation_token_hash');
-        if ($subscriber === null) {
-            Yii::$app->session->setFlash('error', 'This confirmation link is invalid.');
-            return $this->redirect(['/site/index', '#' => 'early-access']);
+        if ($subscriber === null || $subscriber->subscription_status === PrelaunchSubscriber::STATUS_UNSUBSCRIBED) {
+            return $this->renderPrelaunchConfirmationResult('invalid');
         }
-
         if ($subscriber->subscription_status === PrelaunchSubscriber::STATUS_CONFIRMED) {
-            Yii::$app->session->setFlash('info', 'Your early access registration is already confirmed.');
-            return $this->redirect(['/site/index', '#' => 'early-access']);
+            return $this->renderPrelaunchConfirmationResult('already-confirmed');
         }
-
-        if (
-            !$subscriber->confirmation_token_expires_at
-            || strtotime($subscriber->confirmation_token_expires_at) < time()
-        ) {
-            Yii::$app->session->setFlash('warning', 'This confirmation link has expired. Submit the form again to receive a new one.');
-            return $this->redirect(['/site/index', '#' => 'early-access']);
+        if (!$subscriber->confirmation_token_expires_at || strtotime($subscriber->confirmation_token_expires_at) < time()) {
+            return $this->renderPrelaunchConfirmationResult('expired', $token);
         }
-
-        $subscriber->updateAttributes([
+        // A simultaneous unsubscribe or token renewal must not be overwritten.
+        $confirmed = PrelaunchSubscriber::updateAll([
             'subscription_status' => PrelaunchSubscriber::STATUS_CONFIRMED,
             'confirmed_at' => date('Y-m-d H:i:s'),
+        ], [
+            'id' => $subscriber->id,
+            'subscription_status' => PrelaunchSubscriber::STATUS_PENDING_CONFIRMATION,
+            'confirmation_token_hash' => hash('sha256', trim($token)),
         ]);
-        Yii::$app->session->setFlash(
-            'success',
-            'Your early access registration is confirmed. We will notify you when CAN goes live.'
-        );
+        if (!$confirmed) {
+            $subscriber->refresh();
+            return $this->renderPrelaunchConfirmationResult(
+                $subscriber->subscription_status === PrelaunchSubscriber::STATUS_CONFIRMED ? 'already-confirmed' : 'invalid'
+            );
+        }
+        return $this->renderPrelaunchConfirmationResult('success');
+    }
 
-        return $this->redirect(['/site/index', '#' => 'early-access']);
+    /** Request a fresh link from the expired-link page without re-entering registration details. */
+    public function actionResendPrelaunch()
+    {
+        $token = Yii::$app->request->post('token', '');
+        if (!is_string($token)) { return $this->renderPrelaunchConfirmationResult('invalid'); }
+        $subscriber = $this->findPrelaunchSubscriberByToken($token, 'confirmation_token_hash');
+        if ($subscriber === null || $subscriber->subscription_status === PrelaunchSubscriber::STATUS_UNSUBSCRIBED) {
+            return $this->renderPrelaunchConfirmationResult('invalid');
+        }
+        if ($subscriber->subscription_status === PrelaunchSubscriber::STATUS_CONFIRMED) {
+            return $this->renderPrelaunchConfirmationResult('already-confirmed');
+        }
+        if (!$this->consumePrelaunchRateLimit()) {
+            return $this->renderPrelaunchConfirmationResult('rate-limited', $token);
+        }
+        $now = date('Y-m-d H:i:s');
+        $cutoff = date('Y-m-d H:i:s', time() - 60);
+        $confirmationToken = Yii::$app->security->generateRandomString(48);
+        $unsubscribeToken = Yii::$app->security->generateRandomString(48);
+        $previousExpiry = $subscriber->confirmation_token_expires_at;
+        $previousUnsubscribeHash = $subscriber->unsubscribe_token_hash;
+        $claimed = PrelaunchSubscriber::updateAll([
+            'confirmation_token_hash' => hash('sha256', $confirmationToken),
+            'confirmation_token_expires_at' => date('Y-m-d H:i:s', time() + 86400),
+            'unsubscribe_token_hash' => hash('sha256', $unsubscribeToken),
+            'confirmation_attempted_at' => $now,
+            'confirmation_attempt_count' => new \yii\db\Expression('confirmation_attempt_count + 1'),
+            'confirmation_email_status' => PrelaunchSubscriber::EMAIL_PENDING,
+            'confirmation_last_error' => null,
+        ], ['and',
+            ['id' => $subscriber->id, 'subscription_status' => PrelaunchSubscriber::STATUS_PENDING_CONFIRMATION,
+                'confirmation_token_hash' => hash('sha256', trim($token))],
+            ['or', ['confirmation_attempted_at' => null], ['<=', 'confirmation_attempted_at', $cutoff]],
+            ['or', ['confirmation_sent_at' => null], ['<=', 'confirmation_sent_at', $cutoff]],
+        ]);
+        if (!$claimed) { return $this->renderPrelaunchConfirmationResult('cooldown', $token); }
+        $subscriber->refresh();
+        $delivery = $this->sendPrelaunchConfirmationEmail($subscriber, $confirmationToken, $unsubscribeToken);
+        $attributes = [
+            'confirmation_email_status' => $delivery['sent'] ? PrelaunchSubscriber::EMAIL_SENT : PrelaunchSubscriber::EMAIL_FAILED,
+            'confirmation_last_error' => $delivery['error'],
+        ];
+        if ($delivery['sent']) { $attributes['confirmation_sent_at'] = date('Y-m-d H:i:s'); }
+        else {
+            // Keep the expired token usable for a retry; never expose the fresh email token in HTML.
+            $attributes['confirmation_token_hash'] = hash('sha256', trim($token));
+            $attributes['confirmation_token_expires_at'] = $previousExpiry;
+            $attributes['unsubscribe_token_hash'] = $previousUnsubscribeHash;
+        }
+        PrelaunchSubscriber::updateAll($attributes, ['id' => $subscriber->id, 'confirmation_token_hash' => hash('sha256', $confirmationToken)]);
+        return $this->renderPrelaunchConfirmationResult($delivery['sent'] ? 'resent' : 'delivery-failed', $delivery['sent'] ? '' : $token);
+    }
+
+    private function renderPrelaunchConfirmationResult($state, $token = '')
+    {
+        $this->layout = 'prelaunch-confirmation';
+        Yii::$app->response->headers->set('Cache-Control', 'no-store');
+        Yii::$app->response->headers->set('Referrer-Policy', 'no-referrer');
+        return $this->render('prelaunch-confirmation', ['state' => $state, 'token' => $token]);
     }
 
     /**

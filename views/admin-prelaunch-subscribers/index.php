@@ -35,7 +35,7 @@ document.querySelectorAll('[data-resend-wait]').forEach(function (button) {
         var tick = function () {
             remaining = Math.max(0, Math.ceil((deadline - Date.now()) / 1000));
             button.disabled = remaining > 0;
-            label.textContent = remaining > 0 ? 'Resend in ' + remaining + 's' : 'Resend confirmation email';
+            label.textContent = remaining > 0 ? 'Resend in ' + remaining + 's' : 'Resend verification email';
             if (!remaining) { clearInterval(timer); }
         };
         var timer = setInterval(tick, 1000);
@@ -211,11 +211,11 @@ $exportUrl = Url::to(array_merge(
                                             <?= Html::hiddenInput('filters[' . $key . ']', $value) ?>
                                         <?php endif; ?>
                                     <?php endforeach; ?>
-                                    <?= Html::submitButton('<i class="fas fa-envelope" aria-hidden="true"></i> <span>Resend confirmation email</span>', [
+                                    <?= Html::submitButton('<i class="fas fa-envelope" aria-hidden="true"></i> <span>Resend verification email</span>', [
                                         'class' => 'prelaunch-resend-button',
                                         'disabled' => $wait > 0,
                                         'data-resend-wait' => $wait,
-                                        'title' => 'Resend confirmation email',
+                                        'title' => 'Resend verification email',
                                     ]) ?>
                                 <?= Html::endForm() ?>
                             <?php endif; ?>
