@@ -52,7 +52,7 @@ if ($prelaunchMode && $prelaunchTurnstileConfigured) {
 
 /*
  * NOUVELLE NARRATION VISUELLE DU HERO :
- * les cinq images presentent successivement les acteurs et les etapes reelles
+ * les six images presentent successivement les acteurs et les etapes reelles
  * du parcours maintenance. Parts, ingenieurs et techniciens sont uniquement
  * des contextes operationnels ; cette presentation ne cree aucun nouveau role
  * applicatif et ne modifie aucune regle metier.
@@ -68,6 +68,15 @@ $heroSlides = [
         'highlight' => 'Structured from the start.',
         'description' => 'Aircraft, location, priority, ETA and ETD stay together in one controlled request.',
         'label' => 'AO and CAMO professionals preparing an aircraft maintenance request',
+    ],
+    [
+        'image' => Url::to('@web/img/home-carousel/avion.jpeg'),
+        'motion' => 'motion-slow-zoom',
+        'kicker' => 'Aircraft maintenance',
+        'title' => 'Every detail.',
+        'highlight' => 'Connected to the workflow.',
+        'description' => 'Keep aircraft maintenance requirements, progress and documentation connected in one place.',
+        'label' => 'Aircraft engine with open cowling during maintenance',
     ],
     [
         'image' => Url::to('@web/img/home-carousel/mro-team.jpg'),
