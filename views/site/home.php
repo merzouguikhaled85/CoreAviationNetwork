@@ -52,23 +52,12 @@ if ($prelaunchMode && $prelaunchTurnstileConfigured) {
 
 /*
  * NOUVELLE NARRATION VISUELLE DU HERO :
- * les six images presentent successivement les acteurs et les etapes reelles
+ * les cinq images presentent successivement les acteurs et les etapes reelles
  * du parcours maintenance. Parts, ingenieurs et techniciens sont uniquement
  * des contextes operationnels ; cette presentation ne cree aucun nouveau role
  * applicatif et ne modifie aucune regle metier.
  */
-$heroDroneVideoUrl = Url::to('@web/img/can-drone.mp4');
 $heroSlides = [
-    [
-        'image' => Url::to('@web/img/home-carousel/ao-camo.jpg'),
-        'video' => $heroDroneVideoUrl,
-        'motion' => 'motion-slow-zoom',
-        'kicker' => 'AO & CAMO',
-        'title' => 'One request.',
-        'highlight' => 'Structured from the start.',
-        'description' => 'Aircraft, location, priority, ETA and ETD stay together in one controlled request.',
-        'label' => 'AO and CAMO professionals preparing an aircraft maintenance request',
-    ],
     [
         'image' => Url::to('@web/img/home-carousel/avion.jpeg'),
         'motion' => 'motion-slow-zoom',
@@ -2724,8 +2713,8 @@ CSS
 
     <!--
       NOUVELLES SCENES HYBRIDES :
-      la premiere scene utilise la video drone avec une image de secours. Les
-      quatre autres images sont chargees progressivement puis animees en CSS.
+      le carrousel commence par avion.jpeg. Les
+      images sont chargees progressivement puis animees en CSS.
     -->
     <?php foreach ($heroSlides as $index => $heroSlide): ?>
       <?php
