@@ -887,6 +887,13 @@ if (!Yii::$app->user->isGuest && $userType === 'admin') {
 
             <?php endif; ?>
 
+            <?php if (!Yii::$app->user->isGuest && $userType === 'admin'): ?>
+                <div class="sidebar-section-label">My Account</div>
+                <a href="<?= Url::to(['/admin/update-password']) ?>" class="dash-nav-item <?= $currentRoute === 'admin/update-password' ? 'active' : '' ?>" title="Update Password">
+                    <i class="fas fa-key"></i><span>Update Password</span>
+                </a>
+            <?php endif; ?>
+
             <?php if (!Yii::$app->user->isGuest && $userType === 'ao'): ?>
 
                 <!-- ACCES PRINCIPAL AO/CAMO : lien direct et etat actif calcule par Yii. -->
@@ -1074,6 +1081,12 @@ if (!Yii::$app->user->isGuest && $userType === 'admin') {
                                 </p>
                             </div>
                         </div>
+
+                        <?php if (!Yii::$app->user->isGuest && $userType === 'admin'): ?>
+                            <a href="<?= Url::to(['/admin/update-password']) ?>" class="btn btn-link">
+                                <i class="fas fa-key"></i> Update Password
+                            </a>
+                        <?php endif; ?>
 
                         <?php if (!Yii::$app->user->isGuest && $userType === 'ao'): ?>
                             <a href="<?= Url::to(['ao-profile/view', 'id' => $encodedId]) ?>" class="btn btn-link">

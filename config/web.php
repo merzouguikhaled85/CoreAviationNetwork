@@ -175,7 +175,7 @@ $config = [
                     'levels' => ['error', 'warning'],
                     'maskVars' => ['_SERVER.HTTP_AUTHORIZATION', '_SERVER.PHP_AUTH_USER',
                         '_SERVER.PHP_AUTH_PW', '_POST.token', '_COOKIE.can_push_installation',
-                        '_SERVER.HTTP_COOKIE'],
+                        '_SERVER.HTTP_COOKIE', '_POST.AdminPasswordForm.*'],
                 ],
             ],
         ],
@@ -388,6 +388,16 @@ if (YII_ENV_DEV) {
     $config['bootstrap'][] = 'debug';
     $config['modules']['debug'] = [
         'class' => 'yii\debug\Module',
+        // Ne jamais conserver les mots de passe admin dans les captures de requete.
+        'panels' => [
+            'request' => [
+                'class' => 'yii\debug\panels\RequestPanel',
+                'censoredVariableNames' => [
+                    'POST.AdminPasswordForm',
+                    'requestBody.Decoded.AdminPasswordForm',
+                ],
+            ],
+        ],
         // uncomment the following to add your IP if you are not connecting from localhost.
         'allowedIPs' => ['127.0.0.1', '::1', '197.244.32.229'], // add your Ip here
         ];
