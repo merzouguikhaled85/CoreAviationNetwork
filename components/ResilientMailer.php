@@ -82,25 +82,8 @@ class ResilientMailer extends \yii\symfonymailer\Mailer
         try {
             return parent::sendMessage($message);
         } catch (TransportExceptionInterface $exception) {
-            /*
-             * RECONNEXION SANS RISQUE DE DOUBLON : une coupure pendant l'ouverture
-             * de session peut être transitoire. La tentative est répétée une seule
-             * fois uniquement si Symfony n'a encore envoyé aucune commande MAIL
-             * FROM. Après cette commande, on ne peut plus garantir que le serveur
-             * n'a pas accepté le message ; aucune répétition n'est alors autorisée.
-             */
-            if ($this->canRetryBeforeMessageTransfer($exception)) {
-                $this->resetSmtpConnection();
-                usleep(150000);
-
-                try {
-                    return parent::sendMessage($message);
-                } catch (TransportExceptionInterface $retryException) {
-                    $this->logSmtpFailure($retryException, 2);
-
-                    return false;
-                }
-            }
+            // Une seule tentative par requête : les délais SMTP se cumulent.
+            $this->resetSmtpConnection();
 
             $this->logSmtpFailure($exception, 1);
 
@@ -109,17 +92,7 @@ class ResilientMailer extends \yii\symfonymailer\Mailer
     }
 
     /**
-     * Autorise une seconde tentative seulement avant le transfert du message.
-     * Le journal protocolaire de Symfony contient les commandes déjà envoyées ;
-     * l'absence de MAIL FROM garantit que le destinataire n'a rien pu recevoir.
-     */
-    private function canRetryBeforeMessageTransfer(TransportExceptionInterface $exception): bool
-    {
-        return !str_contains(strtoupper($exception->getDebug()), 'MAIL FROM:');
-    }
-
-    /**
-     * Ferme complètement le socket ayant échoué avant la reconnexion. Symfony ne
+     * Ferme complètement le socket ayant échoué après la tentative. Symfony ne
      * marque le transport comme démarré qu'après le dialogue initial ; terminate()
      * est donc nécessaire lorsqu'un timeout survient avant cet instant.
      */
