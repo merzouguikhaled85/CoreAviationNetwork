@@ -12,7 +12,30 @@ return [
     'appEnv' => 'dev',
     'appDebug' => true,
     'cookieValidationKey' => 'replace-with-a-long-random-local-key',
-    'mailerDsn' => 'smtp://user:encoded-password@smtp.example.com:465',
+
+    /*
+     * ENVOI DES E-MAILS - deux environnements distincts :
+     *
+     * Windows local : SMTP Microsoft 365, port 587 avec STARTTLS automatique.
+     * Encoder les caracteres reserves des identifiants dans le DSN :
+     * @ devient %40 et % devient %25. Ne jamais versionner un vrai mot de passe.
+     *
+     * Production can.coreaviationnetwork.com sur GoDaddy cPanel Linux :
+     * remplacer uniquement la valeur mailerDsn par 'sendmail://default'.
+     * Ce transport utilise le service mail local de GoDaddy ; aucun identifiant
+     * Microsoft 365 n'est transmis par le site. L'expediteur reste configure
+     * dans config/web.php, mailer.messageConfig.from.
+     *
+     * Le journal de production montrait un timeout vers smtp.office365.com:587.
+     * smtp://localhost:25 provoquait ensuite une erreur de certificat STARTTLS.
+     * Sendmail a permis l'envoi du formulaire Early Access en production.
+     * Il ne faut pas utiliser Sendmail sur ce poste Windows.
+     *
+     * Si CAN_MAILER_DSN est defini sur le serveur, il est prioritaire sur ce fichier.
+     * SPF du domaine : conserver l'autorisation du relais GoDaddy (secureserver.net).
+     */
+    'mailerDsn' => 'smtp://user%40example.com:encoded-password@smtp.office365.com:587',
+    // GoDaddy cPanel Linux uniquement : 'mailerDsn' => 'sendmail://default',
     'dbDsn' => 'mysql:host=localhost;dbname=your_database',
     'dbUsername' => 'your_local_username',
     'dbPassword' => 'your_local_password',
