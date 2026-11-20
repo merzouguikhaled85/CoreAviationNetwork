@@ -151,6 +151,13 @@ class MroApplicationsController extends Controller
                 continue;
             }
 
+            // Only the candidature selected by the AO belongs in Open Requests.
+            // A reply alone (or an earlier selection) must not expose this row.
+            $selectedApplication = $request->selectedMroApplication;
+            if (!$selectedApplication || (int) $selectedApplication->id !== (int) $appliedRequest->id) {
+                continue;
+            }
+
             // Verifier si un PO existe pour cette application.
             // Important: si status = answered + PO existe, on doit afficher "PO Loaded"
             // afin que le bouton "Accept PO" reste visible.
@@ -293,6 +300,12 @@ class MroApplicationsController extends Controller
 
             // Ignorer si la request n'existe plus.
             if ($request === null) {
+                continue;
+            }
+
+            // Historical requests belong only to the candidature retained by the AO.
+            $selectedApplication = $request->selectedMroApplication;
+            if (!$selectedApplication || (int) $selectedApplication->id !== (int) $appliedRequest->id) {
                 continue;
             }
 
