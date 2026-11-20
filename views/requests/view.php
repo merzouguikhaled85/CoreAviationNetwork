@@ -62,8 +62,8 @@ if ($userType === 'mro' && $currentMroId) {
         ->orderBy(['id' => SORT_DESC])
         ->one();
 } else {
-    // Preserve the previous display fallback for non-MRO users.
-    $mroApplication = $requestModel->mroApplication ?? null;
+    // Display the candidature selected by the AO, consistently with the request lists.
+    $mroApplication = $requestModel->selectedMroApplication ?? null;
 }
 
 $mro = $mroApplication ? $mroApplication->getMro() : null;
@@ -1539,7 +1539,7 @@ JS, \yii\web\View::POS_READY);
                                 <?php else: ?>
                                     <span class="empty-badge">
                                         <i class="bi bi-person-x"></i>
-                                        MRO Deleted
+                                        <?= $mroApplication ? 'MRO unavailable' : 'MRO not selected' ?>
                                     </span>
                                 <?php endif; ?>
                             </div>
