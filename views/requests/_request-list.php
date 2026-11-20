@@ -139,7 +139,7 @@ use yii\widgets\LinkPager;
                                     <?php if ($title !== "New requests"): ?>
                                         <td data-label="MRO">
                                             <?php
-                                                $mro = $request->mroApplication->mro ?? null;
+                                                $mro = $request->selectedMroApplication->mro ?? null;
 
                                                 echo $mro
                                                     ? Html::a(
@@ -147,7 +147,7 @@ use yii\widgets\LinkPager;
                                                         ['mro-profile/view', 'id' => UrlIdHelper::encode($mro->mro_id)],
                                                         ['class' => 'mro-link']
                                                     )
-                                                    : '<span class="text-danger">MRO Deleted</span>';
+                                                    : '<span class="text-danger">MRO unavailable</span>';
                                             ?>
                                         </td>
                                     <?php endif; ?>

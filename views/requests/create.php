@@ -13,7 +13,7 @@ use yii\web\JsExpression;
 $this->title = 'Create Request';
 
 $this->registerCssFile('https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css');
-$this->registerCssFile(Url::to('@web/css/requests-create-refresh.css') . '?v=20260926-4');
+$this->registerCssFile(Url::to('@web/css/requests-create-refresh.css') . '?v=20261120-space2');
 
 $this->registerCss(<<<CSS
 :root {

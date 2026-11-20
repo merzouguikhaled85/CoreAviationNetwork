@@ -1153,10 +1153,10 @@ if (!Yii::$app->user->isGuest && $userType === 'admin') {
                 <div id="notification-list"></div>
 
                 <div class="notification-footer-actions">
-                    <button id="mark-all-read-btn" class="btn btn-sm btn-outline-primary">
+                    <button type="button" id="mark-all-read-btn" class="btn btn-sm btn-outline-primary">
                         <i class="fas fa-check-double"></i> Mark All as Read
                     </button>
-                    <button id="delete-all-btn" class="btn btn-sm btn-outline-danger delete-all">
+                    <button type="button" id="delete-all-btn" class="btn btn-sm btn-outline-danger delete-all">
                         <i class="fas fa-trash-alt"></i> Delete All
                     </button>
                 </div>
@@ -1367,17 +1367,66 @@ function fetchNotifications(filter) {
         .catch(error => console.error('Error fetching notifications:', error));
 }
 
-function markAllNotificationsAsRead() {
-    postNotification(notificationUrls.markAllRead)
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                updateNotificationCount();
-                fetchNotifications(activeNotificationFilter);
-            }
-        })
-        .catch(error => console.error('Error marking all as read:', error));
+let notificationBulkActionPending = false;
+
+async function confirmNotificationBulkAction(action) {
+    if (notificationBulkActionPending) return;
+    notificationBulkActionPending = true;
+    const deleting = action === 'deleteAll';
+    const buttons = document.querySelectorAll('#mark-all-read-btn, #delete-all-btn');
+    buttons.forEach(button => { button.disabled = true; });
+
+    try {
+        const title = deleting ? 'Delete all notifications?' : 'Mark all notifications as read?';
+        const text = deleting
+            ? 'All your read and unread notifications will be permanently deleted. This action cannot be undone.'
+            : 'All your unread notifications will be marked as read.';
+        const result = window.Swal && typeof window.Swal.fire === 'function'
+            ? await window.Swal.fire({
+                icon: deleting ? 'warning' : 'question',
+                title: title,
+                text: text,
+                showCancelButton: true,
+                confirmButtonText: deleting ? 'Yes, delete all' : 'Yes, mark all as read',
+                cancelButtonText: 'Cancel',
+                confirmButtonColor: deleting ? '#e63946' : '#0d6efd',
+                cancelButtonColor: '#6c757d',
+                focusCancel: true,
+                reverseButtons: true,
+                width: 380,
+                customClass: {
+                    popup: 'can-status-swal',
+                    icon: 'can-status-swal-icon',
+                    title: 'can-status-swal-title',
+                    htmlContainer: 'can-status-swal-message',
+                    actions: 'can-status-swal-actions',
+                    confirmButton: 'can-status-swal-confirm',
+                    cancelButton: 'can-status-swal-close'
+                }
+            })
+            : {isConfirmed: window.confirm(title + '\\n' + text)};
+        if (!result.isConfirmed) return;
+
+        const response = await postNotification(notificationUrls[action]);
+        if (!response.ok) throw new Error('Notification action failed: HTTP ' + response.status);
+        const data = await response.json();
+        if (!data.success) throw new Error('Notification action was not successful.');
+        updateNotificationCount();
+        fetchNotifications(activeNotificationFilter);
+    } catch (error) {
+        console.error('Error updating notifications:', error);
+        const message = 'The action could not be completed. Please try again.';
+        if (window.Swal && typeof window.Swal.fire === 'function') {
+            await window.Swal.fire({icon: 'error', title: 'Notifications', text: message});
+        } else {
+            window.alert(message);
+        }
+    } finally {
+        buttons.forEach(button => { button.disabled = false; });
+        notificationBulkActionPending = false;
+    }
 }
+
 
 const notifLink     = document.getElementById('notification-link');
 const notifDropdown = document.getElementById('notification-dropdown');
@@ -1441,19 +1490,16 @@ document.getElementById('notification-dropdown').addEventListener('click', funct
     }
 
     const markAllReadButton = event.target.closest('#mark-all-read-btn');
-    if (markAllReadButton) markAllNotificationsAsRead();
+    if (markAllReadButton) {
+        event.preventDefault();
+        confirmNotificationBulkAction('markAllRead');
+        return;
+    }
 
-    const deleteAllButton = event.target.closest('.delete-all');
+    const deleteAllButton = event.target.closest('#delete-all-btn');
     if (deleteAllButton) {
-        postNotification(notificationUrls.deleteAll)
-            .then(response => response.json())
-            .then(data => {
-                if (data.success) {
-                    updateNotificationCount();
-                    fetchNotifications(activeNotificationFilter);
-                }
-            })
-            .catch(error => console.error('Error deleting all:', error));
+        event.preventDefault();
+        confirmNotificationBulkAction('deleteAll');
     }
 });
 

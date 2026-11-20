@@ -280,6 +280,19 @@ class Requests extends ActiveRecord
     {
         return $this->hasOne(Aircrafts::className(), ['aircraft_id' => 'aircraft_id']);
     }
+    /** Returns the candidature selected by the AO's latest purchase order. */
+    public function getSelectedMroApplication()
+    {
+        return $this->hasOne(MroRequestApply::class, ['request_id' => 'request_id'])
+            ->alias('selected_mro_application')
+            ->innerJoin(
+                ['selected_po' => AoRequestsApplications::tableName()],
+                'selected_po.application_id = selected_mro_application.id'
+                . ' AND selected_po.request_id = selected_mro_application.request_id'
+            )
+            ->orderBy(['selected_po.id' => SORT_DESC]);
+    }
+
     public function getMroApplication()
     {
         return $this->hasOne(MroRequestApply::className(), ['request_id' => 'request_id']);

@@ -3,6 +3,7 @@
 namespace app\controllers;
 
 use app\models\Notification;
+use app\components\NotificationActionUrl;
 use Yii;
 use yii\db\Expression;
 use yii\filters\AccessControl;
@@ -57,7 +58,7 @@ class NotificationController extends Controller
         $notification->recipient_type = $recipientType;
         $notification->recipient_id = (int) $recipientId;
         $notification->content = (string) $message;
-        $notification->actions = $actions;
+        $notification->actions = NotificationActionUrl::normalize($actions, Yii::$app->request->baseUrl);
         $notification->created_at = date('Y-m-d H:i:s');
 
         if ($notification->validate() && $notification->save(false)) {
@@ -71,9 +72,9 @@ class NotificationController extends Controller
     public function actionMarkAllAsRead()
     {
         $this->asJsonResponse();
-        $updated = $this->queryForCurrentUser()
-            ->andWhere(['or', ['status' => null], ['<>', 'status', 'read']])
-            ->updateAll(['status' => 'read']);
+        $query = $this->queryForCurrentUser()
+            ->andWhere(['or', ['status' => null], ['<>', 'status', 'read']]);
+        $updated = Notification::updateAll(['status' => 'read'], $query->where);
 
         return ['success' => true, 'updated' => $updated];
     }
@@ -81,7 +82,8 @@ class NotificationController extends Controller
     public function actionDeleteAll()
     {
         $this->asJsonResponse();
-        return ['success' => true, 'deleted' => $this->queryForCurrentUser()->deleteAll()];
+        $query = $this->queryForCurrentUser();
+        return ['success' => true, 'deleted' => Notification::deleteAll($query->where)];
     }
 
     public function actionNotificationCount()
@@ -157,7 +159,7 @@ class NotificationController extends Controller
                 'id' => (int) $notification->id,
                 'message' => $notification->content,
                 'read' => $notification->status,
-                'actions' => $notification->actions,
+                'actions' => NotificationActionUrl::normalize($notification->actions, Yii::$app->request->baseUrl),
                 'created_at' => $notification->created_at
                     ? Yii::$app->formatter->asDatetime($notification->created_at, 'php:d M Y, H:i')
                     : null,

@@ -618,3 +618,118 @@ body .can-form-page.create-request-page .request-upload-help {
         font-size: 21px !important;
     }
 }
+
+/* Reserve the main editing area for maintenance requirements. */
+body .can-form-page.create-request-page #request-details {
+    min-height: 280px !important;
+    height: 280px !important;
+    resize: vertical;
+    line-height: 1.6;
+}
+
+body .can-form-page.create-request-page #step-aircraft,
+body .can-form-page.create-request-page #step-priority {
+    padding: 12px 16px !important;
+}
+
+body .can-form-page.create-request-page #step-aircraft .form-section-subtitle,
+body .can-form-page.create-request-page #step-priority .form-section-subtitle {
+    margin-bottom: 9px !important;
+}
+
+body .can-form-page.create-request-page .operational-priority-card {
+    min-height: 54px;
+    padding: 7px 10px;
+}
+
+body .can-form-page.create-request-page .operational-response-panel {
+    padding: 9px 10px;
+}
+
+@media (min-width: 1200px) {
+    body .can-form-page.create-request-page .create-request-layout {
+        grid-template-columns: 185px minmax(0, 1fr);
+        gap: 14px;
+    }
+
+    body .can-form-page.create-request-page #step-aircraft .form-grid {
+        grid-template-columns: minmax(0, 1.6fr) minmax(0, 1.3fr) minmax(0, .7fr) minmax(0, .7fr) !important;
+        gap: 10px !important;
+    }
+}
+
+@media (max-width: 767.98px) {
+    body .can-form-page.create-request-page #request-details {
+        min-height: 220px !important;
+        height: 220px !important;
+    }
+}
+/* Keep response shortcuts compact despite the form's full-width button rule. */
+body .can-form-page.create-request-page #step-priority .operational-response-panel {
+    display: grid;
+    grid-template-columns: minmax(170px, .8fr) minmax(0, 2fr);
+    align-items: start;
+    gap: 6px 16px;
+    margin-top: 9px;
+    padding: 10px 12px;
+}
+
+body .can-form-page.create-request-page #step-priority .operational-response-heading {
+    margin: 0;
+    padding-top: 5px;
+}
+
+body .can-form-page.create-request-page #step-priority .operational-response-controls {
+    grid-template-columns: minmax(150px, 220px) minmax(0, 1fr);
+    align-items: start;
+    gap: 10px;
+}
+
+body .can-form-page.create-request-page #step-priority .operational-response-presets {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 6px;
+    padding: 20px 0 0;
+    max-width: 360px;
+}
+
+body .can-form-page.create-request-page #step-priority .operational-response-presets button {
+    inline-size: auto !important;
+    width: auto !important;
+    min-width: 0;
+    min-height: 38px;
+    margin: 0;
+    padding: 6px 9px;
+    white-space: nowrap;
+}
+
+body .can-form-page.create-request-page #step-priority .operational-deadline-preview {
+    grid-column: 2;
+    min-height: 0;
+}
+
+body .can-form-page.create-request-page #step-priority .operational-deadline-preview:empty {
+    display: none;
+}
+
+@media (max-width: 820px) {
+    body .can-form-page.create-request-page #step-priority .operational-response-panel {
+        grid-template-columns: minmax(0, 1fr);
+        gap: 10px;
+    }
+
+    body .can-form-page.create-request-page #step-priority .operational-deadline-preview {
+        grid-column: 1;
+    }
+}
+
+@media (max-width: 575.98px) {
+    body .can-form-page.create-request-page #step-priority .operational-response-controls {
+        grid-template-columns: minmax(0, 1fr);
+    }
+
+    body .can-form-page.create-request-page #step-priority .operational-response-presets {
+        padding-top: 0;
+        max-width: none;
+    }
+}
