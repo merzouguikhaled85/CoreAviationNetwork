@@ -1428,7 +1428,8 @@ CSS);
                         <div class="full-width">
                             <?= $form->field($request, 'request_details')->textarea([
                                 'rows' => 5,
-                                'class' => 'form-control',
+                                // ZONE DE TEXTE « PAGE A4 » (2026-11) : grande zone, défilement au-delà (classe a4-text-box, web/css/form-system.css).
+                                'class' => 'form-control a4-text-box',
                                 'id' => 'request-details',
                                 'placeholder' => 'Describe the requested maintenance work...',
                             ])->label('Request Details <span class="text-danger">*</span>', ['encode' => false]) ?>

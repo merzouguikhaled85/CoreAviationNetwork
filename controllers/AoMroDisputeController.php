@@ -167,7 +167,46 @@ class AoMroDisputeController extends Controller
         }
     
         // Handle form submission
-        if ($dispute->load(Yii::$app->request->post()) && $dispute->save()) {
+        $loaded = $dispute->load(Yii::$app->request->post());
+
+        if ($loaded) {
+            /*
+             * CORRECTIF IDOR : les champs cachés du formulaire (ao_id, mro_id,
+             * po, created_by, status, admin_response) étaient enregistrés tels
+             * quels. Un utilisateur pouvait ouvrir un litige au nom d'un autre,
+             * contre n'importe qui, ou sur une demande qui ne le concerne pas.
+             * Ils sont désormais recalculés côté serveur à partir de la demande
+             * choisie, avec la même logique que fetch-details (qui remplit ces
+             * champs à l'écran), afin de conserver le comportement visible.
+             */
+            [$userType, $userId] = $this->currentActor();
+
+            if (!$this->isRequestAccessibleToActor($dispute->request_id, $userType, $userId)) {
+                throw new ForbiddenHttpException('You are not allowed to open a dispute on this request.');
+            }
+
+            $details = $this->fetchDetails($dispute->request_id);
+            if ($details === false) {
+                throw new NotFoundHttpException('Request not found.');
+            }
+
+            $dispute->created_by = $userType;
+            $dispute->status = 'open';
+            $dispute->admin_response = null;
+            $dispute->po = $details['po'] ?? null;
+
+            if ($userType === 'ao') {
+                // L'AO est forcément lui-même ; la partie adverse est le MRO de la demande.
+                $dispute->ao_id = $userId;
+                $dispute->mro_id = $details['mro_id'] ?? null;
+            } else {
+                // Le MRO est forcément lui-même ; la partie adverse est l'AO propriétaire.
+                $dispute->mro_id = $userId;
+                $dispute->ao_id = $details['ao_id'] ?? null;
+            }
+        }
+
+        if ($loaded && $dispute->save()) {
             if (Yii::$app->session->get('user_type') == 'ao') {
 
             Yii::$app->mailer->compose('dispute_created', ['dispute' => $dispute])
@@ -221,9 +260,24 @@ class AoMroDisputeController extends Controller
     {
         // SIGNED DISPUTE ID: all browser actions use the same protected identifier.
         $id = UrlIdHelper::decodeOrFail($id, 'Invalid dispute link.');
-        $dispute = $this->findModel($id);
 
-        if ($dispute->load(Yii::$app->request->post()) && $dispute->save()) {
+        // CORRECTIF IDOR : seule la partie qui a ouvert le litige peut le modifier.
+        $dispute = $this->findOwnedDispute($id, true);
+
+        /*
+         * CORRECTIF IDOR : seule la description est modifiable. Les autres
+         * attributs (parties, demande, PO, statut, réponse de l'admin) sont
+         * mémorisés puis restaurés après load(), pour qu'un POST forgé ne
+         * puisse pas les changer.
+         */
+        $protectedValues = $dispute->getAttributes([
+            'ao_id', 'mro_id', 'request_id', 'po', 'created_by', 'status', 'admin_response', 'timestamp',
+        ]);
+
+        $loaded = $dispute->load(Yii::$app->request->post());
+        $dispute->setAttributes($protectedValues, false);
+
+        if ($loaded && $dispute->save()) {
             Yii::$app->session->setFlash('success', 'Dispute updated successfully.');
             return $this->redirect(['index']);
         }
@@ -245,7 +299,9 @@ class AoMroDisputeController extends Controller
     {
         // SIGNED DISPUTE ID: all browser actions use the same protected identifier.
         $id = UrlIdHelper::decodeOrFail($id, 'Invalid dispute link.');
-        $dispute = $this->findModel($id);
+
+        // CORRECTIF IDOR : seule la partie qui a ouvert le litige peut le clôturer.
+        $dispute = $this->findOwnedDispute($id, true);
         $dispute->status = 'resolved';
 
         if ($dispute->save()) {
@@ -262,7 +318,9 @@ class AoMroDisputeController extends Controller
     {
         // SIGNED DISPUTE ID: all browser actions use the same protected identifier.
         $id = UrlIdHelper::decodeOrFail($id, 'Invalid dispute link.');
-        $dispute = $this->findModel($id);
+
+        // CORRECTIF IDOR : seule la partie qui a ouvert le litige peut le supprimer.
+        $dispute = $this->findOwnedDispute($id, true);
 
         if ($dispute->delete()) {
             Yii::$app->session->setFlash('success', 'Dispute removed successfully.');
@@ -291,6 +349,20 @@ class AoMroDisputeController extends Controller
     public function actionFetchDetails($requestId)
     {
         Yii::$app->response->format = \yii\web\Response::FORMAT_JSON;
+
+        /*
+         * CORRECTIF IDOR : ce point d'accès renvoyait les parties, le PO et
+         * l'avion de n'importe quelle demande. Il ne répond plus que pour les
+         * demandes dont l'acteur connecté est partie prenante ; sinon la
+         * réponse est identique à celle d'une demande inexistante.
+         */
+        [$userType, $userId] = $this->currentActor();
+        if (!$this->isRequestAccessibleToActor($requestId, $userType, $userId)) {
+            return [
+                'success' => false,
+                'message' => 'Details not found.',
+            ];
+        }
 
         $details = $this->fetchDetails($requestId);
 
@@ -1079,6 +1151,77 @@ class AoMroDisputeController extends Controller
     /**
      * Retourne le rôle et l'identifiant numérique du participant connecté.
      */
+    /* =====================================================================
+     * CONTRÔLE DE PROPRIÉTÉ DES LITIGES (correctif sécurité IDOR, 2026-11)
+     * =====================================================================
+     *
+     * PROBLÈME CORRIGÉ :
+     * update / close / delete chargeaient le litige uniquement à partir de
+     * l'identifiant de l'URL. Tout AO ou MRO connecté pouvait donc modifier,
+     * clôturer ou supprimer le litige d'un autre. De même, la création faisait
+     * confiance aux champs cachés du formulaire (ao_id, mro_id, request_id,
+     * created_by, po, status) et fetch-details renvoyait les informations de
+     * n'importe quelle demande.
+     *
+     * PRINCIPE :
+     *  - un litige n'est accessible qu'à ses deux parties (ao_id / mro_id) ;
+     *  - modifier, clôturer et supprimer sont réservés à la partie qui l'a créé
+     *    (même règle que l'affichage des boutons dans views/ao-mro-dispute/index.php) ;
+     *  - les champs sensibles sont fixés côté serveur, jamais lus du formulaire.
+     */
+
+    /**
+     * Indique si l'acteur connecté est partie prenante de la demande :
+     *  - AO : il en est le propriétaire (requests.ao_id) ;
+     *  - MRO : il a déposé au moins une réponse (mro_request_apply).
+     * Ce sont exactement les demandes proposées dans la liste du formulaire.
+     */
+    private function isRequestAccessibleToActor($requestId, string $userType, int $userId): bool
+    {
+        $requestId = (int) $requestId;
+        if ($requestId <= 0) {
+            return false;
+        }
+
+        if ($userType === 'ao') {
+            return Requests::find()
+                ->where(['request_id' => $requestId, 'ao_id' => $userId])
+                ->exists();
+        }
+
+        if ($userType === 'mro') {
+            return MroRequestApply::find()
+                ->where(['request_id' => $requestId, 'mro_id' => $userId])
+                ->exists();
+        }
+
+        return false;
+    }
+
+    /**
+     * Charge un litige et vérifie que l'acteur connecté en est une partie.
+     * Avec $creatorOnly = true, il doit en plus en être l'auteur (created_by).
+     *
+     * @throws NotFoundHttpException si le litige n'existe pas
+     * @throws ForbiddenHttpException si l'acteur n'a pas le droit d'agir dessus
+     */
+    private function findOwnedDispute($disputeId, bool $creatorOnly): Dispute
+    {
+        [$userType, $userId] = $this->currentActor();
+        $dispute = $this->findModel($disputeId);
+
+        $ownerId = $userType === 'ao' ? (int) $dispute->ao_id : (int) $dispute->mro_id;
+        if ($ownerId !== $userId) {
+            throw new ForbiddenHttpException('You are not allowed to access this dispute.');
+        }
+
+        if ($creatorOnly && strtolower((string) $dispute->created_by) !== $userType) {
+            throw new ForbiddenHttpException('Only the party who opened this dispute can perform this action.');
+        }
+
+        return $dispute;
+    }
+
     private function currentActor()
     {
         $userType = Yii::$app->session->get('user_type');

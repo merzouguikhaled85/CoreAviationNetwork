@@ -11,10 +11,21 @@ use yii\filters\VerbFilter;
 use yii\web\Controller;
 use yii\web\NotFoundHttpException;
 use yii\web\UploadedFile;
+use yii\validators\FileValidator;
 use yii\data\Pagination;
 
 class MroAircraftCertificatesController extends Controller
 {
+    /*
+     * LIMITES DU FICHIER CERTIFICAT (correctif 2026-11)
+     * 10 Mo, comme les autres documents de la plateforme (devis MRO, avenants).
+     * Cette valeur doit rester inférieure à post_max_size (12 Mo actuellement),
+     * sinon PHP vide la requête avant même que ce contrôle puisse s'exécuter.
+     * Les vues create/update lisent ces constantes pour le contrôle navigateur.
+     */
+    public const MAX_CERTIFICATE_BYTES = 10 * 1024 * 1024;
+    public const ALLOWED_CERTIFICATE_EXTENSIONS = ['pdf', 'doc', 'docx'];
+
     public function behaviors()
     {
         return [
@@ -114,6 +125,47 @@ class MroAircraftCertificatesController extends Controller
     }
 
     /**
+     * Valide puis enregistre le fichier certificat envoyé.
+     *
+     * Contrôles (avant toute écriture sur le disque) :
+     *  - erreur d'envoi PHP (ex. upload_max_filesize dépassé) ;
+     *  - taille maximale MAX_CERTIFICATE_BYTES ;
+     *  - extension parmi ALLOWED_CERTIFICATE_EXTENSIONS.
+     * Le nom de fichier est aléatoire et l'extension est reprise en minuscules.
+     *
+     * @return bool true si le fichier est valide et enregistré ; sinon l'erreur
+     *              est ajoutée sur l'attribut « certificate » du modèle.
+     */
+    private function storeCertificateFile(MroAircraftCertificate $certificate, UploadedFile $file): bool
+    {
+        $validator = new FileValidator([
+            'extensions' => self::ALLOWED_CERTIFICATE_EXTENSIONS,
+            // Le type MIME des .doc/.docx varie selon les serveurs : on s'en tient à l'extension.
+            'checkExtensionByMimeType' => false,
+            'maxSize' => self::MAX_CERTIFICATE_BYTES,
+            'tooBig' => 'The certificate file is too large. Maximum size: 10 MB.',
+            'wrongExtension' => 'Only PDF, DOC and DOCX files are accepted.',
+        ]);
+
+        $error = null;
+        if (!$validator->validate($file, $error)) {
+            $certificate->addError('certificate', $error);
+            // Le champ natif est masqué par la vue : le message est aussi affiché en bandeau.
+            Yii::$app->session->setFlash('error', $error);
+            return false;
+        }
+
+        $uploadPath = 'uploads/' . Yii::$app->security->generateRandomString() . '.' . strtolower($file->extension);
+        if (!$file->saveAs($uploadPath)) {
+            $certificate->addError('certificate', 'The certificate file could not be saved. Please try again.');
+            return false;
+        }
+
+        $certificate->certificate = $uploadPath;
+        return true;
+    }
+
+    /**
      * Creates a new aircraft certificate associated with an MRO profile.
      *
      * @return string|\yii\web\Response
@@ -132,15 +184,26 @@ class MroAircraftCertificatesController extends Controller
         $certificate->mro_id = $mroId;
 
         if ($certificate->load(Yii::$app->request->post())) {
+            /*
+             * CORRECTIF IDOR : mro_id est un attribut « safe » du modèle (règle
+             * integer). Il était fixé AVANT load(), donc un POST forgé pouvait
+             * rattacher le certificat à un autre MRO. Il est réimposé ici depuis
+             * la session serveur.
+             */
+            $certificate->mro_id = $mroId;
+
             // Save uploaded certificate file if provided.
             $certificateFile = UploadedFile::getInstance($certificate, 'certificate');
-            if ($certificateFile) {
-                $uploadPath = 'uploads/' . Yii::$app->security->generateRandomString() . '.' . $certificateFile->extension;
-                $certificateFile->saveAs($uploadPath);
-                $certificate->certificate = $uploadPath;
-            }
 
-            if ($certificate->validate() && $certificate->save()) {
+            /*
+             * CORRECTIF : le fichier était écrit sur le disque AVANT toute
+             * vérification (ni taille, ni type). Il est maintenant validé puis
+             * enregistré par storeCertificateFile() ; en cas d'erreur, le
+             * formulaire est réaffiché avec le message, sans rien enregistrer.
+             */
+            $fileStored = $certificateFile === null || $this->storeCertificateFile($certificate, $certificateFile);
+
+            if ($fileStored && $certificate->validate() && $certificate->save()) {
                 Yii::$app->session->setFlash('success', 'Aircraft certificate added successfully.');
                 return $this->redirect(['index']);
             }
@@ -175,16 +238,30 @@ class MroAircraftCertificatesController extends Controller
             ->where(['aircraft_model_id' => $certificate->aircraft_model_id])
             ->one();
 
+        // Propriétaire d'origine (déjà contrôlé par findCertificateModel()).
+        $ownerMroId = (int) $certificate->mro_id;
+        // Fichier actuel, conservé si aucun nouveau fichier n'est envoyé.
+        $currentCertificatePath = $certificate->certificate;
+
         if ($certificate->load(Yii::$app->request->post())) {
+            // CORRECTIF IDOR : le certificat ne peut pas être transféré à un autre MRO par un POST forgé.
+            $certificate->mro_id = $ownerMroId;
+
             // Keep existing certificate file unless a new file is uploaded.
             $certificateFile = UploadedFile::getInstance($certificate, 'certificate');
-            if ($certificateFile) {
-                $uploadPath = 'uploads/' . Yii::$app->security->generateRandomString() . '.' . $certificateFile->extension;
-                $certificateFile->saveAs($uploadPath);
-                $certificate->certificate = $uploadPath;
-            }
 
-            if ($certificate->validate() && $certificate->save()) {
+            /*
+             * CORRECTIF : fileInput() de Yii envoie toujours un champ caché vide
+             * « certificate ». load() remplaçait donc le chemin du fichier existant
+             * par une chaîne vide lorsqu'aucun nouveau fichier n'était choisi.
+             * On restaure le fichier actuel avant de traiter un éventuel remplacement.
+             */
+            $certificate->certificate = $currentCertificatePath;
+
+            // CORRECTIF : même validation qu'à la création (taille et type avant écriture).
+            $fileStored = $certificateFile === null || $this->storeCertificateFile($certificate, $certificateFile);
+
+            if ($fileStored && $certificate->validate() && $certificate->save()) {
                 Yii::$app->session->setFlash('success', 'Aircraft certificate updated successfully.');
                 return $this->redirect(['index']);
             }

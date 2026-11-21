@@ -23,6 +23,8 @@ use yii\filters\AccessControl;
 use yii\data\Pagination;
 use app\models\AoRequestsApplications;
 use app\components\UrlIdHelper;
+use app\components\MroRequestEligibility;
+use yii\web\ForbiddenHttpException;
 
 
 class MroRequestsController extends Controller
@@ -191,12 +193,38 @@ public function actionIndex()
 
     $title = 'New requests';
 
+    /*
+     * ÉTAT VU PAR LE MRO CONNECTÉ (2026-11) :
+     * le statut de la demande (created / answered) est global — « answered »
+     * signifie qu'AU MOINS UN MRO a répondu, éventuellement un concurrent.
+     * On calcule donc, en UNE seule requête pour la page affichée, les demandes
+     * auxquelles CE MRO a déjà envoyé un devis. La vue affiche alors :
+     *  - « New » + bouton « Apply » s'il n'a pas encore répondu ;
+     *  - « Quote sent » + bouton « Update quote » s'il a déjà répondu.
+     * L'activité des MRO concurrents n'est plus visible. Aucune règle métier
+     * ni aucun statut en base n'est modifié.
+     */
+    $appliedRequestIds = [];
+    if (!empty($requests)) {
+        $appliedRequestIds = array_map('intval', MroRequestApply::find()
+            ->select('request_id')
+            ->where([
+                'mro_id' => (int) $mro_id,
+                'request_id' => array_map(static function ($request) {
+                    return (int) $request->request_id;
+                }, $requests),
+            ])
+            ->distinct()
+            ->column());
+    }
+
     $viewParams = [
         'requests' => $requests,
         'title' => $title,
         'search' => $search,
         'pagination' => $pagination,
         'syncCursor' => $syncCursor,
+        'appliedRequestIds' => $appliedRequestIds,
     ];
 
     /*
@@ -223,8 +251,80 @@ public function actionIndex()
  
     
 
+    /* =====================================================================
+     * CONTRÔLE D'ÉLIGIBILITÉ MRO (correctif sécurité IDOR, 2026-11)
+     * =====================================================================
+     *
+     * PROBLÈME CORRIGÉ :
+     * apply / contact / recommend-mro chargeaient la demande à partir de l'URL
+     * sans vérifier qu'elle était réellement proposée au MRO connecté. Un MRO
+     * pouvait donc répondre à une demande close, hors de son périmètre
+     * (aéroport, certificat, modèle d'avion) ou déjà attribuée à un concurrent,
+     * et contacter n'importe quel AO. applyupdate modifiait le devis d'un autre
+     * MRO, et mro_id / request_id pouvaient être changés par un POST forgé.
+     *
+     * PRINCIPE :
+     * la règle d'éligibilité est centralisée dans components/MroRequestEligibility
+     * (mêmes critères que la liste « New requests ») ; le MRO est lu uniquement
+     * dans la session serveur.
+     */
+
+    /**
+     * Identifiant du MRO connecté (session serveur uniquement).
+     *
+     * @throws ForbiddenHttpException si la session ne contient pas de MRO
+     */
+    private function currentMroId(): int
+    {
+        $mroId = (int) Yii::$app->session->get('mro_id');
+        if ($mroId <= 0) {
+            throw new ForbiddenHttpException('This action is reserved for MRO accounts.');
+        }
+
+        return $mroId;
+    }
+
+    /**
+     * Charge une demande et vérifie que le MRO connecté peut agir dessus.
+     *
+     * @param int  $requestId    identifiant interne déjà décodé
+     * @param bool $mustBeOffered true : la demande doit être actuellement proposée
+     *                            au MRO (pour déposer un devis) ;
+     *                            false : il suffit que le MRO soit concerné
+     *                            (proposée OU il y a déjà répondu).
+     * @throws NotFoundHttpException si la demande n'existe pas
+     * @throws ForbiddenHttpException si le MRO n'y a pas accès
+     */
+    private function findRequestForCurrentMro($requestId, bool $mustBeOffered): Requests
+    {
+        $mroId = $this->currentMroId();
+        $request = Requests::findOne((int) $requestId);
+
+        if ($request === null) {
+            throw new NotFoundHttpException('Request not found.');
+        }
+
+        $allowed = $mustBeOffered
+            ? MroRequestEligibility::isOfferedTo($request, $mroId)
+            : MroRequestEligibility::isConcerned($request, $mroId);
+
+        if (!$allowed) {
+            throw new ForbiddenHttpException('This request is not available to your organisation.');
+        }
+
+        return $request;
+    }
+
     public function actionContact($id)
     {
+        /*
+         * CORRECTIF IDOR : un MRO ne peut ouvrir une conversation que sur une
+         * demande qui le concerne. Avant, tout identifiant était accepté (et une
+         * demande inexistante provoquait une erreur PHP).
+         */
+        $contactRequest = $this->findRequestForCurrentMro($id, false);
+        $id = (int) $contactRequest->request_id;
+
         // Check if a conversation already exists for the given request
         $conversation = Conversations::findOne(['request_id' => $id]);
     
@@ -233,7 +333,7 @@ public function actionIndex()
             // Create a new chat
             $chat = new Chat();
             $chat->mro_id = Yii::$app->session->get('mro_id');
-            $chat->ao_id = Requests::findOne(['request_id' => $id])->ao_id;
+            $chat->ao_id = $contactRequest->ao_id; // demande déjà chargée et contrôlée
             $chat->request_id = $id;
 
             $chat->save();
@@ -286,9 +386,13 @@ public function actionApply($id)
     if (!$id) {
         throw new NotFoundHttpException('Invalid request link.');
     }
-    // Load the request by its ID
-    $request = Requests::findOne($id);
-    $mroId = Yii::$app->session->get('mro_id');
+    /*
+     * CORRECTIF IDOR : un devis ne peut être déposé (ou modifié) que sur une
+     * demande actuellement proposée au MRO connecté : statut ouvert, périmètre
+     * couvert, et pas de PO émis vers un concurrent.
+     */
+    $request = $this->findRequestForCurrentMro($id, true);
+    $mroId = $this->currentMroId();
     // CHECK IF EXISTS
     $model = MroRequestApply::find()
         ->where([
@@ -311,6 +415,11 @@ public function actionApply($id)
     
     // Check if the form is submitted and validate the uploaded replacement, if any.
     if ($model->load(Yii::$app->request->post())) {
+        // CORRECTIF IDOR : mro_id et request_id sont des attributs « safe » du
+        // modèle ; ils sont réimposés pour qu'un POST forgé ne puisse pas les changer.
+        $model->mro_id = $mroId;
+        $model->request_id = (int) $request->request_id;
+
         $uploadedAttachment = UploadedFile::getInstance($model, 'attachment');
         $model->attachment = $uploadedAttachment;
 
@@ -407,7 +516,14 @@ public function actionApplyupdate($id)
         throw new NotFoundHttpException('Invalid request link.');
     }
    
-    $model = MroRequestApply::findOne($id);
+    /*
+     * CORRECTIF IDOR : un MRO ne peut modifier que SON devis. La recherche est
+     * filtrée par le MRO de la session ; le devis d'un autre MRO est introuvable.
+     */
+    $model = MroRequestApply::findOne([
+        'id' => $id,
+        'mro_id' => $this->currentMroId(),
+    ]);
 
     if (!$model) {
         throw new \yii\web\NotFoundHttpException("Application not found.");
@@ -421,7 +537,15 @@ public function actionApplyupdate($id)
 
     $oldAttachment = $model->attachment;
 
+    // Valeurs d'origine, réimposées après load() (voir ci-dessous).
+    $ownerMroId = (int) $model->mro_id;
+    $ownerRequestId = (int) $model->request_id;
+
     if ($model->load(Yii::$app->request->post())) {
+        // CORRECTIF IDOR : le devis ne peut pas être déplacé vers un autre MRO ou une autre demande.
+        $model->mro_id = $ownerMroId;
+        $model->request_id = $ownerRequestId;
+
         /**
          * REPLACEMENT DOCUMENT: inject the uploaded file before Yii validation.
          * When no new file is selected, the current quotation remains unchanged.
@@ -525,8 +649,15 @@ public function actionApplyupdate($id)
 
     public function actionRecommendMro($id)
     {
-        $mro_id = Yii::$app->session->get('mro_id');
-        $request = Requests::findOne($id);
+        /*
+         * CORRECTIF IDOR : la recommandation envoie un e-mail et une notification
+         * à l'AO, et ouvre une conversation avec lui. Elle n'est possible que sur
+         * une demande qui concerne le MRO connecté (avant : tout identifiant, et
+         * une demande inexistante provoquait une erreur PHP).
+         */
+        $mro_id = $this->currentMroId();
+        $request = $this->findRequestForCurrentMro($id, false);
+        $id = (int) $request->request_id;
         $model = new MroProfile();
 
         // Fetch all certificates where type matches required_certificates from request
@@ -542,7 +673,16 @@ public function actionApplyupdate($id)
             ->all();
     
         if (Yii::$app->request->isPost) {
-            $selectedMroId = Yii::$app->request->post('MroProfile')['mro_id'];
+            $selectedMroId = (int) (Yii::$app->request->post('MroProfile')['mro_id'] ?? 0);
+
+            /*
+             * CORRECTIF : le MRO recommandé doit faire partie de la liste proposée
+             * (MRO certifiés pour la demande, hors soi-même). Sinon un POST forgé
+             * pouvait recommander n'importe quel compte, y compris inexistant.
+             */
+            if ($selectedMroId && !in_array($selectedMroId, array_map('intval', \yii\helpers\ArrayHelper::getColumn($mros, 'mro_id')), true)) {
+                $selectedMroId = 0;
+            }
 
             if ($selectedMroId) {
                 $fromMro = MroProfile::findOne($mro_id);

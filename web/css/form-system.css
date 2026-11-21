@@ -935,3 +935,32 @@
         width: 100%;
     }
 }
+
+/* ==========================================================================
+   ZONE DE TEXTE « PAGE A4 » (2026-11)
+   --------------------------------------------------------------------------
+   Utilisée pour les longs textes métier : « Request Details » (AO, création et
+   modification) et la proposition technique des MRO (réponse et mise à jour).
+   La zone affiche environ une page A4 de texte ; au-delà, elle défile.
+   Les colonnes en base sont de type TEXT (~65 000 caractères), donc aucune
+   coupure. !important est nécessaire car chaque page impose sa propre hauteur.
+   ========================================================================== */
+textarea.a4-text-box,
+textarea.form-control.a4-text-box {
+    height: min(600px, 70vh) !important;   /* ≈ une page A4 de texte sur grand écran */
+    min-height: 420px !important;
+    max-height: none !important;
+    overflow-y: auto !important;            /* défilement au-delà d'une page */
+    overflow-x: hidden !important;
+    resize: vertical !important;            /* l'utilisateur peut encore agrandir */
+    line-height: 1.55 !important;
+    white-space: pre-wrap;
+}
+
+@media (max-width: 768px) {
+    textarea.a4-text-box,
+    textarea.form-control.a4-text-box {
+        height: 60vh !important;
+        min-height: 320px !important;
+    }
+}

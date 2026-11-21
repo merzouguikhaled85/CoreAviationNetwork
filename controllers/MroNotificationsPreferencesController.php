@@ -74,7 +74,7 @@ class MroNotificationsPreferencesController extends Controller
 
         }
     }
-        if ($model->load(Yii::$app->request->post()) && $model->save()) {
+        if ($this->loadForCurrentOwner($model) && $model->save()) {
             Yii::$app->session->setFlash('success', 'Notification preference updated successfully.');
             return $this->redirect(['update', 'id' => $model->id]);
         }
@@ -132,7 +132,7 @@ class MroNotificationsPreferencesController extends Controller
         $model = new MroNotificationsPreferences();
         $model->mro_id = $mro_id;
 
-        if ($model->load(Yii::$app->request->post()) && $model->save()) {
+        if ($this->loadForCurrentOwner($model) && $model->save()) {
             Yii::$app->session->setFlash('success', 'Notification preference created successfully.');
             return $this->redirect(['update', 'id' => $model->id]);
         }
@@ -152,7 +152,7 @@ class MroNotificationsPreferencesController extends Controller
     {
         $model = $this->findModel($id);
 
-        if ($model->load(Yii::$app->request->post()) && $model->save()) {
+        if ($this->loadForCurrentOwner($model) && $model->save()) {
             Yii::$app->session->setFlash('success', 'Notification preference updated successfully.');
             return $this->redirect(['update', 'id' => $model->id]);
         }
@@ -183,9 +183,61 @@ class MroNotificationsPreferencesController extends Controller
      * @return MroNotificationsPreferences the loaded model
      * @throws NotFoundHttpException if the model cannot be found
      */
+    /* =====================================================================
+     * CONTRÔLE DE PROPRIÉTÉ DES PRÉFÉRENCES (correctif sécurité IDOR, 2026-11)
+     * =====================================================================
+     *
+     * PROBLÈME CORRIGÉ :
+     *  1. view / update / delete chargeaient la ligne de préférences par son
+     *     seul identifiant : un MRO pouvait lire, modifier ou supprimer les
+     *     préférences d'un autre MRO en changeant l'id dans l'URL ;
+     *  2. mro_id est un attribut « safe » du modèle (règles required/integer) :
+     *     un POST forgé pouvait réattribuer une ligne à un autre compte.
+     *
+     * PRINCIPE :
+     *  - findModel() ne trouve que les préférences du MRO connecté
+     *    (sinon 404, sans révéler l'existence de la ligne) ;
+     *  - après chaque load(), mro_id est réimposé depuis la session serveur.
+     */
+
+    /**
+     * Identifiant du MRO connecté, lu uniquement dans la session serveur.
+     *
+     * @throws NotFoundHttpException si la session ne contient pas d'identifiant
+     */
+    private function currentOwnerId(): int
+    {
+        $ownerId = (int) Yii::$app->session->get('mro_id');
+        if ($ownerId <= 0) {
+            throw new NotFoundHttpException('MRO ID is not set in the session.');
+        }
+
+        return $ownerId;
+    }
+
+    /**
+     * Charge les données POST dans le modèle puis réimpose le propriétaire.
+     * Remplace l'appel direct à $model->load() dans toutes les actions.
+     */
+    private function loadForCurrentOwner(MroNotificationsPreferences $model): bool
+    {
+        $loaded = $model->load(Yii::$app->request->post());
+
+        // Le propriétaire ne vient jamais du formulaire.
+        $model->mro_id = $this->currentOwnerId();
+
+        return $loaded;
+    }
+
     protected function findModel($id)
     {
-        if (($model = MroNotificationsPreferences::findOne($id)) !== null) {
+        // CORRECTIF IDOR : on ne cherche que parmi les préférences du MRO connecté.
+        $model = MroNotificationsPreferences::findOne([
+            'id' => (int) $id,
+            'mro_id' => $this->currentOwnerId(),
+        ]);
+
+        if ($model !== null) {
             return $model;
         }
 

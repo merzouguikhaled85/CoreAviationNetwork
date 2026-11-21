@@ -28,6 +28,14 @@ $this->params['breadcrumbs'][] = $this->title;
  */
 $userType = Yii::$app->session->get('user_type');
 
+/*
+ * DEVIS MRO (2026-11) : fournis par RequestsController::actionView uniquement
+ * pour l'AO propriétaire. null => l'onglet « MRO Quotes » n'est pas affiché
+ * (MRO, admin), afin de ne jamais exposer les devis concurrents.
+ */
+$mroQuotes = $mroQuotes ?? null;
+$showMroQuotesTab = is_array($mroQuotes);
+
 /**
  * Load related aircraft safely.
  */
@@ -1092,10 +1100,16 @@ $this->registerJs(<<<'JS'
     );
     const documentsPanel = document.querySelector('#request-documents');
     const historyPanel = document.querySelector('#request-activity');
+    // Onglet « MRO Quotes » : présent uniquement pour l'AO propriétaire.
+    const quotesPanel = document.querySelector('#request-quotes');
     const historyDetails = historyPanel?.querySelector('details');
 
     function activateRequestTab(tabName, updateHash) {
-        const activeTab = ['overview', 'documents', 'history'].includes(tabName)
+        const allowedTabs = ['overview', 'documents', 'history'];
+        if (quotesPanel) {
+            allowedTabs.push('quotes');
+        }
+        const activeTab = allowedTabs.includes(tabName)
             ? tabName
             : 'overview';
 
@@ -1112,7 +1126,9 @@ $this->registerJs(<<<'JS'
 
         documentsPanel?.classList.toggle('is-tab-hidden', activeTab !== 'documents');
         historyPanel?.classList.toggle('is-tab-hidden', activeTab !== 'history');
-        detailList?.classList.toggle('is-tab-hidden', activeTab === 'history');
+        quotesPanel?.classList.toggle('is-tab-hidden', activeTab !== 'quotes');
+        // La grille de détails est masquée pour les onglets qui affichent leur propre bloc.
+        detailList?.classList.toggle('is-tab-hidden', activeTab === 'history' || activeTab === 'quotes');
         if (historyDetails) {
             historyDetails.open = activeTab === 'history';
         }
@@ -1423,6 +1439,11 @@ JS, \yii\web\View::POS_READY);
 
         <nav class="request-detail-tabs" aria-label="Request detail sections" role="tablist">
             <a class="is-active" href="#overview" role="tab" aria-selected="true" data-request-tab="overview">Overview</a>
+            <?php if ($showMroQuotesTab): ?>
+                <a href="#quotes" role="tab" aria-selected="false" data-request-tab="quotes">
+                    MRO Quotes <span class="request-tab-count"><?= Html::encode((string) count($mroQuotes)) ?></span>
+                </a>
+            <?php endif; ?>
             <a href="#documents" role="tab" aria-selected="false" data-request-tab="documents">
                 Documents <span class="request-tab-count"><?= Html::encode((string) $documentCount) ?></span>
             </a>
@@ -1781,6 +1802,16 @@ JS, \yii\web\View::POS_READY);
                     dans la carte principale. Le fragment est replié par défaut et
                     reçoit uniquement les données déjà autorisées de cette demande.
                 -->
+                <?php if ($showMroQuotesTab): ?>
+                    <!-- ONGLET MRO QUOTES : même liste et mêmes actions que requests/check-applications. -->
+                    <div id="request-quotes" class="is-tab-hidden">
+                        <?= $this->render('_mro-quotes', [
+                            'requestModel' => $requestModel,
+                            'mroQuotes' => $mroQuotes,
+                        ]) ?>
+                    </div>
+                <?php endif; ?>
+
                 <div id="request-activity">
                     <?= $this->render('_priority-history', [
                         'requestModel' => $requestModel,

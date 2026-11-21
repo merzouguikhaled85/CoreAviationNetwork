@@ -323,6 +323,17 @@ $this->registerCss(<<<CSS
         background: #0ea5e9;
     }
 
+    /* Devis déjà envoyé par ce MRO : bouton de mise à jour, couleur distincte. */
+    .btn-update-quote {
+        background: #f59e0b;
+    }
+
+    /* Statut vu par le MRO connecté : « Quote sent » (son devis est envoyé). */
+    .status-quote_sent {
+        background: #dcfce7;
+        color: #166534;
+    }
+
     .btn-recommend {
         background: #64748b;
     }
@@ -770,27 +781,10 @@ JS, \yii\web\View::POS_READY);
             </div>
         </div>
 
-        <!-- Flash messages -->
-        <?php if (Yii::$app->session->hasFlash('message')): ?>
-            <div class="alert alert-success">
-                <i class="bi bi-check-circle"></i>
-                <?= Yii::$app->session->getFlash('message') ?>
-            </div>
-        <?php endif; ?>
-
-        <?php if (Yii::$app->session->hasFlash('success')): ?>
-            <div class="alert alert-success">
-                <i class="bi bi-check-circle"></i>
-                <?= Yii::$app->session->getFlash('success') ?>
-            </div>
-        <?php endif; ?>
-
-        <?php if (Yii::$app->session->hasFlash('error')): ?>
-            <div class="alert alert-danger">
-                <i class="bi bi-exclamation-triangle"></i>
-                <?= Yii::$app->session->getFlash('error') ?>
-            </div>
-        <?php endif; ?>
+        <!--
+            MESSAGES FLASH : affichés uniquement par Toastr (views/layouts/main.php).
+            L'ancien bandeau Bootstrap faisait doublon avec la notification Toastr.
+        -->
 
         <!-- Search and reset filter: same request structure -->
         <div class="search-filter-card">
@@ -871,6 +865,8 @@ JS, \yii\web\View::POS_READY);
                 'requests' => $requests,
                 'pagination' => $pagination,
                 'searchQuery' => $searchQuery,
+                // Demandes déjà répondues par le MRO connecté (calculées dans le contrôleur).
+                'appliedRequestIds' => $appliedRequestIds ?? [],
             ]) ?>
         </div>
     </div>

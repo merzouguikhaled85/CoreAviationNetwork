@@ -22,6 +22,13 @@ use yii\widgets\LinkPager;
 $searchQuery = trim((string) ($searchQuery ?? $search ?? ''));
 
 /*
+ * DEVIS DÉJÀ ENVOYÉS PAR LE MRO CONNECTÉ : liste fournie par
+ * MroRequestsController::actionIndex (rendu complet et rendu AJAX).
+ * array_flip permet un test isset() rapide pour chaque ligne.
+ */
+$appliedRequestLookup = array_flip(array_map('intval', (array) ($appliedRequestIds ?? [])));
+
+/*
  * PRÉSENTATION DU STATUT : le texte et la classe CSS sont dérivés de la valeur
  * existante sans modifier celle-ci. Une valeur absente reçoit le libellé neutre
  * N/A afin que le fragment ne produise jamais de balise incomplète.
@@ -215,22 +222,44 @@ $getLocationName = function ($request) {
                                         </div>
                                     </td>
 
+                                    <?php
+                                    /*
+                                     * POINT DE VUE DU MRO CONNECTÉ : on n'affiche plus le statut
+                                     * global (« Answered » pouvait venir d'un concurrent), mais
+                                     * l'état de SA réponse : « New » ou « Quote sent ».
+                                     */
+                                    $hasSentQuote = isset($appliedRequestLookup[(int) $request->request_id]);
+                                    ?>
                                     <td data-label="Status">
-                                        <?= $statusBadge($request->status ?? null) ?>
+                                        <?= $statusBadge($hasSentQuote ? 'quote_sent' : 'new') ?>
                                     </td>
 
                                     <td data-label="Actions">
                                         <div class="action-buttons">
-                                            <?= Html::a(
-                                                '<i class="bi bi-check2-circle"></i>',
-                                                ['apply', 'id' =>  $encodedId],
-                                                [
-                                                    'class' => 'action-btn btn-apply',
-                                                    'title' => 'Apply',
-                                                    'data-bs-toggle' => 'tooltip',
-                                                    'aria-label' => 'Apply',
-                                                ]
-                                            ) ?>
+                                            <?php if ($hasSentQuote): ?>
+                                                <?php // Devis déjà envoyé : même action « apply », qui recharge et met à jour le devis existant. ?>
+                                                <?= Html::a(
+                                                    '<i class="bi bi-pencil-square"></i>',
+                                                    ['apply', 'id' =>  $encodedId],
+                                                    [
+                                                        'class' => 'action-btn btn-update-quote',
+                                                        'title' => 'Update quote',
+                                                        'data-bs-toggle' => 'tooltip',
+                                                        'aria-label' => 'Update quote',
+                                                    ]
+                                                ) ?>
+                                            <?php else: ?>
+                                                <?= Html::a(
+                                                    '<i class="bi bi-check2-circle"></i>',
+                                                    ['apply', 'id' =>  $encodedId],
+                                                    [
+                                                        'class' => 'action-btn btn-apply',
+                                                        'title' => 'Apply',
+                                                        'data-bs-toggle' => 'tooltip',
+                                                        'aria-label' => 'Apply',
+                                                    ]
+                                                ) ?>
+                                            <?php endif; ?>
 
                                             <!-- Recommend action preserved and kept disabled as in the original file.
                                             <?= Html::a(

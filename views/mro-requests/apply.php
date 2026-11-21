@@ -5,7 +5,13 @@ use yii\helpers\Json;
 use yii\bootstrap5\ActiveForm;
 use app\models\Currency;
 
-$this->title = 'Submit MRO Quotation';
+/*
+ * CRÉATION OU MISE À JOUR (2026-11) : l'action apply recharge le devis existant
+ * du MRO connecté s'il y en a un. Le titre, le statut affiché et le bouton
+ * indiquent donc clairement s'il crée ou met à jour son offre.
+ */
+$isQuoteUpdate = !$model->isNewRecord;
+$this->title = $isQuoteUpdate ? 'Update MRO Quotation' : 'Submit MRO Quotation';
 
 // Build the AO request attachment URL independently from the MRO quotation upload.
 $requestAttachment = trim((string) ($request->attachment ?? ''));
@@ -86,6 +92,16 @@ $requestPriorityIcons = [
 $requestStatus = strtolower((string) ($request->status ?? 'created'));
 $requestStatusText = ucwords(str_replace('_', ' ', $requestStatus));
 $requestStatusClass = 'status-' . preg_replace('/[^a-zA-Z0-9_-]/', '', $requestStatus);
+
+/*
+ * POINT DE VUE DU MRO CONNECTÉ : comme dans la liste « New requests », on affiche
+ * l'état de SA réponse plutôt que le statut global (« Answered » pouvait venir
+ * d'un concurrent). Les classes CSS existantes created/answered sont réutilisées.
+ */
+if (in_array($requestStatus, ['created', 'answered'], true)) {
+  $requestStatusText = $isQuoteUpdate ? 'Quote Sent' : 'New';
+  $requestStatusClass = $isQuoteUpdate ? 'status-answered' : 'status-created';
+}
 $formatRequestDate = static function ($value) {
   return !empty($value) && strtotime((string) $value)
     ? date('d M Y H:i', strtotime((string) $value))
@@ -1920,7 +1936,7 @@ CSS);
   <div class="loading-box" role="status" aria-live="polite">
     <div class="loading-spinner" aria-hidden="true"></div>
     <div>
-      <div class="loading-title">Submitting your quote…</div>
+      <div class="loading-title"><?= $isQuoteUpdate ? 'Updating your quote…' : 'Submitting your quote…' ?></div>
       <div class="loading-subtitle">Please wait a moment.</div>
     </div>
   </div>
@@ -2237,6 +2253,8 @@ CSS);
               <?= $form->field($model, 'Description')
                 ->textarea([
                   'rows' => 7,
+                  // ZONE DE TEXTE « PAGE A4 » (2026-11) : grande zone, défilement au-delà (classe a4-text-box, web/css/form-system.css).
+                  'class' => 'form-control a4-text-box',
                   'placeholder' => 'Describe the maintenance scope, exclusions, lead time, manpower, tooling, parts assumptions, and commercial conditions...',
                 ])
                 ->hint('Recommended: include scope of work, aircraft downtime impact, exclusions, lead time, warranty/validity, and operational constraints.', ['class' => 'input-hint'])
@@ -2349,7 +2367,11 @@ CSS);
                   <span aria-hidden="true"><i class="bi bi-arrow-counterclockwise"></i></span> Reset
                 </button>
 
-                <?= Html::button('<span aria-hidden="true"><i class="bi bi-send-check"></i></span> Submit Quote', [
+                <?= Html::button(
+                  $isQuoteUpdate
+                    ? '<span aria-hidden="true"><i class="bi bi-pencil-square"></i></span> Update Quote'
+                    : '<span aria-hidden="true"><i class="bi bi-send-check"></i></span> Submit Quote',
+                  [
                   'type' => 'button',
                   'class' => 'btn-reply-submit',
                   'id' => 'submit-button',
@@ -2537,6 +2559,9 @@ CSS);
 </div>
 
 <?php
+// Libellé du bouton pendant l'envoi (interpolé dans le heredoc JS ci-dessous).
+$quoteSubmittingLabel = $isQuoteUpdate ? 'Updating...' : 'Submitting...';
+
 $this->registerJs(<<<JS
 (function(){
   var form = document.getElementById('reply-form');
@@ -2777,7 +2802,7 @@ $this->registerJs(<<<JS
       isSubmitting = true;
       submitConfirmed = true;
       submitButton.disabled = true;
-      submitButton.innerHTML = '<span class="reply-btn-spinner" aria-hidden="true"></span> Submitting...';
+      submitButton.innerHTML = '<span class="reply-btn-spinner" aria-hidden="true"></span> {$quoteSubmittingLabel}';
 
       if(overlay){
         overlay.style.display = 'flex';

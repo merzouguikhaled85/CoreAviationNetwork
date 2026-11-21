@@ -67,16 +67,18 @@ use yii\widgets\LinkPager;
                                     $priorityIsOverdue = $priorityDue !== false && $priorityDue < time();
 
                                     /*
-                                     * FIN DU COMPTE À REBOURS : une demande fermée ou annulée ne peut plus
-                                     * recevoir de réponse MRO. Le badge AOG/Urgent reste affiché pour conserver
-                                     * le contexte opérationnel, mais « remaining/overdue » est masqué car il
-                                     * n'a plus de valeur d'action et pourrait induire l'utilisateur en erreur.
+                                     * FIN DU COMPTE À REBOURS (2026-11) : le délai « remaining/overdue »
+                                     * mesure le temps laissé aux MRO pour RÉPONDRE à la demande. Il n'a de
+                                     * sens que tant que l'AO attend des devis (statuts created / answered).
+                                     * Dès qu'un PO est émis (po_loaded), puis pendant les travaux (Open
+                                     * requests) et après clôture, il est masqué : il n'a plus de valeur
+                                     * d'action. Le badge AOG/Urgent reste affiché pour le contexte.
+                                     * (Avant : masqué seulement pour closed / cancelled.)
                                      */
                                     $priorityDeadlineVisible = $priorityDue !== false
-                                        && !in_array($status, [
-                                            Requests::STATUS_CLOSED,
-                                            Requests::STATUS_CANCELLED,
-                                            'canceled',
+                                        && in_array($status, [
+                                            Requests::STATUS_CREATED,
+                                            Requests::STATUS_ANSWERED,
                                         ], true);
 
                                     // Check if an application exists

@@ -41,7 +41,35 @@ class DashboardController extends Controller
             $adminDashboard = $this->buildAdminDashboard();
         }
 
+        $mroRequestCounts = ['open' => 0, 'closed' => 0];
+        if (strtolower((string) Yii::$app->session->get('user_type')) === 'mro') {
+            $mroRequestCounts = \app\components\MroRequestCounters::forMro(
+                (int) Yii::$app->session->get('mro_id')
+            );
+        }
+
+        $aoRequestCounts = ['open' => 0, 'closed' => 0];
+        if (strtolower((string) Yii::$app->session->get('user_type')) === 'ao') {
+            $aoId = (int) Yii::$app->session->get('ao_id');
+            if ($aoId > 0) {
+                // Match the AO lists without search or pagination; Closed has no date filter.
+                $aoRequests = Requests::find()->where(['ao_id' => $aoId]);
+                $aoRequestCounts['open'] = (int) (clone $aoRequests)->andWhere(['status' => [
+                    Requests::STATUS_WORK_ACCEPTED,
+                    Requests::STATUS_WORK_STARTED,
+                    Requests::STATUS_REPORT_SUBMITTED,
+                    Requests::STATUS_UPDATE_REQUEST,
+                    Requests::STATUS_UPDATE_REQUEST_ACCEPTED,
+                    Requests::STATUS_UPDATE_REQUEST_DENIED,
+                ]])->count();
+                $aoRequestCounts['closed'] = (int) (clone $aoRequests)
+                    ->andWhere(['status' => Requests::STATUS_CLOSED])->count();
+            }
+        }
+
         return $this->render('home', [
+            'aoRequestCounts' => $aoRequestCounts,
+            'mroRequestCounts' => $mroRequestCounts,
             'adminDashboard' => $adminDashboard,
         ]);
     }

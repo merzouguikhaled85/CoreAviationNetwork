@@ -1014,6 +1014,10 @@ JS, \yii\web\View::POS_READY);
                                     $conversationWith = $isMe ? $receiverName : $senderName;
                                     $lastSender = $isMe ? 'Me' : $senderName;
                                     $messagePreview = (string) ($lastMessage->message ?? '');
+                                    // PIÈCES JOINTES (2026-11) : un message « fichier seul » affiche le nom du fichier.
+                                    if (trim($messagePreview) === '' && $lastMessage && method_exists($lastMessage, 'hasAttachment') && $lastMessage->hasAttachment()) {
+                                        $messagePreview = 'Attachment: ' . (string) $lastMessage->attachment_name;
+                                    }
                                     $timestamp = $lastMessage->timestamp ?? null;
 
                                     // REQUEST DETAILS: prepare a safe compact summary without changing business data.

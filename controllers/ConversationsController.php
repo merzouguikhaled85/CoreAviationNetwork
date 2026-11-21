@@ -14,6 +14,8 @@ use app\models\AoProfile;
 use app\models\Chat;
 use app\models\MroNotificationsPreferences;
 use app\components\UrlIdHelper;
+use yii\web\UploadedFile;
+use yii\helpers\FileHelper;
 use yii\helpers\VarDumper;
 use yii\db\Expression;
 use yii\data\Pagination;
@@ -395,6 +397,8 @@ public function actionIndex()
 
     // Create a new message for the conversation
     $newMessage = new Conversations();
+    // PIÈCES JOINTES : active les règles d'envoi (texte OU fichier, contrôle du fichier).
+    $newMessage->scenario = Conversations::SCENARIO_REPLY;
 
     // Check if the new message is submitted via POST request
     if ($newMessage->load(Yii::$app->request->post())) {
@@ -422,8 +426,22 @@ public function actionIndex()
 
         $newMessage->receiver_type = $isMro ? 'ao' : 'mro';
 
+        /*
+         * PIÈCE JOINTE (2026-11) : fichier facultatif. Il est validé par le modèle
+         * (type réel + 10 Mo), stocké hors du web, puis le message est enregistré.
+         * Un message « fichier seul » garde un texte vide ('') pour rester
+         * compatible avec la colonne message existante.
+         */
+        $newMessage->attachmentFile = UploadedFile::getInstance($newMessage, 'attachmentFile');
+        $newMessage->message = (string) $newMessage->message;
+
+        if ($newMessage->attachmentFile !== null && !$newMessage->hasAttribute('attachment_path')) {
+            // Migration m261121_170000 pas encore exécutée sur cette base.
+            $newMessage->addError('attachmentFile', 'Attachments are not available yet. Please contact the administrator.');
+        }
+
         // Save the new message
-        if ($newMessage->save()) {
+        if (!$newMessage->hasErrors() && $newMessage->validate() && $this->storeAttachment($newMessage) && $newMessage->save(false)) {
 
             // Send platform notification to MRO
             if ($newMessage->receiver_type === 'mro') {
@@ -472,7 +490,28 @@ public function actionIndex()
             Yii::$app->session->removeFlash('message');
             Yii::$app->session->removeFlash('success');
 
+            /*
+             * ENVOI AJAX (2026-11) : la vue envoie le message sans recharger la page.
+             * Elle reçoit une réponse JSON puis actualise la liste des messages.
+             * Un envoi classique (JavaScript indisponible) garde la redirection.
+             */
+            if (Yii::$app->request->isAjax) {
+                return $this->asJson(['success' => true]);
+            }
+
             return $this->redirect(['view', 'chat_id' => UrlIdHelper::encode($chat_id)]);
+        }
+
+        // ENVOI AJAX : l'erreur est renvoyée en JSON (affichée par Toastr côté page), sans flash.
+        if (Yii::$app->request->isAjax) {
+            Yii::$app->response->statusCode = 422;
+            // Premier message de validation (ex. fichier trop volumineux) sinon message générique.
+            $firstErrors = $newMessage->getFirstErrors();
+            return $this->asJson([
+                'success' => false,
+                'message' => $firstErrors ? reset($firstErrors) : 'Failed to send message.',
+                'errors' => $firstErrors,
+            ]);
         }
 
         // Keep only error flash
@@ -546,6 +585,86 @@ private function decodeChatId($token): int
 /**
  * SECURITY: return the chat only when the connected AO or MRO is a participant.
  */
+/**
+ * TÉLÉCHARGEMENT / AFFICHAGE D'UNE PIÈCE JOINTE (2026-11)
+ *
+ * Le fichier n'est pas public : il est servi ici uniquement si l'utilisateur
+ * connecté participe à la conversation (findAuthorizedChat). L'identifiant du
+ * message est signé (UrlIdHelper), comme les autres liens de la messagerie.
+ *
+ * @param string $id identifiant signé du message
+ * @param int $inline 1 = affichage dans le navigateur (vignette / aperçu), 0 = téléchargement
+ */
+public function actionAttachment($id, $inline = 0)
+{
+    $messageId = UrlIdHelper::decodeOrFail($id, 'Invalid attachment link.');
+    $message = Conversations::findOne($messageId);
+
+    if ($message === null || !$message->hasAttachment()) {
+        throw new NotFoundHttpException('Attachment not found.');
+    }
+
+    // Contrôle d'accès : seuls l'AO et le MRO de cette conversation.
+    $this->findAuthorizedChat((int) $message->chat_id);
+
+    $path = $message->getAttachmentAbsolutePath();
+    if ($path === null || !is_file($path)) {
+        throw new NotFoundHttpException('Attachment file not found.');
+    }
+
+    // Affichage direct seulement pour les types autorisés (PDF / images).
+    $mimeType = (string) $message->attachment_mime;
+    $canDisplayInline = (bool) $inline && in_array($mimeType, Conversations::ATTACHMENT_MIME_TYPES, true);
+
+    return Yii::$app->response->sendFile(
+        $path,
+        $message->attachment_name ?: basename($path),
+        [
+            'mimeType' => $mimeType !== '' ? $mimeType : null,
+            'inline' => $canDisplayInline,
+        ]
+    );
+}
+
+/**
+ * Enregistre la pièce jointe (si présente) dans @runtime/chat-attachments et
+ * renseigne les colonnes attachment_* du message. Le nom stocké est aléatoire ;
+ * le type MIME est mesuré sur le fichier, pas lu dans la requête.
+ *
+ * @return bool false si l'écriture a échoué (une erreur est ajoutée au modèle)
+ */
+private function storeAttachment(Conversations $message): bool
+{
+    $file = $message->attachmentFile;
+    if ($file === null) {
+        return true; // message texte seul
+    }
+
+    $directory = Yii::getAlias(Conversations::ATTACHMENT_DIRECTORY);
+    FileHelper::createDirectory($directory, 0775, true);
+
+    // Défense supplémentaire si le dossier runtime devenait public par erreur.
+    $htaccess = $directory . DIRECTORY_SEPARATOR . '.htaccess';
+    if (!is_file($htaccess)) {
+        @file_put_contents($htaccess, "Require all denied\n");
+    }
+
+    $storedName = Yii::$app->security->generateRandomString(32) . '.' . strtolower($file->extension);
+    $absolutePath = $directory . DIRECTORY_SEPARATOR . $storedName;
+
+    if (!$file->saveAs($absolutePath)) {
+        $message->addError('attachmentFile', 'The attachment could not be saved. Please try again.');
+        return false;
+    }
+
+    $message->attachment_path = $storedName;
+    $message->attachment_name = mb_substr(basename((string) $file->name), 0, 255);
+    $message->attachment_mime = (string) FileHelper::getMimeType($absolutePath);
+    $message->attachment_size = (int) $file->size;
+
+    return true;
+}
+
 private function findAuthorizedChat(int $chatId): Chat
 {
     $chat = Chat::findOne($chatId);

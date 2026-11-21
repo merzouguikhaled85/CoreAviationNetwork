@@ -31,6 +31,7 @@ use yii\helpers\Url;
 use yii\helpers\VarDumper;
 use app\models\MroInsuranceDocuments;
 use app\components\UrlIdHelper;
+use app\components\MroRequestEligibility;
 
 class RequestsController extends Controller
 {
@@ -61,10 +62,192 @@ class RequestsController extends Controller
                 'class' => VerbFilter::className(),
                 'actions' => [
                     'delete' => ['POST'],
+                    /*
+                     * CORRECTIF CSRF : « deny » supprime définitivement une réponse
+                     * MRO. Elle n'accepte plus de GET (un simple lien ou une image
+                     * piégée suffisait à la déclencher). Les boutons des vues
+                     * check-applications et view-application envoient déjà un POST
+                     * avec jeton CSRF (data-method="post").
+                     */
+                    'deny' => ['POST'],
                 ],
             ],
         ];
     }
+
+    /* =====================================================================
+     * CONTRÔLE DE PROPRIÉTÉ DES DEMANDES (correctif sécurité IDOR, 2026-11)
+     * =====================================================================
+     *
+     * PROBLÈME CORRIGÉ :
+     * La règle AccessControl de ce contrôleur accepte tout utilisateur connecté
+     * ('@'), qu'il soit AO, MRO ou admin. Plusieurs actions chargeaient ensuite
+     * une demande, une réponse MRO, un PO ou un rapport CRS uniquement à partir
+     * de l'identifiant reçu dans l'URL, sans vérifier à qui il appartenait.
+     * Un MRO (ou un autre AO) pouvait donc supprimer, clôturer, approuver ou
+     * télécharger les documents d'une demande qui n'était pas la sienne.
+     *
+     * Les identifiants signés (UrlIdHelper) empêchent seulement de deviner les
+     * numéros : ce n'est PAS une autorisation, car un MRO reçoit légitimement
+     * des liens signés vers les demandes qu'il consulte.
+     *
+     * PRINCIPE DE LA CORRECTION :
+     * Toute action AO passe désormais par une des méthodes ci-dessous. Elles
+     * remontent systématiquement jusqu'à la demande (requests.ao_id) et la
+     * comparent à l'AO connecté, lu uniquement dans la session serveur.
+     * Les messages d'erreur restent génériques pour ne rien révéler.
+     */
+
+    /**
+     * Retourne l'identifiant de l'AO connecté, ou null si l'utilisateur
+     * connecté n'est pas un AO (MRO, admin…).
+     * La source est exclusivement la session serveur, jamais la requête HTTP.
+     */
+    private function currentAoId(): ?int
+    {
+        if (Yii::$app->session->get('user_type') !== 'ao') {
+            return null;
+        }
+
+        $aoId = (int) Yii::$app->session->get('ao_id');
+        return $aoId > 0 ? $aoId : null;
+    }
+
+    /**
+     * Exige que l'utilisateur connecté soit un AO et retourne son identifiant.
+     * Utilisé par les actions réservées à l'exploitant (création, PO, CRS…).
+     *
+     * @throws ForbiddenHttpException si l'utilisateur n'est pas un AO
+     */
+    private function requireAoId(): int
+    {
+        $aoId = $this->currentAoId();
+        if ($aoId === null) {
+            throw new ForbiddenHttpException('This action is reserved for aircraft operators.');
+        }
+
+        return $aoId;
+    }
+
+    /**
+     * Charge une demande et vérifie qu'elle appartient à l'AO connecté.
+     * C'est le point de contrôle central : les autres méthodes « findOwned* »
+     * finissent toutes par l'appeler.
+     *
+     * @param int $requestId identifiant interne déjà décodé
+     * @throws NotFoundHttpException si la demande n'existe pas
+     * @throws ForbiddenHttpException si elle appartient à un autre AO ou si l'utilisateur n'est pas AO
+     */
+    protected function findOwnedRequest($requestId): Requests
+    {
+        $aoId = $this->requireAoId();
+        $request = Requests::findOne((int) $requestId);
+
+        if ($request === null) {
+            throw new NotFoundHttpException('Request not found.');
+        }
+
+        // Comparaison stricte en entier : '12' et 12 doivent être équivalents.
+        if ((int) $request->ao_id !== $aoId) {
+            throw new ForbiddenHttpException('You are not allowed to access this request.');
+        }
+
+        return $request;
+    }
+
+    /**
+     * Charge une réponse MRO (mro_request_apply) et vérifie que la demande
+     * à laquelle elle répond appartient à l'AO connecté.
+     */
+    private function findOwnedApplication($applicationId): MroRequestApply
+    {
+        $application = MroRequestApply::findOne((int) $applicationId);
+        if ($application === null) {
+            throw new NotFoundHttpException('Application not found.');
+        }
+
+        // Le contrôle porte sur la demande parente, seule détentrice de ao_id.
+        $this->findOwnedRequest($application->request_id);
+
+        return $application;
+    }
+
+    /**
+     * Charge un enregistrement de PO (ao_requests_applications) et vérifie
+     * que sa demande appartient à l'AO connecté.
+     */
+    private function findOwnedPoRecord($poRecordId): AoRequestsApplications
+    {
+        $poRecord = AoRequestsApplications::findOne((int) $poRecordId);
+        if ($poRecord === null) {
+            throw new NotFoundHttpException('PO document not found.');
+        }
+
+        $this->findOwnedRequest($poRecord->request_id);
+
+        return $poRecord;
+    }
+
+    /**
+     * Charge un rapport CRS (repair_report) et vérifie la chaîne complète :
+     * rapport → réponse MRO → demande → AO connecté.
+     * Un rapport orphelin (réponse MRO supprimée) est traité comme introuvable.
+     */
+    private function findOwnedReport($reportId): RepairReport
+    {
+        $report = RepairReport::findOne((int) $reportId);
+        if ($report === null) {
+            throw new NotFoundHttpException('Report not found.');
+        }
+
+        $application = $report->getMroRequestApply()->one();
+        if ($application === null) {
+            throw new NotFoundHttpException('Report not found.');
+        }
+
+        $this->findOwnedRequest($application->request_id);
+
+        return $report;
+    }
+
+    /**
+     * Indique si l'utilisateur connecté peut CONSULTER une demande (lecture seule).
+     *
+     * La page requests/view est partagée : les MRO y accèdent depuis leurs listes
+     * (mro-requests, mro-applications, view-po, view-feedback) et depuis les
+     * notifications temps réel. La lecture est donc autorisée à :
+     *  - l'AO propriétaire ;
+     *  - l'admin (supervision, comportement existant conservé) ;
+     *  - un MRO qui a déjà répondu à la demande ;
+     *  - un MRO à qui la demande est proposée dans « New requests ».
+     * Toutes les actions de MODIFICATION restent réservées à l'AO propriétaire.
+     */
+    private function canViewRequest(Requests $request): bool
+    {
+        $userType = Yii::$app->session->get('user_type');
+
+        if ($userType === 'admin') {
+            return true;
+        }
+
+        if ($userType === 'ao') {
+            return (int) $request->ao_id === $this->currentAoId();
+        }
+
+        if ($userType === 'mro') {
+            $mroId = (int) Yii::$app->session->get('mro_id');
+            if ($mroId <= 0) {
+                return false;
+            }
+
+            // MRO ayant déjà répondu, ou à qui la demande est proposée
+            // (règle partagée : components/MroRequestEligibility.php).
+            return MroRequestEligibility::isConcerned($request, $mroId);
+        }
+
+        return false;
+    }
+
 
 
 
@@ -478,6 +661,14 @@ class RequestsController extends Controller
      */
     public function actionViewOld($id)
     {
+        /*
+         * CORRECTIF IDOR : ancienne action encore routable (requests/view-old)
+         * qui accepte un identifiant numérique brut. Elle n'est plus utilisée
+         * par les vues, mais tant qu'elle existe elle est réservée à l'AO
+         * propriétaire de la demande.
+         */
+        $id = (int) $this->findOwnedRequest($id)->request_id;
+
         // Attempt to find the AoRequest by request_id
         $AoRequest = AoRequestsApplications::find()
             ->where(['request_id' => $id])
@@ -551,6 +742,16 @@ class RequestsController extends Controller
         throw new NotFoundHttpException('Invalid request link.');
     }
 
+    /*
+     * CORRECTIF IDOR : la page est partagée entre l'AO propriétaire, l'admin
+     * et les MRO concernés par la demande (voir canViewRequest()). Un autre AO
+     * ou un MRO non concerné reçoit désormais une erreur 403.
+     */
+    $requestModel = $this->findModel($id);
+    if (!$this->canViewRequest($requestModel)) {
+        throw new ForbiddenHttpException('You are not allowed to view this request.');
+    }
+
     // Attempt to find the AoRequest by request_id
     $AoRequest = AoRequestsApplications::find()
         ->where(['request_id' => $id])
@@ -609,13 +810,29 @@ class RequestsController extends Controller
             ->scalar() ?: '';
     }
 
+    /*
+     * DEVIS MRO DANS LA PAGE DE LA DEMANDE (2026-11) :
+     * l'onglet « MRO Quotes » reprend la liste de requests/check-applications.
+     * Il n'est fourni QU'À l'AO propriétaire : la page view est aussi ouverte par
+     * des MRO, qui ne doivent jamais voir les devis de leurs concurrents.
+     * null = onglet non affiché ; [] = onglet affiché, aucune réponse reçue.
+     */
+    $mroQuotes = null;
+    if ($this->currentAoId() !== null && (int) $requestModel->ao_id === $this->currentAoId()) {
+        $mroQuotes = MroRequestApply::find()
+            ->where(['request_id' => $requestModel->request_id])
+            ->orderBy(['id' => SORT_ASC])
+            ->all();
+    }
+
     // Render the view with the found request model and attachments
     return $this->render('view', [
-        'request' => $this->findModel($id),
+        'request' => $requestModel, // déjà chargée et contrôlée plus haut
         'poAttachment' => $poAttachment,
         'invoice' => $invoice,
         'repairReports' => $repairReports,
         'crs' => $crs,
+        'mroQuotes' => $mroQuotes,
     ]);
 }
 
@@ -628,7 +845,11 @@ public function actionCreate1()
 {
     $request = new Requests();
 
-    $ao_id = Yii::$app->session->get('ao_id');
+    /*
+     * CORRECTIF IDOR : ancienne action encore routable (requests/create1).
+     * Seul un AO peut créer une demande ; son identifiant vient de la session.
+     */
+    $ao_id = $this->requireAoId();
     $request->ao_id = $ao_id;
 
     $airports = Airports::find()
@@ -999,7 +1220,12 @@ public function actionCreate()
 {
     $request = new Requests();
 
-    $ao_id = Yii::$app->session->get('ao_id');
+    /*
+     * CORRECTIF IDOR : la règle AccessControl laisse entrer les MRO et les
+     * admins. Seul un AO peut créer une demande, et ao_id provient uniquement
+     * de la session (jamais du formulaire).
+     */
+    $ao_id = $this->requireAoId();
     $request->ao_id = $ao_id;
 
     // IMPORTANT:
@@ -1011,8 +1237,16 @@ public function actionCreate()
 
         /**
          * AIRCRAFT VALIDATION
+         *
+         * CORRECTIF IDOR : l'avion doit appartenir à la flotte de l'AO connecté.
+         * Sans ce filtre, un AO pouvait créer une demande sur l'avion d'un
+         * autre exploitant en modifiant aircraft_id dans le formulaire.
+         * Un avion d'un autre AO est traité comme « introuvable ».
          */
-        $aircraft = Aircrafts::findOne($request->aircraft_id);
+        $aircraft = Aircrafts::findOne([
+            'aircraft_id' => $request->aircraft_id,
+            'ao_id' => $ao_id,
+        ]);
 
         if (!$aircraft) {
             Yii::$app->session->setFlash('error', 'Selected aircraft not found.');
@@ -1328,12 +1562,20 @@ public function actionUpdate($id, $status = null)
     if (!$id) {
         throw new NotFoundHttpException('Invalid request link.');
     }
-    $request = $this->findModel($id);
+
+    /*
+     * CORRECTIF IDOR : avant, n'importe quel utilisateur connecté pouvait
+     * modifier la demande, et la ligne « $request->ao_id = session ao_id »
+     * permettait même à un autre AO de s'approprier la demande.
+     * Désormais seule la demande de l'AO connecté est chargée.
+     */
+    $request = $this->findOwnedRequest($id);
 
     $oldDestination = $request->destination;
     $oldAircraftId = $request->aircraft_id;
 
-    $ao_id = Yii::$app->session->get('ao_id');
+    // Valeur identique à celle déjà en base (contrôlée ci-dessus) : aucun transfert possible.
+    $ao_id = (int) $request->ao_id;
     $request->ao_id = $ao_id;
 
     /*
@@ -1367,6 +1609,18 @@ public function actionUpdate($id, $status = null)
     }
 
     if ($request->load(Yii::$app->request->post())) {
+
+        /*
+         * CORRECTIF IDOR : ao_id ne doit jamais venir du formulaire, et un
+         * nouvel avion choisi doit appartenir à la flotte de l'AO connecté.
+         */
+        $request->ao_id = $ao_id;
+        if (
+            (int) $request->aircraft_id !== (int) $oldAircraftId
+            && !Aircrafts::find()->where(['aircraft_id' => $request->aircraft_id, 'ao_id' => $ao_id])->exists()
+        ) {
+            throw new ForbiddenHttpException('Selected aircraft does not belong to your fleet.');
+        }
 
         $oldAttachment = $request->getOldAttribute('attachment');
 
@@ -1647,7 +1901,11 @@ public function actionUpdate($id, $status = null)
 
 public function actionUpdate1($id, $status = null)
 {
-    $request = $this->findModel($id);
+    /*
+     * CORRECTIF IDOR : ancienne action encore routable (requests/update1) qui
+     * accepte un identifiant numérique brut. Réservée à l'AO propriétaire.
+     */
+    $request = $this->findOwnedRequest($id);
 
     $oldDestination = $request->destination;
     $oldAircraftId = $request->aircraft_id;
@@ -1677,6 +1935,8 @@ public function actionUpdate1($id, $status = null)
     }
 
     if ($request->load(Yii::$app->request->post())) {
+        // CORRECTIF IDOR : ao_id ne doit jamais être modifié par le formulaire.
+        $request->ao_id = (int) $request->getOldAttribute('ao_id');
 
         /**
          * FILE UPLOAD
@@ -2114,8 +2374,12 @@ public function actionUpdate1($id, $status = null)
     if (!$id) {
         throw new NotFoundHttpException('Invalid request link.');
     }
-    // Load the request by its ID
-    $request = Requests::findOne($id);
+    /*
+     * CORRECTIF IDOR : la liste des devis MRO (prix, documents) d'une demande
+     * n'est visible que par l'AO propriétaire. Avant, tout utilisateur
+     * connecté pouvait lire les devis concurrents d'une demande.
+     */
+    $request = $this->findOwnedRequest($id);
 
     // Fetch all applications for the specific request
     $applications = MroRequestApply::find()->where(['request_id' => $id])->all();
@@ -2167,12 +2431,13 @@ public function actionDeny($id)
 {
     // SIGNED APPLICATION ID: decode at the controller boundary before any lookup.
     $id = UrlIdHelper::decodeOrFail($id, 'Invalid application link.');
-    // Load the MRO request application by its ID
-    $application = MroRequestApply::findOne($id);
 
-    if (!$application) {
-        throw new NotFoundHttpException('Application not found.');
-    }
+    /*
+     * CORRECTIF IDOR : refuser (et supprimer) une réponse MRO est réservé à
+     * l'AO propriétaire de la demande. Avant, n'importe quel utilisateur
+     * connecté pouvait supprimer le devis d'un concurrent.
+     */
+    $application = $this->findOwnedApplication($id);
 
     $requestId = $application->request_id;
     if ($application) {
@@ -2242,6 +2507,13 @@ public function actionLoadPo($id)
         Yii::$app->session->setFlash('error', 'Application not found.');
         return $this->redirect(['new-requests']);
     }
+
+    /*
+     * CORRECTIF IDOR : émettre un PO engage contractuellement l'AO. Seul le
+     * propriétaire de la demande peut le faire. Avant, un utilisateur
+     * connecté quelconque pouvait déposer un PO sur la demande d'un autre AO.
+     */
+    $this->findOwnedRequest($application->request_id);
 
     /*
      * Load related MRO safely.
@@ -2509,7 +2781,11 @@ public function actionLoadPo($id)
 
 public function actionLoadPo1($id)
 {
-    $application = MroRequestApply::findOne($id);
+    /*
+     * CORRECTIF IDOR : ancienne action encore routable (requests/load-po1) avec
+     * identifiant brut. Réservée à l'AO propriétaire de la demande.
+     */
+    $application = $this->findOwnedApplication($id);
     $mro = $application->mro;
 
 // CHECK IF AO REQUEST APPLICATION ALREADY EXISTS
@@ -2701,11 +2977,12 @@ public function actionViewPo($id)
     if (!$id) {
         throw new NotFoundHttpException('Invalid request link.');
     }
-    $request = Requests::findOne($id);
+    /*
+     * CORRECTIF IDOR : la liste des PO d'une demande est réservée à l'AO
+     * propriétaire (le MRO consulte ses PO via mro-applications/view-po).
+     */
+    $request = $this->findOwnedRequest($id);
 
-    if (!$request) {
-        throw new NotFoundHttpException('Request not found.');
-    }
     // Find all AoRequestsApplications related to the request_id
     $aoRequestsApplications = AoRequestsApplications::find()->where(['request_id' => $id])->all();
     
@@ -2723,7 +3000,11 @@ public function actionDownloadPo($id)
         throw new NotFoundHttpException('Invalid PO document link.');
     }
 
-    $aoRequest = AoRequestsApplications::findOne($poRecordId);
+    /*
+     * CORRECTIF IDOR : le fichier PO est un document contractuel. Il n'est
+     * téléchargeable ici que par l'AO propriétaire de la demande.
+     */
+    $aoRequest = $this->findOwnedPoRecord($poRecordId);
 
     if ($aoRequest && !empty($aoRequest->po)) {
         // Define the file path
@@ -2759,8 +3040,9 @@ public function actionViewPoDocument($id)
         throw new NotFoundHttpException('Invalid PO document link.');
     }
 
-    $aoRequest = AoRequestsApplications::findOne($poRecordId);
-    if (!$aoRequest || empty($aoRequest->po)) {
+    // CORRECTIF IDOR : même contrôle que download-po (AO propriétaire uniquement).
+    $aoRequest = $this->findOwnedPoRecord($poRecordId);
+    if (empty($aoRequest->po)) {
         throw new NotFoundHttpException('PO document not found.');
     }
 
@@ -2788,7 +3070,13 @@ public function actionDelete($id)
 {
     // SIGNED REQUEST ID: destructive actions must never accept a raw database key.
     $id = UrlIdHelper::decodeOrFail($id, 'Invalid request link.');
-    $request = $this->findModel($id);
+
+    /*
+     * CORRECTIF IDOR : la suppression est définitive (hard delete). Avant, un MRO
+     * ou un autre AO disposant du lien signé pouvait supprimer la demande.
+     * Désormais seul l'AO propriétaire peut la supprimer.
+     */
+    $request = $this->findOwnedRequest($id);
 
     // ðŸ”¥ Safely get MRO BEFORE deleting
     $mro = null;
@@ -2832,11 +3120,12 @@ public function actionDelete($id)
 
 public function actionViewReports1($id)
 {
-    $request = Requests::findOne($id);
-
-    if (!$request) {
-        throw new NotFoundHttpException('Request not found.');
-    }
+    /*
+     * CORRECTIF IDOR : ancienne action encore routable (requests/view-reports1)
+     * avec identifiant brut et capable de clôturer la demande. Réservée à l'AO
+     * propriétaire.
+     */
+    $request = $this->findOwnedRequest($id);
 
     // Handle form submission (CRS approval/rejection)
     if (Yii::$app->request->isPost) {
@@ -2846,6 +3135,11 @@ public function actionViewReports1($id)
 
         if ($reportId && in_array($decision, ['yes', 'no'])) {
             $report = RepairReport::findOne($reportId);
+            // CORRECTIF IDOR : le rapport posté doit appartenir à CETTE demande.
+            $reportApplication = $report ? $report->getMroRequestApply()->one() : null;
+            if ($reportApplication === null || (int) $reportApplication->request_id !== (int) $request->request_id) {
+                $report = null;
+            }
             if (!$report) {
                 Yii::$app->session->setFlash('error', 'CRS report not found.');
                 return $this->redirect(['view-reports', 'id' => $id]);
@@ -2953,11 +3247,13 @@ $encryptedId = $id;
     if (!$id) {
         throw new NotFoundHttpException('Invalid request link.');
     }
-    $request = Requests::findOne($id);
 
-    if (!$request) {
-        throw new NotFoundHttpException('Request not found.');
-    }
+    /*
+     * CORRECTIF IDOR : cette page affiche les CRS et permet de les accepter
+     * (ce qui clôture la demande). Elle est réservée à l'AO propriétaire ;
+     * le MRO dispose de sa propre page mro-applications/view-reports.
+     */
+    $request = $this->findOwnedRequest($id);
 
     /*
      * Handle form submission:
@@ -2976,6 +3272,16 @@ $encryptedId = $id;
         }
 
         $report = RepairReport::findOne($reportId);
+
+        /*
+         * CORRECTIF IDOR : report_id vient d'un champ caché du formulaire, donc
+         * modifiable. On vérifie que ce rapport concerne bien la demande
+         * contrôlée ci-dessus ; sinon il est traité comme introuvable.
+         */
+        $reportApplication = $report ? $report->getMroRequestApply()->one() : null;
+        if ($reportApplication === null || (int) $reportApplication->request_id !== (int) $request->request_id) {
+            $report = null;
+        }
 
         if (!$report) {
             Yii::$app->session->setFlash('error', 'CRS report not found.');
@@ -3107,9 +3413,14 @@ $encryptedId = $id;
     {
         // SIGNED REPORT ID: document downloads use the same protected public identifier.
         $id = UrlIdHelper::decodeOrFail($id, 'Invalid report link.');
-        $report = RepairReport::findOne($id);
 
-        if (!$report || !$report->CRS_attachment) {
+        /*
+         * CORRECTIF IDOR : le CRS est un document réglementaire de l'avion.
+         * Ici, seul l'AO propriétaire de la demande peut le télécharger.
+         */
+        $report = $this->findOwnedReport($id);
+
+        if (!$report->CRS_attachment) {
             throw new NotFoundHttpException('Report not found or attachment not available.');
         }
         $filePath = Yii::getAlias('@webroot/uploads/' . $report->CRS_attachment);
@@ -3125,11 +3436,12 @@ $encryptedId = $id;
     {
         // SIGNED REPORT ID: protect the report identifier used by this form.
         $id = UrlIdHelper::decodeOrFail($id, 'Invalid report link.');
-        $report = RepairReport::findOne($id);
-    
-        if (!$report) {
-            throw new NotFoundHttpException('Report not found.');
-        }
+
+        /*
+         * CORRECTIF IDOR : le commentaire AO sur un CRS ne peut être saisi que
+         * par l'AO propriétaire de la demande concernée.
+         */
+        $report = $this->findOwnedReport($id);
     
         if ($report->load(Yii::$app->request->post())) {
             $report->AO_description = Yii::$app->request->post('RepairReport')['AO_description'];
@@ -3150,12 +3462,15 @@ $encryptedId = $id;
 
     public function actionAcceptCrs($id)
     {
-        $report = RepairReport::findOne($id);
+        /*
+         * CORRECTIF IDOR : accepter un CRS clôture la demande. Avant, n'importe
+         * quel utilisateur connecté pouvait le faire avec un simple numéro.
+         * findOwnedReport() vérifie rapport → réponse MRO → demande → AO connecté
+         * (et lève une 404 propre au lieu d'une erreur PHP si le rapport n'existe pas).
+         */
+        $report = $this->findOwnedReport($id);
         $request = $report->getRequest();
-$requestId = $request ? $request->request_id : 'N/A';
-if (!$report) {
-            throw new NotFoundHttpException('Report not found.');
-        }
+        $requestId = $request ? $request->request_id : 'N/A';
         $lastMroRequestApply = MroRequestApply::find()
         ->where(['id' => $report->mro_request_apply_id]) // Assuming 'id' is the correct column name
         ->orderBy(['id' => SORT_DESC]) // Assuming 'created_at' is the timestamp column
@@ -3251,13 +3566,13 @@ Yii::$app->runAction('notification/save-notification', [
     {
         // SIGNED REPORT ID: protect the CRS identifier used by this decision form.
         $id = UrlIdHelper::decodeOrFail($id, 'Invalid report link.');
-        $report = RepairReport::findOne($id);
 
-        if (!$report) {
-            throw new NotFoundHttpException('Report not found.');
-        }
-
-
+        /*
+         * CORRECTIF IDOR : approuver le devis clôture la demande et engage
+         * financièrement l'AO. Seul l'AO propriétaire peut le faire ; avant,
+         * un MRO pouvait approuver son propre devis et clôturer la demande.
+         */
+        $report = $this->findOwnedReport($id);
 
         // Check if the request is a POST request and if the quote is approved
         if (Yii::$app->request->isPost && Yii::$app->request->post('approve') === 'yes') {
@@ -3311,12 +3626,13 @@ Yii::$app->runAction('notification/save-notification', [
             throw new NotFoundHttpException('Invalid feedback link.');
         }
 
-        $report = RepairReport::findOne($reportId);
+        /*
+         * CORRECTIF IDOR : l'évaluation d'un MRO ne peut être déposée que par
+         * l'AO propriétaire de la demande (sinon un tiers pourrait noter ou
+         * dénigrer un MRO sur une mission qui ne le concerne pas).
+         */
+        $report = $this->findOwnedReport($reportId);
         $feedback = new Feedback();
-
-        if (!$report) {
-            throw new NotFoundHttpException('Report not found.');
-        }
 
         /* FEEDBACK REVIEW 2026: load the linked request once for context and existing processing. */
         $request = $report->getRequest();
@@ -3402,11 +3718,14 @@ Yii::$app->runAction('notification/save-notification', [
     {
         // SIGNED APPLICATION ID: conversations are opened from a protected application URL.
         $id = UrlIdHelper::decodeOrFail($id, 'Invalid application link.');
-        $mroRequestApplication = MroRequestApply::findOne($id);
 
-        if (!$mroRequestApplication) {
-            throw new NotFoundHttpException('Application not found.');
-        }
+        /*
+         * CORRECTIF IDOR : cette action crée une conversation au nom de l'AO
+         * connecté (chat.ao_id = session). Elle est donc réservée à l'AO
+         * propriétaire de la demande ; le MRO utilise mro-applications/contact.
+         */
+        $mroRequestApplication = $this->findOwnedApplication($id);
+
         // Check if a conversation already exists for the given request
         $conversation = Conversations::findOne(['request_id' => $mroRequestApplication->request_id]);
     

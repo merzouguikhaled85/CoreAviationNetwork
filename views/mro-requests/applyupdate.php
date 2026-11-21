@@ -1445,6 +1445,8 @@ $totalSteps = count($steps);
                     <div class="full-width">
                         <?= $form->field($model, 'Description')->textarea([
                             'rows' => 6,
+                            // ZONE DE TEXTE « PAGE A4 » (2026-11) : grande zone, défilement au-delà (classe a4-text-box, web/css/form-system.css).
+                            'class' => 'form-control a4-text-box',
                             'placeholder' => 'Describe the updated quotation, maintenance scope, parts, manpower or any special condition...'
                         ])->label('Updated Technical &amp; Commercial Proposal <span class="text-danger">*</span>') ?>
 

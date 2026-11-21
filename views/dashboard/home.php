@@ -62,9 +62,9 @@ if ($isAO) {
     $mainPanelText = 'Aircraft operator workspace overview.';
 
     $stats = [
+        ['value' => (int) ($aoRequestCounts['open'] ?? 0), 'label' => 'Open Requests'],
+        ['value' => (int) ($aoRequestCounts['closed'] ?? 0), 'label' => 'Closed Requests'],
         ['value' => 'AO', 'label' => 'Workspace'],
-        ['value' => 'Zulu', 'label' => 'Aviation UTC'],
-        ['value' => 'Secure', 'label' => 'Platform'],
     ];
 
     $modules = [
@@ -108,9 +108,9 @@ if ($isAO) {
     $mainPanelText = 'Maintenance provider workspace overview.';
 
     $stats = [
+        ['value' => (int) ($mroRequestCounts['open'] ?? 0), 'label' => 'Open Requests'],
+        ['value' => (int) ($mroRequestCounts['closed'] ?? 0), 'label' => 'Closed Requests'],
         ['value' => 'MRO', 'label' => 'Workspace'],
-        ['value' => 'Zulu', 'label' => 'Aviation UTC'],
-        ['value' => 'Secure', 'label' => 'Platform'],
     ];
 
     $modules = [

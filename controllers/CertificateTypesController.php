@@ -24,13 +24,47 @@ class CertificateTypesController extends Controller
     public function behaviors()
     {
         return [
+            /*
+             * CORRECTIF SÉCURITÉ S-1 (critique, 2026-11) :
+             * ce contrôleur n'avait AUCUN filtre d'accès. N'importe quel visiteur,
+             * même non connecté, pouvait lister, créer, modifier et supprimer les
+             * types de certificats. Or ces types déterminent quels MRO voient et
+             * reçoivent les demandes (requests.required_certificates) : les
+             * modifier revenait à détourner la mise en relation AO / MRO.
+             *
+             * Règles appliquées (la première qui correspond l'emporte) :
+             *  1. get-certificate-type-id reste PUBLIC : simple lecture JSON
+             *     (type → identifiant) appelée en AJAX par la page d'inscription
+             *     MRO (site/become-mro, visiteur non connecté) et par les écrans
+             *     MRO (mro-profile/create, mro-certificates/create, certificates).
+             *  2. Toutes les autres actions sont réservées aux administrateurs.
+             * Toute action non couverte par une règle est refusée par Yii.
+             */
+            'access' => [
+                'class' => AccessControl::class,
+                'rules' => [
+                    [
+                        'allow' => true,
+                        'actions' => ['get-certificate-type-id'],
+                        'verbs' => ['GET'],
+                        'roles' => ['?', '@'], // invités et utilisateurs connectés
+                    ],
+                    [
+                        'allow' => true,
+                        'roles' => ['@'], // utilisateur connecté…
+                        'matchCallback' => static function () {
+                            // …et administrateur (rôle lu dans la session serveur).
+                            return Yii::$app->session->get('user_type') === 'admin';
+                        },
+                    ],
+                ],
+            ],
             'verbs' => [
                 'class' => VerbFilter::className(),
                 'actions' => [
                     'delete' => ['POST'],
                 ],
             ],
-           
         ];
     }
 
