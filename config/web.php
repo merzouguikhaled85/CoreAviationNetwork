@@ -15,6 +15,12 @@ $config = [
     'id' => 'basic',
     'name' => 'Core Aviation Network',
     'basePath' => dirname(__DIR__),
+    /*
+     * FUSEAU UNIQUE : toute la plateforme travaille en UTC, quel que soit le
+     * réglage du serveur (php.ini, Windows/XAMPP, GoDaddy). La connexion MySQL
+     * est elle aussi forcée en UTC dans config/db.php.
+     */
+    'timeZone' => 'UTC',
       'homeUrl' => ['site/index'],
     'bootstrap' => ['log', 'auditTrail', 'sessionSecurity'],
     'aliases' => [
@@ -22,6 +28,11 @@ $config = [
         '@npm'   => '@vendor/npm-asset',
     ],
     'components' => [
+        'formatter' => [
+            'class' => 'yii\i18n\Formatter',
+            'timeZone' => 'UTC',          // affichage en UTC
+            'defaultTimeZone' => 'UTC',   // valeurs de la base lues comme UTC
+        ],
         'aogPush' => ['class' => 'app\components\AogPushService'],
         'firebaseSender' => ['class' => 'app\components\FirebaseMessagingSender'],
         /*

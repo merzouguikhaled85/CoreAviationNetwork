@@ -1,5 +1,24 @@
 # Changelog (knowledge base & notable project changes)
 
+## 2026-11-22 — Fix: provide-feedback crash when the MRO profile no longer exists
+- `RepairReport::getMro()` is null-safe (missing application or MRO profile → null instead of a fatal error).
+- `RequestsController::actionProvideFeedback`: `mro_id` taken from `mro_request_apply` (still valid if the MRO profile was deleted); ratings checked (1–5) before saving; `save()` result checked and logged; platform notification before e-mail, with `requestId`; mail wrapped in try/catch; notifications skipped when the MRO profile is gone.
+
+## 2026-11-22 — Global loader redesign (`views/layouts/can-spinner.php`)
+- No more full-screen splash on every page: a 3 px top progress bar (`#can-nav-progress`) starts on same-origin navigation; the compact overlay (CAN logo + ring + « Loading… ») only appears after 700 ms.
+- Form submit: spinner inside the submit button (label from `data-loading-text`, default « Submitting… »), button disabled after the form data is built; starts only if the submit was not prevented (native submit + Yii ActiveForm `beforeSubmit`).
+- Ignored: downloads (`download` attr, file extensions, download/export/attachment/uploads URLs), `target="_blank"`, mailto/tel/javascript, anchors, modifier-clicks, `data-no-loader`. Safety: everything resets after 12 s and on back/forward cache.
+- Kept contracts: `#av-global-loader` + `.hidden` (Support widget, view-reports), `window.AV_DISABLE_GLOBAL_LOADER` (conversation view). New API `window.CANLoader.show()/hide()`.
+- Accessibility: `role="status"`, `aria-live`, `aria-busy`; `prefers-reduced-motion` slows the ring.
+- Brand text fixed (was « Aircraft Services Network »).
+- No double loader: when a page already shows its own full-screen fixed loader (e.g. « Submitting your quote… » on `mro-requests/apply`), the CAN logo card replaces it immediately (page loader kept but made transparent via `.can-own-loader-replaced`) and shows the page's message; restored on hide. Submit buttons already handled by the page (disabled or with their own spinner) are left untouched.
+
+## 2026-11-22 — Platform time zone forced to UTC (independent of the server)
+- `config/web.php`, `config/console.php`: `'timeZone' => 'UTC'` + `formatter` (`timeZone`/`defaultTimeZone` = UTC).
+- `config/db.php`: `on afterOpen` → `SET time_zone = '+00:00'` (NOW(), CURRENT_TIMESTAMP and TIMESTAMP reads in UTC).
+- Labels: ETA/ETD (create/update views, `Requests`) and `Appointment::appointment_date` show « (UTC) ».
+- Migration `m261122_200000_convert_datetimes_to_utc`: measures the former MySQL server offset and the php.ini offset on the server where it runs, shifts existing DATETIME/TIMESTAMP values accordingly (skips `*_utc` columns and `audit_log.created_at`; preserves ON UPDATE columns), logs every shift in `timezone_conversion_log`; `down()` reverts exactly. No-op when both offsets are 0.
+
 ## 2026-11-22 — AO signup: same 4-step onboarding as the MRO signup
 - `views/site/become-ao.php` rewritten on the `become-mro.php` model (layout `auth`, no header/footer, same CSS/JS building blocks):
   - left navy panel: stepper (Account / Operator & contact / Aircraft / Review & submit) and a « Your aircraft » card (type, registration, serial, certificate) that fills in live;

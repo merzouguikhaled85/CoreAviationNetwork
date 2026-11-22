@@ -1628,7 +1628,7 @@ CSS);
                                     'todayHighlight' => true,
                                     'showRemove' => false,
                                 ],
-                            ])->label('ETA <span class="text-danger">*</span>', ['encode' => false]) ?>
+                            ])->label('ETA <span class="text-muted fw-normal">(UTC)</span> <span class="text-danger">*</span>', ['encode' => false]) ?>
                         </div>
 
                         <!-- ETD -->
@@ -1645,7 +1645,7 @@ CSS);
                                     'todayHighlight' => true,
                                     'showRemove' => false,
                                 ],
-                            ])->label('ETD <span class="text-danger">*</span>', ['encode' => false]) ?>
+                            ])->label('ETD <span class="text-muted fw-normal">(UTC)</span> <span class="text-danger">*</span>', ['encode' => false]) ?>
                         </div>
 
                         <!-- SCHEDULE LOCAL TIME: informational only; stored values and validation stay unchanged. -->

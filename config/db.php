@@ -16,6 +16,14 @@ return [
     'password' => $environment['dbPassword'],
     'charset' => 'utf8',
 
+    /*
+     * SESSION MYSQL EN UTC : NOW(), CURRENT_TIMESTAMP et la lecture des colonnes
+     * TIMESTAMP ne dépendent plus du fuseau du serveur MySQL.
+     */
+    'on afterOpen' => static function ($event) {
+        $event->sender->createCommand("SET time_zone = '+00:00'")->execute();
+    },
+
     // Options de cache du schéma à activer uniquement en production.
     //'enableSchemaCache' => true,
     //'schemaCacheDuration' => 60,

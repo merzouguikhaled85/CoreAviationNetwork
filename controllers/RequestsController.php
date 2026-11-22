@@ -3669,44 +3669,88 @@ Yii::$app->runAction('notification/save-notification', [
         }
     
         if (Yii::$app->request->isPost) {
+            /*
+             * MRO DE RÉFÉRENCE : l'identifiant vient de la candidature retenue
+             * (mro_request_apply.mro_id). Il reste disponible même si le profil
+             * MRO a été supprimé depuis ; seules les notifications sont alors omises.
+             */
+            $apply = $report->getMroRequestApply()->one();
+            $mroId = $apply ? $apply->mro_id : null;
+            $mro = $report->getMro();
 
+            if (!$mroId) {
+                Yii::$app->session->setFlash('error', 'This request has no MRO to rate.');
+                return $this->redirect(['closed-requests']);
+            }
+
+            $posted = (array) Yii::$app->request->post('Feedback', []);
+            $rating = static function ($value) {
+                $value = (int) $value;
+                return $value >= 1 && $value <= 5 ? $value : null;
+            };
 
             $feedback->request_id = $request->request_id;
             $feedback->ao_id = $request->ao_id;
+            $feedback->mro_id = $mroId;
+            $feedback->kept_to_agreed_schedule_rating = $rating($posted['kept_to_agreed_schedule_rating'] ?? null);
+            $feedback->kept_to_agreed_cost_rating = $rating($posted['kept_to_agreed_cost_rating'] ?? null);
+            $feedback->overall_communication_rating = $rating($posted['overall_communication_rating'] ?? null);
+            $feedback->feedback_text = trim((string) ($posted['feedback_text'] ?? ''));
 
-            $feedback->kept_to_agreed_schedule_rating = Yii::$app->request->post('Feedback')['kept_to_agreed_schedule_rating'];
-            $feedback->kept_to_agreed_cost_rating = Yii::$app->request->post('Feedback')['kept_to_agreed_cost_rating'];
-            $feedback->overall_communication_rating = Yii::$app->request->post('Feedback')['overall_communication_rating'];
-            $feedback->rating =round(($feedback->kept_to_agreed_schedule_rating + $feedback->kept_to_agreed_cost_rating + $feedback->overall_communication_rating)/3) ;
-            $feedback->mro_id = $report->getMro()->mro_id;
-            $feedback->feedback_text = Yii::$app->request->post('Feedback')['feedback_text'];
-          //  VarDumper::dump($feedback); die();
-
-            $feedback->save();
-    
-            Yii::$app->session->setFlash('success', 'Feedback submitted successfully.');
-            $mro = $report->getMro();
-            $notificationPreferences = MroNotificationsPreferences::findOne(['mro_id' => $mro->mro_id]);
-            if ($notificationPreferences && $notificationPreferences->notify_by_email && $notificationPreferences->notify_for_appointment_acceptance) {
-                Yii::$app->mailer->compose('feedback_sent', ['feedback' => $feedback , 'mro' => $mro])
-                ->setTo($mro->email)
-                
-                ->setSubject('FeedBack sent')
-                ->send();
+            if ($feedback->kept_to_agreed_schedule_rating === null
+                || $feedback->kept_to_agreed_cost_rating === null
+                || $feedback->overall_communication_rating === null) {
+                Yii::$app->session->setFlash('error', 'Please rate schedule, cost and communication (1 to 5).');
+                return $this->render('provide-feedback', [
+                    'report' => $report,
+                    'feedback' => $feedback,
+                    'request' => $request,
+                ]);
             }
-              //platform notification
-              if ($notificationPreferences && $notificationPreferences->notify_by_platform && $notificationPreferences->notify_for_appointment_acceptance) {
-                  $requestId = $request ? $request->request_id : 'N/A';
 
-                // Call the action to save the notification
+            $feedback->rating = (int) round(($feedback->kept_to_agreed_schedule_rating
+                + $feedback->kept_to_agreed_cost_rating
+                + $feedback->overall_communication_rating) / 3);
+
+            if (!$feedback->save()) {
+                Yii::error(['feedback_save_failed' => $feedback->getErrors(), 'report_id' => $report->repair_report_id], __METHOD__);
+                Yii::$app->session->setFlash('error', 'Your feedback could not be saved. Please try again.');
+                return $this->render('provide-feedback', [
+                    'report' => $report,
+                    'feedback' => $feedback,
+                    'request' => $request,
+                ]);
+            }
+
+            Yii::$app->session->setFlash('success', 'Feedback submitted.');
+
+            // Notifications : seulement si le profil MRO existe encore.
+            if ($mro) {
+                $notificationPreferences = MroNotificationsPreferences::findOne(['mro_id' => $mro->mro_id]);
+
+                // Plateforme d'abord : elle ne dépend pas du serveur SMTP.
+                if ($notificationPreferences && $notificationPreferences->notify_by_platform && $notificationPreferences->notify_for_appointment_acceptance) {
                     Yii::$app->runAction('notification/save-notification', [
                         'recipientType' => 'mro',
                         'recipientId' => $mro->mro_id,
-                        'message' => 'Feedback has been provided for request #' . $requestId,
-                                        'actions' =>  Yii::$app->request->baseUrl .'/mro-applications/closed-requests', // Or any route you want
-
+                        'message' => 'Feedback has been provided for request #' . $request->request_id,
+                        'actions' => Yii::$app->request->baseUrl . '/mro-applications/closed-requests',
+                        'requestId' => $request->request_id,
                     ]);
                 }
+
+                if ($notificationPreferences && $notificationPreferences->notify_by_email && $notificationPreferences->notify_for_appointment_acceptance && $mro->email) {
+                    try {
+                        Yii::$app->mailer->compose('feedback_sent', ['feedback' => $feedback, 'mro' => $mro])
+                            ->setTo($mro->email)
+                            ->setSubject('Feedback sent')
+                            ->send();
+                    } catch (\Throwable $e) {
+                        Yii::error('Feedback mail failed: ' . $e->getMessage(), __METHOD__);
+                    }
+                }
+            }
+
             return $this->redirect(['closed-requests']);
         }
     

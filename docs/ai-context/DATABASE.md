@@ -56,10 +56,10 @@
 - `*_profiles.status`: `active`, `banned`, `hidden`
 
 ## Date/time handling **[V]**
-- No `timeZone` set in `config/web.php` → PHP server default **[A]** (verify GoDaddy `date.timezone`).
-- `response_due_at_utc` explicitly UTC (`gmdate`) in `Requests::beforeSave`; views append `' UTC'` before `strtotime`.
-- `eta`, `etd`, `appointment_date` stored via `date('Y-m-d H:i:s', strtotime(input))` → **server-local, naive** (not UTC). No per-user timezone conversion found.
-- Migration tables use `CURRENT_TIMESTAMP` (MySQL session timezone); push tables use Unix ints.
+- **Everything is UTC** since 2026-11-22: app `timeZone` = UTC (web + console), formatter UTC, MySQL session `time_zone = '+00:00'` (config/db.php `on afterOpen`). Server settings (php.ini, MySQL global zone) no longer matter.
+- `eta`, `etd`, `appointment_date`, `created_at`… are UTC values; forms label ETA/ETD « (UTC) ».
+- Existing data converted by `m261122_200000_convert_datetimes_to_utc` (shifts logged in `timezone_conversion_log`).
+- Push tables use Unix ints (timezone-free).
 
 ## Integrity notes
 - Core tables: FK presence unknown **[A]**. Model relations are not backed by migrations.

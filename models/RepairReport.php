@@ -109,7 +109,9 @@ class RepairReport extends ActiveRecord
      */
     public function getMro()
     {
-        return $this->getMroRequestApply()->one()->getMro();
+        // Null si la candidature ou le profil MRO n'existe plus (compte supprimé).
+        $apply = $this->getMroRequestApply()->one();
+        return $apply ? $apply->getMro() : null;
     }
 
     /**

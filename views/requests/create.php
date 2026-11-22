@@ -1462,7 +1462,7 @@ CSS);
                                     'todayHighlight' => true,
                                     'showRemove' => false,
                                 ],
-                            ])->label('ETA<span class="text-danger">*</span>') ?>
+                            ])->label('ETA <span class="text-muted fw-normal">(UTC)</span><span class="text-danger">*</span>') ?>
                         </div>
 
                         <div>
@@ -1478,7 +1478,7 @@ CSS);
                                     'todayHighlight' => true,
                                     'showRemove' => false,
                                 ],
-                            ])->label('ETD<span class="text-danger">*</span>') ?>
+                            ])->label('ETD <span class="text-muted fw-normal">(UTC)</span><span class="text-danger">*</span>') ?>
                         </div>
                     </div>
                 </div>

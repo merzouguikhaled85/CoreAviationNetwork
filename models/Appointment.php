@@ -46,7 +46,7 @@ class Appointment extends ActiveRecord
     public function attributeLabels()
     {
         return [
-            'appointment_date' => 'Appointment Date',
+            'appointment_date' => 'Appointment Date (UTC)',
             'mro_id' => 'MRO ID',
             'ao_id' => 'AO ID',
             'request_id' => 'Request ID',
