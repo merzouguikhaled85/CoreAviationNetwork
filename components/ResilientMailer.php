@@ -30,6 +30,17 @@ class ResilientMailer extends \yii\symfonymailer\Mailer
     private ?SmtpTransport $smtpTransport = null;
 
     /**
+     * COUPE-CIRCUIT : après un premier échec SMTP dans la requête HTTP courante,
+     * les envois suivants sont abandonnés immédiatement. Sans cela, une boucle
+     * d'e-mails (ex. notification de tous les MRO) cumule les délais réseau,
+     * atteint la limite PHP de 30 s et interrompt l'opération métier.
+     */
+    private bool $smtpUnavailable = false;
+
+    /** Nombre d'envois abandonnés par le coupe-circuit (journalisé une fois). */
+    private int $skippedAfterFailure = 0;
+
+    /**
      * Construit explicitement le transport déclaré par DSN afin de pouvoir régler
      * son flux SocketStream. Les autres formes acceptées par Yii sont transmises
      * sans modification au composant parent.
@@ -79,10 +90,19 @@ class ResilientMailer extends \yii\symfonymailer\Mailer
      */
     protected function sendMessage($message): bool
     {
+        if ($this->smtpUnavailable) {
+            if ($this->skippedAfterFailure++ === 0) {
+                Yii::warning('SMTP indisponible : envois suivants ignorés pour cette requête.', 'mail.smtp');
+            }
+
+            return false;
+        }
+
         try {
             return parent::sendMessage($message);
         } catch (TransportExceptionInterface $exception) {
             // Une seule tentative par requête : les délais SMTP se cumulent.
+            $this->smtpUnavailable = true;
             $this->resetSmtpConnection();
 
             $this->logSmtpFailure($exception, 1);

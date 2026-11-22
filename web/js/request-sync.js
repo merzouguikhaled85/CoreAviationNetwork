@@ -25,7 +25,7 @@
     /*
      * DÉDOUBLONNAGE ENTRE CONTEXTES : une même page peut contenir plusieurs zones
      * synchronisées. Mémoriser les identifiants techniques déjà présentés empêche
-     * deux SweetAlert pour le même changement, sans utiliser de donnée métier.
+     * deux toasts pour le même changement, sans utiliser de donnée métier.
      */
     var shownAlertIds = {};
 
@@ -311,7 +311,7 @@
     /**
      * VALIDATION DES ALERTES SERVEUR : même si le serveur produit déjà une structure
      * sûre, le navigateur contrôle les types, les icônes et l'origine de l'URL avant
-     * toute présentation. Aucun HTML métier reçu n'est injecté dans SweetAlert.
+     * toute présentation. Aucun HTML métier reçu n'est injecté dans Toastr.
      */
     function normalizeStatusAlerts(rawAlerts) {
         var allowedIcons = ['success', 'info', 'warning', 'error'];
@@ -390,101 +390,75 @@
         }
 
         /*
-         * REPLI TECHNIQUE : SweetAlert est normalement chargé par AppAsset avant ce
-         * module. Si le CDN est momentanément indisponible, un message natif informe
-         * quand même l'utilisateur sans interrompre le rafraîchissement de la liste.
+         * TOASTR UNIQUEMENT : les alertes de statut sont informatives et ne doivent
+         * jamais bloquer l'écran. Si Toastr est momentanément indisponible (CDN),
+         * la liste est tout de même actualisée ; aucun window.alert bloquant.
          */
-        if (typeof window.Swal === 'undefined') {
-            window.alert(alerts.length === 1
-                ? alerts[0].title + '\n' + alerts[0].message
-                : alerts.length + ' requests have been updated.');
+        if (typeof window.toastr === 'undefined') {
             return;
         }
 
-        if (alerts.length > 1) {
-            window.Swal.fire({
-                toast: true,
-                position: 'top-end',
-                icon: 'info',
-                title: alerts.length + ' requests updated',
-                text: 'The visible list has been refreshed with the latest statuses.',
-                showConfirmButton: false,
-                showCloseButton: true,
-                timer: 7000,
-                timerProgressBar: true,
+        /* Signale à la cloche qu'un toast vient d'annoncer l'événement (anti-doublon). */
+        if (window.CANNotificationToasts && typeof window.CANNotificationToasts.statusAlertShown === 'function') {
+            window.CANNotificationToasts.statusAlertShown();
+        }
 
-                /*
-                 * STYLE DU RÉSUMÉ MULTIPLE : les mêmes classes que les notifications
-                 * unitaires assurent une présentation homogène, même lorsqu'aucun
-                 * bouton de consultation n'est nécessaire dans le résumé global.
-                 */
-                customClass: {
-                    popup: 'can-status-toast',
-                    icon: 'can-status-toast-icon',
-                    title: 'can-status-toast-title',
-                    htmlContainer: 'can-status-toast-message',
-                    actions: 'can-status-toast-actions',
-                    confirmButton: 'can-status-toast-confirm',
-                    closeButton: 'can-status-toast-close'
+        if (alerts.length > 1) {
+            window.toastr.info(
+                'The visible list has been refreshed with the latest statuses.',
+                escapeToastHtml(alerts.length + ' requests updated'),
+                {
+                    closeButton: true,
+                    progressBar: true,
+                    timeOut: 7000,
+                    extendedTimeOut: 2000,
+                    preventDuplicates: false,
+                    toastClass: 'toast can-status-toast'
                 }
-            });
+            );
             return;
         }
 
         var alertData = alerts[0];
-        var isModal = alertData.presentation === 'modal';
-        var swalOptions = {
-            toast: !isModal,
-            position: isModal ? 'center' : 'top-end',
-            icon: alertData.icon,
-            title: alertData.title,
-            text: alertData.message,
-            showCloseButton: !isModal,
-            showConfirmButton: alertData.actionUrl !== '',
-            confirmButtonText: '<i class="bi bi-eye"></i> View Request',
-            showCancelButton: isModal,
-            cancelButtonText: '<i class="bi bi-x-circle"></i> Close',
-            reverseButtons: true,
-            timer: isModal ? undefined : 8000,
-            timerProgressBar: !isModal,
+        /*
+         * STATUT IMPORTANT : l'ancienne boîte centrale bloquante devient un toast
+         * persistant (fermeture manuelle), toujours accompagné de « View Request ».
+         */
+        var isImportant = alertData.presentation === 'modal';
+        var toastType = ['success', 'info', 'warning', 'error'].indexOf(alertData.icon) !== -1
+            ? alertData.icon
+            : 'info';
+        var body = escapeToastHtml(alertData.message);
 
-            /*
-             * STYLE RÉSERVÉ AUX STATUTS IMPORTANTS : les classes ne sont ajoutées
-             * qu'à la fenêtre centrale. Les toasts conservent volontairement leurs
-             * dimensions natives et leur comportement discret en haut de l'écran.
-             */
-            customClass: isModal ? {
-                popup: 'can-status-swal',
-                icon: 'can-status-swal-icon',
-                title: 'can-status-swal-title',
-                htmlContainer: 'can-status-swal-message',
-                actions: 'can-status-swal-actions',
-                confirmButton: 'can-status-swal-confirm',
-                cancelButton: 'can-status-swal-close'
-            } : {
-                /*
-                 * STYLE DU TOAST ORDINAIRE : les classes dédiées rapprochent son
-                 * identité visuelle de la boîte centrale sans le rendre bloquant.
-                 */
-                popup: 'can-status-toast',
-                icon: 'can-status-toast-icon',
-                title: 'can-status-toast-title',
-                htmlContainer: 'can-status-toast-message',
-                actions: 'can-status-toast-actions',
-                confirmButton: 'can-status-toast-confirm',
-                closeButton: 'can-status-toast-close'
-            }
-        };
+        if (alertData.actionUrl) {
+            body += '<div class="can-toast-actions">'
+                + '<a class="can-toast-action" href="' + escapeToastHtml(alertData.actionUrl) + '">'
+                + '<i class="bi bi-eye" aria-hidden="true"></i> View Request</a>'
+                + '</div>';
+        }
 
-        window.Swal.fire(swalOptions).then(function (result) {
-            /*
-             * NAVIGATION EXPLICITE : seule une confirmation positive ouvre la route
-             * signée validée plus haut. Fermer le toast ou la boîte ne change aucun
-             * statut et laisse l'utilisateur sur sa liste actualisée.
-             */
-            if (result.isConfirmed && alertData.actionUrl) {
-                window.location.assign(alertData.actionUrl);
-            }
+        var toast = window.toastr[toastType](body, escapeToastHtml(alertData.title), {
+            closeButton: true,
+            progressBar: !isImportant,
+            timeOut: isImportant ? 0 : 8000,
+            extendedTimeOut: isImportant ? 0 : 2000,
+            tapToDismiss: false,
+            preventDuplicates: false,
+            toastClass: 'toast can-status-toast' + (isImportant ? ' is-important' : '')
+        });
+
+        if (toast && toast.attr) {
+            toast.attr('role', isImportant ? 'alert' : 'status');
+        }
+    }
+
+    /*
+     * Le texte vient du serveur mais il est toujours traité comme du texte :
+     * Toastr injecte du HTML, donc chaque valeur est échappée avant affichage.
+     */
+    function escapeToastHtml(value) {
+        return String(value === undefined || value === null ? '' : value).replace(/[&<>"']/g, function (character) {
+            return {'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;'}[character];
         });
     }
 

@@ -158,4 +158,19 @@ public function isEmailUnique($attribute, $params)
     {
         return $this->hasOne(Cities::class, ['city_id' => 'city_id']);
     }
+
+    /**
+     * INSCRIPTION : les préférences de notification sont créées avec leurs valeurs
+     * par défaut (tout activé) dès la création du profil. Sans elles, aucune
+     * notification de demande n'était envoyée tant que l'utilisateur n'avait pas
+     * ouvert sa page de préférences.
+     */
+    public function afterSave($insert, $changedAttributes)
+    {
+        parent::afterSave($insert, $changedAttributes);
+
+        if ($insert) {
+            \app\models\AoNotificationsPreferences::ensureDefaultsFor((int) $this->ao_id);
+        }
+    }
 }

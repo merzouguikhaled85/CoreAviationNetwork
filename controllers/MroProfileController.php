@@ -447,15 +447,9 @@ public function actionCitiesByCountry($country_id)
             }
             
                 $mroaircraftcertificate->save();
-                $mro_notifications->mro_id= $model->mro_id;
-                $mro_notifications->notify_by_email= 1;
-                $mro_notifications->notify_by_platform= 1;
-                $mro_notifications->notify_by_both= 1;
-                $mro_notifications->notify_for_non_certified_aircraft= 0;
-                $mro_notifications->notify_for_certified_aircraft= 1;
-                $mro_notifications->notify_for_appointment_acceptance= 1;
-                $mro_notifications->notify_for_feedback= 1;
-                $mro_notifications->save();
+                // Préférences « tout activé » : déjà créées par MroProfile::afterSave ;
+                // ensureDefaultsFor() les retrouve sans créer de doublon.
+                \app\models\MroNotificationsPreferences::ensureDefaultsFor((int) $model->mro_id);
                 $certificate->mro_id = $model->mro_id;
                 $certificate->type = Yii::$app->request->post('Certificates')['type'];
                 $certificate->certificate_type_id = Yii::$app->request->post('Certificates')['certificate_type_id'];

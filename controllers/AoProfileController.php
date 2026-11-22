@@ -358,21 +358,9 @@ public function actionCitiesByCountry($country_id)
   
               // Save the model
               if ($model->save()) {
-                  $ao_notifications->ao_id= $model->ao_id;
-                  $ao_notifications->notify_by_email= 1;
-                  $ao_notifications->notify_by_platform= 1;
-                  $ao_notifications->notify_mro_replies= 1;
-                  $ao_notifications->notify_appointment_requests= 1;
-                  $ao_notifications->notify_po_acceptance= 1;
-                  $ao_notifications->notify_maintenance_proposals= 1;
-                  $ao_notifications->notify_mro_recommendations= '1';
-                  $ao_notifications->notify_work_start= 1;
-                  $ao_notifications->notify_report_submissions= 1;
-                  if (!$ao_notifications->validate()) {
-                      VarDumper::dump($ao_notifications->errors);die();
-                  }
-
-                  $ao_notifications->save();
+                  // Préférences « tout activé » : déjà créées par AoProfile::afterSave ;
+                  // ensureDefaultsFor() les retrouve sans créer de doublon.
+                  \app\models\AoNotificationsPreferences::ensureDefaultsFor((int) $model->ao_id);
 
 
                   // Assign AO profile's id to aircraft's ao_id

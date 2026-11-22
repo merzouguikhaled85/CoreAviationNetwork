@@ -60,23 +60,10 @@ public function actionIndex()
 
     // If no existing record, create a new model instance
     if (!$model) {
-        $model = new AoNotificationsPreferences();
-        $model->ao_id = $ao_id; // Set the ao_id for the new model
-        
-        // Set default notification preferences
-        $model->notify_by_email = 1; 
-        $model->notify_by_platform = 1; 
-        $model->notify_mro_replies = 1; 
-        $model->notify_mro_recommendations = '1'; 
-        $model->notify_po_acceptance = 1; 
-        $model->notify_maintenance_proposals = 1; 
-        $model->notify_work_start = 1; 
-        $model->notify_report_submissions = 1; 
-        $model->notify_appointment_requests = 1; 
-        // Save the new model to the database
-        if (!$model->save()) {
-            VarDumper::dump($model );die();
-
+        // Valeurs par défaut centralisées dans AoNotificationsPreferences::DEFAULTS.
+        $model = AoNotificationsPreferences::ensureDefaultsFor((int) $ao_id);
+        if ($model === null) {
+            throw new \yii\web\ServerErrorHttpException('Notification preferences could not be created.');
         }
 
         // Redirect to the update view for the newly created model

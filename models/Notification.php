@@ -15,6 +15,7 @@ use yii\db\ActiveRecord;
  * @property string $status
  * @property string $created_at
  * @property string|null $actions
+ * @property string|null $priority Priorité de la demande concernée : aog, urgent, routine (NULL sinon)
  */
 
 class Notification extends ActiveRecord
@@ -41,6 +42,7 @@ class Notification extends ActiveRecord
         [['created_at'], 'safe'],
         [['actions'], 'string', 'max' => 100],  // Increase max length to 100 (if needed)
         [['actions'], 'safe'], // <-- Add this line to allow mass assignment if needed
+        [['priority'], 'in', 'range' => ['aog', 'urgent', 'routine']],
     ];
 }
 
@@ -58,6 +60,7 @@ class Notification extends ActiveRecord
             'status' => 'Status',
             'created_at' => 'Created At',
         'actions' => 'Actions',
+            'priority' => 'Priority',
 
         ];
     }

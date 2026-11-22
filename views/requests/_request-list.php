@@ -39,6 +39,25 @@ use yii\widgets\LinkPager;
                     </thead>
 
                     <tbody>
+                        <?php
+                            /*
+                             * RAPPORTS DE LA PAGE EN UNE SEULE REQUÊTE : avant, une requête
+                             * RepairReport était lancée pour chaque ligne du tableau.
+                             */
+                            $requestIdsWithReport = [];
+                            $listedRequestIds = [];
+                            foreach ((array) $requests as $listedRequest) {
+                                $listedRequestIds[] = (int) $listedRequest->request_id;
+                            }
+                            if ($listedRequestIds !== []) {
+                                $requestIdsWithReport = array_flip(array_map('intval', \app\models\RepairReport::find()
+                                    ->joinWith('mroRequestApply', false)
+                                    ->select('mro_request_apply.request_id')
+                                    ->distinct()
+                                    ->where(['mro_request_apply.request_id' => $listedRequestIds])
+                                    ->column()));
+                            }
+                        ?>
                         <?php if (!empty($requests)): ?>
                             <?php foreach ($requests as $request): ?>
                                 <?php
@@ -224,20 +243,36 @@ use yii\widgets\LinkPager;
 
                                         <?php elseif (in_array($request->status, ['report_submitted', 'work_started', 'closed', 'canceled'])): ?>
                                             <?php
-                                                $hasReport = \app\models\RepairReport::find()
-                                                    ->joinWith('mroRequestApply')
-                                                    ->where([
-                                                        'mro_request_apply.request_id' => $request->request_id
-                                                    ])
-                                                    ->exists();
+                                                /*
+                                                 * STATUT RÉEL + PROCHAINE ÉTAPE : le badge affiche le même
+                                                 * libellé que les toasts (Work Started, Report Submitted,
+                                                 * Closed, Canceled) et, en dessous, l'étape CRS.
+                                                 */
+                                                $hasReport = isset($requestIdsWithReport[(int) $request->request_id]);
+                                                $crsStatuses = [
+                                                    'work_started' => ['bi-tools', 'Work Started'],
+                                                    'report_submitted' => ['bi-file-earmark-check', 'Report Submitted'],
+                                                    'closed' => ['bi-check2-all', 'Closed'],
+                                                    'canceled' => ['bi-x-circle', 'Canceled'],
+                                                ];
+                                                [$crsIcon, $crsLabel] = $crsStatuses[$request->status];
+                                                if ($hasReport) {
+                                                    $crsNextStep = '<i class="bi bi-file-text"></i> View CRS';
+                                                } elseif (in_array($request->status, ['work_started', 'report_submitted'], true)) {
+                                                    $crsNextStep = '<i class="bi bi-hourglass-split"></i> Waiting for CRS';
+                                                } else {
+                                                    $crsNextStep = '';
+                                                }
                                             ?>
 
                                             <?= Html::a(
-                                                $hasReport
-                                                    ? '<i class="bi bi-file-text"></i> View CRS'
-                                                    : '<i class="bi bi-hourglass-split"></i> Waiting for CRS',
+                                                '<span class="status-main"><i class="bi ' . $crsIcon . '"></i> ' . $crsLabel . '</span>'
+                                                    . ($crsNextStep !== '' ? '<span class="status-next-step">' . $crsNextStep . '</span>' : ''),
                                                 ['view-reports', 'id' => $encodedId],
-                                                ['class' => 'status-badge ' . $statusClass]
+                                                [
+                                                    'class' => 'status-badge has-next-step ' . $statusClass,
+                                                    'title' => $crsLabel . ($crsNextStep !== '' ? ' · ' . strip_tags($crsNextStep) : ''),
+                                                ]
                                             ) ?>
 
                                         <?php elseif ($request->status === 'update_request'): ?>

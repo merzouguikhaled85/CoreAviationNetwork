@@ -74,4 +74,48 @@ class AoNotificationsPreferences extends ActiveRecord
     {
         return $this->hasOne(AoProfile::className(), ['ao_id' => 'ao_id']);
     }
+
+    /**
+     * Valeurs par défaut : toutes les notifications activées (2026-11-22).
+     * Utilisées à l'inscription (AoProfile::afterSave) et à la première ouverture
+     * de la page des préférences.
+     */
+    public const DEFAULTS = [
+        'notify_by_email' => 1,
+        'notify_by_platform' => 1,
+        'notify_mro_replies' => 1,
+        'notify_appointment_requests' => 1,
+        'notify_po_acceptance' => 1,
+        'notify_maintenance_proposals' => 1,
+        'notify_mro_recommendations' => '1',
+        'notify_work_start' => 1,
+        'notify_report_submissions' => 1,
+    ];
+
+    /**
+     * Retourne les préférences de l'AO, en les créant avec les valeurs par défaut
+     * si elles n'existent pas encore. Ne modifie jamais des préférences existantes.
+     */
+    public static function ensureDefaultsFor(int $aoId): ?self
+    {
+        if ($aoId <= 0) {
+            return null;
+        }
+
+        $preferences = static::findOne(['ao_id' => $aoId]);
+        if ($preferences !== null) {
+            return $preferences;
+        }
+
+        $preferences = new static();
+        $preferences->ao_id = $aoId;
+        $preferences->setAttributes(self::DEFAULTS, false);
+
+        if (!$preferences->save()) {
+            Yii::error('Préférences AO par défaut non créées : ' . json_encode($preferences->errors), __METHOD__);
+            return null;
+        }
+
+        return $preferences;
+    }
 }

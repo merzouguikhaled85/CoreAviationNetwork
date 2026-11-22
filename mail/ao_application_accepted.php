@@ -1,22 +1,49 @@
-<p>Dear <?= $application->application->request->aO->username ?>,</p>
+<?php
 
-<p>We are pleased to inform you that the MRO has accepted the PO for the request with ID <?= $application->request_id ?>.</p>
+use app\components\RequestMail;
+use yii\helpers\Html;
 
-<p>Please review the details below:</p>
+/**
+ * E-MAIL AO : « PO Accepted »
+ * Le MRO a accepté le bon de commande (PO) émis par l'AO.
+ *
+ * @var \yii\web\View $this
+ * @var \app\models\AoRequestsApplications $application  Lien PO ↔ devis retenu
+ */
 
-<table>
-    <tr>
-        <td>MRO Username:</td>
-        <td><?= $application->application->mro->username ?></td>
-    </tr>
-    <tr>
-        <td>Request Details:</td>
-        <td><?= $application->application->Description ?></td>
-    </tr>
-    <!-- Add more details here if needed -->
-</table>
+$quote = $application->getApplication()->one();
+$request = $application->getRequest()->one();
+$mro = $quote ? $quote->getMro() : null;
+$mroName = RequestMail::displayName($mro, 'The MRO');
+$ao = $request ? $request->getAO()->one() : null;
 
-<p>Thank you for your cooperation.</p>
+$bodyHtml = $this->render('@app/mail/partials/_details.php', [
+    'heading' => 'Purchase order accepted',
+    'tone' => 'success',
+    'rows' => [
+        ['label' => 'MRO', 'value' => $mroName],
+        ['label' => 'Agreed amount', 'value' => $quote ? RequestMail::money($quote->price, $quote->currency) : ''],
+        ['label' => 'Purchase order', 'value' => !empty($application->po) ? 'Document on file' : ''],
+        ['label' => 'Accepted on', 'value' => date('d M Y H:i')],
+        ['label' => 'Next step', 'value' => 'The MRO will start the work and keep the request status up to date.', 'strong' => false],
+    ],
+]);
+if ($request) {
+    $bodyHtml .= $this->render('@app/mail/partials/_request-card.php', ['request' => $request, 'showDetails' => false]);
+}
 
-<p>Best regards,<br>
-Your Company Name</p>
+echo $this->render('@app/mail/partials/_frame.php', [
+    'headerSubtitle' => 'Purchase order',
+    'eyebrow' => 'PO ACCEPTED',
+    'priority' => $request ? $request->operational_priority : null,
+    'title' => 'Your purchase order has been accepted',
+    'recipientName' => RequestMail::displayName($ao),
+    'introHtml' => '<strong>' . Html::encode($mroName) . '</strong> has accepted the purchase order'
+        . ($request ? ' for Request <strong>#' . Html::encode($request->request_id) . '</strong>' : '')
+        . '. The maintenance can now be scheduled.',
+    'bodyHtml' => $bodyHtml,
+    'ctaUrl' => $request ? RequestMail::requestUrl($request) : '',
+    'ctaLabel' => 'View the request',
+    'noteHtml' => 'You can follow the progress, exchange messages with the MRO and receive the reports from the request page.',
+    'preheader' => $mroName . ' accepted your purchase order' . ($request ? ' for Request #' . $request->request_id : '') . '.',
+]);

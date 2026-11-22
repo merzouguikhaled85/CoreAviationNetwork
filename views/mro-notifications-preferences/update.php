@@ -222,6 +222,53 @@ $this->registerCss(<<<CSS
   border-color: var(--sky);
 }
 
+/*
+ * INTERRUPTEURS LISIBLES : form-system.css impose 20 x 20 px à toutes les cases
+ * des formulaires (.can-form-page input[type="checkbox"]) ; l'interrupteur
+ * devenait un simple cercle et on ne voyait plus s'il était activé.
+ * Sélecteur plus précis = taille et état (gauche / droite, gris / bleu) restaurés.
+ */
+.can-form-page .notification-switch .form-check.form-switch {
+  display: flex;
+  align-items: center;
+  min-height: 0;
+  padding-left: 0;
+  margin: 0;
+}
+
+.can-form-page .notification-switch .form-check-input[type="checkbox"] {
+  position: static;
+  float: none;
+  /* !important : la règle de form-system.css contient trois :not() et reste plus prioritaire. */
+  flex: 0 0 auto !important;
+  width: 2.75em !important;
+  height: 1.5em !important;
+  margin: 0;
+  -webkit-appearance: none;
+  appearance: none;
+  border: 1px solid #CBD5E1;
+  border-radius: 999px;
+  background-color: #E2E8F0;
+  background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='-4 -4 8 8'%3e%3ccircle r='3' fill='%23ffffff'/%3e%3c/svg%3e");
+  background-repeat: no-repeat;
+  background-position: left center;
+  background-size: contain;
+  box-shadow: inset 0 1px 2px rgba(15, 23, 42, .08);
+  transition: background-position .15s ease-in-out, background-color .15s ease-in-out, border-color .15s ease-in-out;
+  cursor: pointer;
+}
+
+.can-form-page .notification-switch .form-check-input[type="checkbox"]:checked {
+  background-color: var(--sky);
+  border-color: var(--sky);
+  background-position: right center;
+}
+
+.can-form-page .notification-switch .form-check-input[type="checkbox"]:focus-visible {
+  outline: 2px solid rgba(14, 165, 233, .45);
+  outline-offset: 2px;
+}
+
 /* bouton principal */
 .btn-notification-save {
   padding: 14px 28px;

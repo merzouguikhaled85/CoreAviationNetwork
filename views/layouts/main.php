@@ -23,10 +23,10 @@ AppAsset::register($this);
  * Toastr CSS and JS files
  * Toastr is a JavaScript notification library.
  */
-$this->registerCssFile('https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.css');
+$this->registerCssFile('https://cdnjs.cloudflare.com/ajax/libs/toastr.js/2.1.4/toastr.min.css');
 
 $this->registerJsFile(
-    'https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.js',
+    'https://cdnjs.cloudflare.com/ajax/libs/toastr.js/2.1.4/toastr.min.js',
     ['depends' => [\yii\web\JqueryAsset::class]]
 );
 

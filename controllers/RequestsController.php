@@ -31,6 +31,7 @@ use yii\helpers\Url;
 use yii\helpers\VarDumper;
 use app\models\MroInsuranceDocuments;
 use app\components\UrlIdHelper;
+use app\components\RequestMail;
 use app\components\MroRequestEligibility;
 
 class RequestsController extends Controller
@@ -1085,33 +1086,6 @@ public function actionCreate1()
                 ) {
 
                     /**
-                     * EMAIL
-                     */
-                    if (
-                        $notificationPreferences
-                            ->notify_by_email
-                    ) {
-
-                        Yii::$app->mailer
-                            ->compose(
-                                'notification_certified',
-                                [
-                                    /*
-                                     * CONTENU MÉTIER DU MAIL « NOUVELLE DEMANDE » : les modèles déjà validés
-                                     * sont transmis à la vue afin d'afficher un résumé utile au MRO autorisé.
-                                     * Cette présentation ne modifie aucun critère de couverture ou d'éligibilité.
-                                     */
-                                    'url' => $url,
-                                    'request' => $request,
-                                    'aircraft' => $aircraft,
-                                ]
-                            )
-                            ->setTo($mro->email)
-                            ->setSubject('New Request Notification')
-                            ->send();
-                    }
-
-                    /**
                      * PLATFORM
                      */
                     if (
@@ -1132,6 +1106,30 @@ public function actionCreate1()
                             ]
                         );
                     }
+
+                    /**
+                     * EMAIL
+                     */
+                    if (
+                        $notificationPreferences
+                            ->notify_by_email
+                    ) {
+
+                        Yii::$app->mailer
+                            ->compose(
+                                'notification_certified',
+                                [
+                                    'url' => $url,
+                                    'request' => $request,
+                                    'aircraft' => $aircraft,
+                                    'mro' => $mro,
+                                    'isUpdate' => false,
+                                ]
+                            )
+                            ->setTo($mro->email)
+                            ->setSubject(RequestMail::subject('New request matches your scope', $request))
+                            ->send();
+                    }
                 }
 
                 /**
@@ -1150,30 +1148,6 @@ public function actionCreate1()
                 ) {
 
                     /**
-                     * EMAIL
-                     */
-                    if (
-                        $notificationPreferences
-                            ->notify_by_email
-                    ) {
-
-                        Yii::$app->mailer
-                            ->compose(
-                                'notification_non_certified',
-                                [
-                                    'manufacturer'
-                                        => $aircraft->manufacturer,
-
-                                    'model'
-                                        => $aircraft->model,
-                                ]
-                            )
-                            ->setTo($mro->email)
-                            ->setSubject('New Request Notification')
-                            ->send();
-                    }
-
-                    /**
                      * PLATFORM
                      */
                     if (
@@ -1187,6 +1161,7 @@ public function actionCreate1()
                                 'recipientType' => 'mro',
 
                                 'recipientId' => $mro->mro_id,
+                                'requestId' => $request->request_id,
 
                                 'message' =>
                                     'A new request is NOT fully covered: '
@@ -1197,6 +1172,31 @@ public function actionCreate1()
                                     '/mro-requests',
                             ]
                         );
+                    }
+
+                    /**
+                     * EMAIL
+                     */
+                    if (
+                        $notificationPreferences
+                            ->notify_by_email
+                    ) {
+
+                        Yii::$app->mailer
+                            ->compose(
+                                'notification_non_certified',
+                                [
+                                    'url' => $url,
+                                    'request' => $request,
+                                    'aircraft' => $aircraft,
+                                    'mro' => $mro,
+                                    'reasonText' => $reasonText,
+                                    'isUpdate' => false,
+                                ]
+                            )
+                            ->setTo($mro->email)
+                            ->setSubject(RequestMail::subject('New request outside your coverage', $request))
+                            ->send();
                     }
                 }
             }
@@ -1434,22 +1434,6 @@ public function actionCreate()
                         $notificationPreferences &&
                         $notificationPreferences->notify_for_certified_aircraft
                     ) {
-                        if ($notificationPreferences->notify_by_email) {
-                            Yii::$app->mailer
-                                ->compose('notification_certified', [
-                                    /*
-                                     * SECOND PARCOURS DE CRÉATION : il reçoit exactement les mêmes données pour
-                                     * produire un e-mail identique au parcours principal, sans changer le métier.
-                                     */
-                                    'url' => $url,
-                                    'request' => $request,
-                                    'aircraft' => $aircraft,
-                                ])
-                                ->setTo($mro->email)
-                                ->setSubject('New Request Notification')
-                                ->send();
-                        }
-
                         if ($notificationPreferences->notify_by_platform) {
                             Yii::$app->runAction('notification/save-notification', [
                                 'recipientType' => 'mro',
@@ -1457,6 +1441,23 @@ public function actionCreate()
                                 'message' => 'New request #' . $request->request_id . ' matches your scope of work.',
                                 'actions' => Yii::$app->request->baseUrl . '/mro-requests',
                             ]);
+                        }
+
+                        if ($notificationPreferences->notify_by_email) {
+                            Yii::$app->mailer
+                                ->compose(
+                                    'notification_certified',
+                                    [
+                                        'url' => $url,
+                                        'request' => $request,
+                                        'aircraft' => $aircraft,
+                                        'mro' => $mro,
+                                        'isUpdate' => false,
+                                    ]
+                                )
+                                ->setTo($mro->email)
+                                ->setSubject(RequestMail::subject('New request matches your scope', $request))
+                                ->send();
                         }
                     }
 
@@ -1469,24 +1470,32 @@ public function actionCreate()
                         $notificationPreferences &&
                         $notificationPreferences->notify_for_non_certified_aircraft
                     ) {
-                        if ($notificationPreferences->notify_by_email) {
-                            Yii::$app->mailer
-                                ->compose('notification_non_certified', [
-                                    'manufacturer' => $aircraft->manufacturer,
-                                    'model' => $aircraft->model,
-                                ])
-                                ->setTo($mro->email)
-                                ->setSubject('New Request Notification')
-                                ->send();
-                        }
-
                         if ($notificationPreferences->notify_by_platform) {
                             Yii::$app->runAction('notification/save-notification', [
                                 'recipientType' => 'mro',
                                 'recipientId' => $mro->mro_id,
+                                'requestId' => $request->request_id,
                                 'message' => 'A new request is available but is not fully covered: ' . $reasonText,
                                 'actions' => Yii::$app->request->baseUrl . '/mro-requests',
                             ]);
+                        }
+
+                        if ($notificationPreferences->notify_by_email) {
+                            Yii::$app->mailer
+                                ->compose(
+                                    'notification_non_certified',
+                                    [
+                                        'url' => $url,
+                                        'request' => $request,
+                                        'aircraft' => $aircraft,
+                                        'mro' => $mro,
+                                        'reasonText' => $reasonText,
+                                        'isUpdate' => false,
+                                    ]
+                                )
+                                ->setTo($mro->email)
+                                ->setSubject(RequestMail::subject('New request outside your coverage', $request))
+                                ->send();
                         }
                     }
                 }
@@ -1832,16 +1841,6 @@ public function actionUpdate($id, $status = null)
                                 $notificationPreferences &&
                                 $notificationPreferences->notify_for_certified_aircraft
                             ) {
-                                if ($notificationPreferences->notify_by_email) {
-                                    Yii::$app->mailer
-                                        ->compose('notification_certified', [
-                                            'url' => $url
-                                        ])
-                                        ->setTo($mro->email)
-                                        ->setSubject('Request Updated')
-                                        ->send();
-                                }
-
                                 if ($notificationPreferences->notify_by_platform) {
                                     Yii::$app->runAction('notification/save-notification', [
                                         'recipientType' => 'mro',
@@ -1849,6 +1848,23 @@ public function actionUpdate($id, $status = null)
                                         'message' => 'A request #' . $id . ' has been updated and matches your scope of work.',
                                         'actions' => Yii::$app->request->baseUrl . '/mro-requests',
                                     ]);
+                                }
+
+                                if ($notificationPreferences->notify_by_email) {
+                                    Yii::$app->mailer
+                                        ->compose(
+                                            'notification_certified',
+                                            [
+                                                'url' => $url,
+                                                'request' => $request,
+                                                'aircraft' => $aircraft,
+                                                'mro' => $mro,
+                                                'isUpdate' => true,
+                                            ]
+                                        )
+                                        ->setTo($mro->email)
+                                        ->setSubject(RequestMail::subject('Request updated', $request))
+                                        ->send();
                                 }
                             }
 
@@ -1858,24 +1874,32 @@ public function actionUpdate($id, $status = null)
                                 $notificationPreferences &&
                                 $notificationPreferences->notify_for_non_certified_aircraft
                             ) {
-                                if ($notificationPreferences->notify_by_email) {
-                                    Yii::$app->mailer
-                                        ->compose('notification_non_certified', [
-                                            'manufacturer' => $aircraft->manufacturer,
-                                            'model' => $aircraft->model,
-                                        ])
-                                        ->setTo($mro->email)
-                                        ->setSubject('Request Updated')
-                                        ->send();
-                                }
-
                                 if ($notificationPreferences->notify_by_platform) {
                                     Yii::$app->runAction('notification/save-notification', [
                                         'recipientType' => 'mro',
                                         'recipientId' => $mro->mro_id,
+                                        'requestId' => $id,
                                         'message' => 'A request has been updated and is NOT fully covered: ' . $reasonText,
                                         'actions' => Yii::$app->request->baseUrl . '/mro-requests',
                                     ]);
+                                }
+
+                                if ($notificationPreferences->notify_by_email) {
+                                    Yii::$app->mailer
+                                        ->compose(
+                                            'notification_non_certified',
+                                            [
+                                                'url' => $url,
+                                                'request' => $request,
+                                                'aircraft' => $aircraft,
+                                                'mro' => $mro,
+                                                'reasonText' => $reasonText,
+                                                'isUpdate' => true,
+                                            ]
+                                        )
+                                        ->setTo($mro->email)
+                                        ->setSubject(RequestMail::subject('Updated request outside your coverage', $request))
+                                        ->send();
                                 }
                             }
                         }
@@ -2233,26 +2257,6 @@ public function actionUpdate1($id, $status = null)
                     ) {
 
                         /**
-                         * EMAIL
-                         */
-                        if (
-                            $notificationPreferences
-                                ->notify_by_email
-                        ) {
-
-                            Yii::$app->mailer
-                                ->compose(
-                                    'notification_certified',
-                                    ['url' => $url]
-                                )
-                                ->setTo($mro->email)
-                                ->setSubject(
-                                    'Request Updated'
-                                )
-                                ->send();
-                        }
-
-                        /**
                          * PLATFORM
                          */
                         if (
@@ -2275,6 +2279,30 @@ public function actionUpdate1($id, $status = null)
                                 ]
                             );
                         }
+
+                        /**
+                         * EMAIL
+                         */
+                        if (
+                            $notificationPreferences
+                                ->notify_by_email
+                        ) {
+
+                            Yii::$app->mailer
+                                ->compose(
+                                    'notification_certified',
+                                    [
+                                        'url' => $url,
+                                        'request' => $request,
+                                        'aircraft' => $aircraft,
+                                        'mro' => $mro,
+                                        'isUpdate' => true,
+                                    ]
+                                )
+                                ->setTo($mro->email)
+                                ->setSubject(RequestMail::subject('Request updated', $request))
+                                ->send();
+                        }
                     }
 
                     /**
@@ -2293,32 +2321,6 @@ public function actionUpdate1($id, $status = null)
                     ) {
 
                         /**
-                         * EMAIL
-                         */
-                        if (
-                            $notificationPreferences
-                                ->notify_by_email
-                        ) {
-
-                            Yii::$app->mailer
-                                ->compose(
-                                    'notification_non_certified',
-                                    [
-                                        'manufacturer' =>
-                                            $aircraft->manufacturer,
-
-                                        'model' =>
-                                            $aircraft->model,
-                                    ]
-                                )
-                                ->setTo($mro->email)
-                                ->setSubject(
-                                    'Request Updated'
-                                )
-                                ->send();
-                        }
-
-                        /**
                          * PLATFORM
                          */
                         if (
@@ -2332,6 +2334,7 @@ public function actionUpdate1($id, $status = null)
                                     'recipientType' => 'mro',
 
                                     'recipientId' => $mro->mro_id,
+                                    'requestId' => $id,
 
                                     'message' =>
                                         'A request has been updated and is NOT fully covered: '
@@ -2342,6 +2345,31 @@ public function actionUpdate1($id, $status = null)
                                         '/mro-requests',
                                 ]
                             );
+                        }
+
+                        /**
+                         * EMAIL
+                         */
+                        if (
+                            $notificationPreferences
+                                ->notify_by_email
+                        ) {
+
+                            Yii::$app->mailer
+                                ->compose(
+                                    'notification_non_certified',
+                                    [
+                                        'url' => $url,
+                                        'request' => $request,
+                                        'aircraft' => $aircraft,
+                                        'mro' => $mro,
+                                        'reasonText' => $reasonText,
+                                        'isUpdate' => true,
+                                    ]
+                                )
+                                ->setTo($mro->email)
+                                ->setSubject(RequestMail::subject('Updated request outside your coverage', $request))
+                                ->send();
                         }
                     }
                 }
@@ -2448,7 +2476,7 @@ public function actionDeny($id)
         Yii::$app->mailer->compose('application_denied', ['application' => $application])
         ->setTo($mro->email)
         
-        ->setSubject('Request Application Denied')
+        ->setSubject(RequestMail::subject('Quotation declined', $application->getRequest()->one()))
         ->send();
 
                                                 //platform notification
@@ -2688,7 +2716,7 @@ public function actionLoadPo($id)
                                     'request' => $request
                                 ])
                                 ->setTo($otherMro->email)
-                                ->setSubject('Application Not Accepted')
+                                ->setSubject(RequestMail::subject('Quotation not selected', $request))
                                 ->send();
                         }
 
@@ -2890,7 +2918,7 @@ foreach ($allApplications as $app) {
                 'request' => $request
             ])
             ->setTo($otherMro->email)
-            ->setSubject('Application Not Accepted')
+            ->setSubject(RequestMail::subject('Quotation not selected', $request))
             ->send();
     }
 

@@ -23,6 +23,7 @@ use yii\filters\AccessControl;
 use yii\data\Pagination;
 use app\models\AoRequestsApplications;
 use app\components\UrlIdHelper;
+use app\components\RequestMail;
 use app\components\MroRequestEligibility;
 use yii\web\ForbiddenHttpException;
 
@@ -461,11 +462,15 @@ if ($aoNotificationsPreferences && $aoNotificationsPreferences->notify_mro_repli
     // EMAIL
     if ($aoNotificationsPreferences->notify_by_email) {
 
-        Yii::$app->mailer->compose('mro_replies', [
-            'MroRequestApply' => $model
-        ])
+        Yii::$app->mailer->compose(
+            'mro_replies',
+            [
+                'MroRequestApply' => $model,
+                'isNew' => $isNew,
+            ]
+        )
         ->setTo($ao->email)
-        ->setSubject($isNew ? 'New Request Application' : 'Updated Request Application')
+        ->setSubject(RequestMail::subject($isNew ? 'New quote received' : 'Quote updated', $request))
         ->send();
     }
 
@@ -591,11 +596,15 @@ public function actionApplyupdate($id)
                 $aoNotificationsPreferences->notify_mro_replies &&
                 $aoNotificationsPreferences->notify_by_email
             ) {
-                Yii::$app->mailer->compose('mro_replies', [
-                    'MroRequestApply' => $model
-                ])
+                Yii::$app->mailer->compose(
+                    'mro_replies',
+                    [
+                        'MroRequestApply' => $model,
+                        'isNew' => false,
+                    ]
+                )
                 ->setTo($ao->email)
-                ->setSubject('Updated Request Application')
+                ->setSubject(RequestMail::subject('Quote updated', $request))
                 ->send();
             }
 

@@ -657,3 +657,21 @@ body .can-detail-page .alert {
         padding-inline: 14px;
     }
 }
+
+
+/* 2026-11-22 — icônes des onglets + espacement intérieur du bloc « Request Informations » */
+body .can-detail-page .request-detail-tabs a {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+}
+
+body .can-detail-page .request-detail-tabs a > .bi {
+    font-size: 14px;
+    line-height: 1;
+}
+
+body .can-detail-page #request-description .request-info-textarea {
+    padding-left: 16px !important;
+    padding-right: 16px !important;
+}

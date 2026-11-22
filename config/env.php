@@ -132,7 +132,7 @@ return [
     'prelaunchMode' => $readOptionalEnvironmentValue(
         'CAN_PRELAUNCH_MODE',
         'prelaunchMode',
-        '1'
+       '1'
     ),
 
     /*

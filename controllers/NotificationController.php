@@ -3,6 +3,7 @@
 namespace app\controllers;
 
 use app\models\Notification;
+use app\models\Requests;
 use app\components\NotificationActionUrl;
 use Yii;
 use yii\db\Expression;
@@ -43,7 +44,7 @@ class NotificationController extends Controller
      * Cette action n'est jamais une API publique afin d'empêcher un utilisateur
      * connecté de fabriquer une notification pour un autre compte.
      */
-    public function actionSaveNotification($recipientType, $recipientId, $message, $actions = null)
+    public function actionSaveNotification($recipientType, $recipientId, $message, $actions = null, $requestId = null)
     {
         if (Yii::$app->requestedAction === $this->action) {
             throw new NotFoundHttpException('Page introuvable.');
@@ -61,12 +62,45 @@ class NotificationController extends Controller
         $notification->actions = NotificationActionUrl::normalize($actions, Yii::$app->request->baseUrl);
         $notification->created_at = date('Y-m-d H:i:s');
 
+        /*
+         * PRIORITÉ : celle de la demande concernée. Tant que la migration
+         * m261122_160000 n'est pas appliquée, la colonne n'existe pas : on l'ignore.
+         */
+        if ($notification->hasAttribute('priority')) {
+            $notification->priority = $this->resolveRequestPriority($requestId, (string) $message);
+        }
+
         if ($notification->validate() && $notification->save(false)) {
             return true;
         }
 
         Yii::error('Échec de l’enregistrement de la notification : ' . json_encode($notification->errors), __METHOD__);
         return false;
+    }
+
+    /**
+     * Priorité opérationnelle (aog / urgent / routine) de la demande liée à une
+     * notification. L'identifiant est passé explicitement par l'appelant ou, à
+     * défaut, lu dans le message (« request #123 »). NULL si aucune demande.
+     */
+    private function resolveRequestPriority($requestId, string $message): ?string
+    {
+        $id = (int) $requestId;
+        if ($id <= 0 && preg_match('/request\s*#\s*(\d+)/i', $message, $match)) {
+            $id = (int) $match[1];
+        }
+        if ($id <= 0) {
+            return null;
+        }
+
+        $priority = strtolower((string) Requests::find()
+            ->select('operational_priority')
+            ->where(['request_id' => $id])
+            ->scalar());
+
+        return in_array($priority, [Requests::PRIORITY_AOG, Requests::PRIORITY_URGENT, Requests::PRIORITY_ROUTINE], true)
+            ? $priority
+            : null;
     }
 
     public function actionMarkAllAsRead()
@@ -159,6 +193,7 @@ class NotificationController extends Controller
                 'id' => (int) $notification->id,
                 'message' => $notification->content,
                 'read' => $notification->status,
+                'priority' => $notification->hasAttribute('priority') ? $notification->priority : null,
                 'actions' => NotificationActionUrl::normalize($notification->actions, Yii::$app->request->baseUrl),
                 'created_at' => $notification->created_at
                     ? Yii::$app->formatter->asDatetime($notification->created_at, 'php:d M Y, H:i')

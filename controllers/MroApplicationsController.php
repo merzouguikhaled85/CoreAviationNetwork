@@ -23,6 +23,7 @@ use yii\helpers\VarDumper;
 use yii\web\NotFoundHttpException;
 use yii\web\UploadedFile;
 use app\components\UrlIdHelper;
+use app\components\RequestMail;
 
 
 class MroApplicationsController extends Controller
@@ -560,7 +561,7 @@ public function actionAcceptPo($id)
     if ($ao && $aoNotificationsPreferences && $aoNotificationsPreferences->notify_po_acceptance && $aoNotificationsPreferences->notify_by_email) {
         Yii::$app->mailer->compose('ao_application_accepted', ['application' => $aoRequestApplication])
             ->setTo($ao->email)
-            ->setSubject('PO Accepted')
+            ->setSubject(RequestMail::subject('PO accepted by the MRO', $request))
             ->send();
     }
 
@@ -568,6 +569,7 @@ public function actionAcceptPo($id)
         Yii::$app->runAction('notification/save-notification', [
             'recipientType' => 'ao',
             'recipientId'   => $ao->ao_id,
+            'requestId'     => $request->request_id,
             'message'       => 'The PO has been accepted.',
             'actions'       => Yii::$app->request->baseUrl . '/requests/open-requests',
         ]);
@@ -623,6 +625,7 @@ public function actionSetAppointment($app_request_id)
                                 Yii::$app->runAction('notification/save-notification', [
                                     'recipientType' => 'ao',
                                     'recipientId' => $ao->ao_id,
+                                    'requestId' => $application->request_id,
                                     'message' => 'A new appointment has been requested.',
                                         'actions' =>  Yii::$app->request->baseUrl .'/ao-appointments', // Or any route you want
 
@@ -657,7 +660,7 @@ public function actionStartWork($id)
                 Yii::$app->mailer->compose('work_started', ['request' => $request])
                     ->setTo($ao->email)
                     
-                    ->setSubject('Work Started')
+                    ->setSubject(RequestMail::subject('Work started', $request))
                     ->send();
                 }
 
@@ -668,6 +671,7 @@ public function actionStartWork($id)
                     Yii::$app->runAction('notification/save-notification', [
                         'recipientType' => 'ao',
                         'recipientId' => $ao->ao_id,
+                        'requestId' => $request->request_id,
                         'message' => 'The work has been started for your request',
                                                                 'actions' =>  Yii::$app->request->baseUrl .'/requests/open-requests', // Or any route you want
 
@@ -868,7 +872,7 @@ public function actionSubmitReport($id)
                             'RepairReport' => $model,
                         ])
                         ->setTo($ao->email)
-                        ->setSubject('New report submitted')
+                        ->setSubject(RequestMail::subject('New report submitted', $req))
                         ->send();
                 }
 
@@ -880,6 +884,7 @@ public function actionSubmitReport($id)
                     Yii::$app->runAction('notification/save-notification', [
                         'recipientType' => 'ao',
                         'recipientId'   => $ao->ao_id,
+                        'requestId'     => $application->request_id,
                         'message'       => 'A new report has been submitted for your request.',
                         'actions'       => Yii::$app->request->baseUrl . '/requests/open-requests',
                     ]);
@@ -1037,6 +1042,7 @@ public function actionAcceptUpdate($id)
                                                 Yii::$app->runAction('notification/save-notification', [
                                                     'recipientType' => 'ao',
                                                     'recipientId' => $ao->ao_id,
+                                                    'requestId' => $request->request_id,
                                                     'message' => 'Update request approved.',
                                                                                                                     'actions' =>  Yii::$app->request->baseUrl .'/requests/new-requests', // Or any route you want
 
@@ -1082,6 +1088,7 @@ public function actionDenyRequest($id)
             Yii::$app->runAction('notification/save-notification', [
                 'recipientType' => 'ao',
                 'recipientId' => $ao->ao_id,
+                'requestId' => $request->request_id,
                 'message' => 'Update request Denied.',
             ]);
         }
@@ -1189,6 +1196,7 @@ public function actionContact($id)
             Yii::$app->runAction('notification/save-notification', [
                 'recipientType' => 'ao',
                 'recipientId' => $chat->ao_id,
+                'requestId' => $mroRequestApplication->request_id,
                 'message' => 'New message recived.',
             ]);
         }

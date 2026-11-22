@@ -58,20 +58,10 @@ class MroNotificationsPreferencesController extends Controller
 
     // If no existing record, create a new model instance
     if (!$model) {
-        $model = new MroNotificationsPreferences();
-        $model->mro_id = $mro_id; // Set the ao_id for the new model
-        
-        // Set default notification preferences
-        $model->notify_by_email = 1; 
-        $model->notify_by_platform = 1; 
-        $model->notify_for_non_certified_aircraft = 0; 
-        $model->notify_for_appointment_acceptance = '1'; 
-        $model->notify_for_feedback = 1; 
-       
-        // Save the new model to the database
-        if (!$model->save()) {
-            VarDumper::dump($model );die();
-
+        // Valeurs par défaut centralisées dans MroNotificationsPreferences::DEFAULTS.
+        $model = MroNotificationsPreferences::ensureDefaultsFor((int) $mro_id);
+        if ($model === null) {
+            throw new \yii\web\ServerErrorHttpException('Notification preferences could not be created.');
         }
     }
         if ($this->loadForCurrentOwner($model) && $model->save()) {

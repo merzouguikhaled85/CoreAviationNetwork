@@ -318,6 +318,86 @@ if (!Yii::$app->user->isGuest && $userType === 'admin') {
     }
 
 
+    /* =========================================
+       SIGNAL VISUEL : nouvelle notification
+       ========================================= */
+    @keyframes canBellRing {
+        0%, 100% { transform: rotate(0); }
+        10%, 30%, 50% { transform: rotate(-16deg); }
+        20%, 40%, 60% { transform: rotate(16deg); }
+        70% { transform: rotate(-6deg); }
+        80% { transform: rotate(6deg); }
+    }
+
+    @keyframes canBadgePulse {
+        0% { box-shadow: 0 0 0 0 rgba(239, 68, 68, .55), 0 2px 6px rgba(15, 23, 42, .22); }
+        70% { box-shadow: 0 0 0 12px rgba(239, 68, 68, 0), 0 2px 6px rgba(15, 23, 42, .22); }
+        100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0), 0 2px 6px rgba(15, 23, 42, .22); }
+    }
+
+    #notification-link.notif-bell-wrap.is-ringing .fa-bell {
+        animation: canBellRing 1.1s ease-in-out;
+        transform-origin: 50% 0;
+    }
+
+    #notification-link.notif-bell-wrap.is-ringing {
+        box-shadow: 0 0 0 4px rgba(239, 68, 68, .14), 0 6px 16px rgba(15, 23, 42, .14) !important;
+    }
+
+    #notification-count.notif-badge.is-pulsing {
+        animation: canBadgePulse 1.4s ease-out 3;
+    }
+
+    /* Toast d'une nouvelle notification : cliquable vers l'action */
+    #toast-container > .toast.can-live-notification {
+        cursor: pointer;
+        opacity: 1;
+    }
+
+    #toast-container > .toast.can-live-notification .toast-title {
+        font-size: 13px;
+        letter-spacing: .02em;
+    }
+
+    /* Bouton « View Request » des toasts de statut (web/js/request-sync.js) */
+    #toast-container > .toast .can-toast-actions {
+        margin-top: 8px;
+    }
+
+    #toast-container > .toast .can-toast-action {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 4px 10px;
+        border-radius: 6px;
+        background: rgba(255, 255, 255, .95);
+        color: #1d4ed8 !important;
+        font-size: 12px;
+        font-weight: 700;
+        text-decoration: none !important;
+        opacity: 1;
+    }
+
+    #toast-container > .toast .can-toast-action:hover,
+    #toast-container > .toast .can-toast-action:focus-visible {
+        background: #ffffff;
+        color: #1e3a8a !important;
+        outline: 2px solid rgba(255, 255, 255, .7);
+        outline-offset: 1px;
+    }
+
+    #toast-container > .toast.can-status-toast.is-important {
+        opacity: 1;
+        box-shadow: 0 10px 28px rgba(15, 23, 42, .28);
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+        #notification-link.notif-bell-wrap.is-ringing .fa-bell,
+        #notification-count.notif-badge.is-pulsing {
+            animation: none;
+        }
+    }
+
     /* ---- User trigger ---- */
     .user-trigger {
         display: flex;
@@ -388,9 +468,76 @@ if (!Yii::$app->user->isGuest && $userType === 'admin') {
     }
 
     .notification-dropdown-header {
+        position: relative;
         background-color: #f8f9fa;
         border-bottom: 1px solid #eaeaea;
         padding: 12px 15px;
+    }
+
+    /* Badge de priorité (notifications.priority) dans le menu de la cloche */
+    .notif-priority {
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        margin-right: 6px;
+        padding: 1px 7px;
+        border-radius: 999px;
+        font-size: 10px;
+        font-weight: 800;
+        letter-spacing: .03em;
+        vertical-align: 1px;
+        text-transform: uppercase;
+    }
+
+    .notif-priority-aog {
+        color: #b91c1c;
+        background: #fee2e2;
+        border: 1px solid #fecaca;
+    }
+
+    .notif-priority-urgent {
+        color: #b45309;
+        background: #fef3c7;
+        border: 1px solid #fde68a;
+    }
+
+    .notification-item.notification-priority-aog {
+        border-left: 4px solid #ef4444 !important;
+    }
+
+    .notification-item.notification-priority-urgent {
+        border-left: 4px solid #f59e0b !important;
+    }
+
+    /* Bouton muet du son des notifications (préférence mémorisée dans le navigateur) */
+    .notification-sound-toggle {
+        position: absolute;
+        top: 50%;
+        right: 12px;
+        transform: translateY(-50%);
+        display: inline-grid;
+        place-items: center;
+        width: 30px;
+        height: 30px;
+        padding: 0;
+        border: 1px solid #dbe3ee;
+        border-radius: 50%;
+        background: #ffffff;
+        color: #2563eb;
+        font-size: 13px;
+        cursor: pointer;
+    }
+
+    .notification-sound-toggle:hover,
+    .notification-sound-toggle:focus-visible {
+        border-color: #93b4f5;
+        background: #eff5ff;
+        outline: none;
+    }
+
+    .notification-sound-toggle[aria-pressed="true"] {
+        color: #94a3b8;
+        background: #f1f5f9;
     }
 
     .notification-dropdown-header h3 {
@@ -1132,6 +1279,10 @@ if (!Yii::$app->user->isGuest && $userType === 'admin') {
             <div id="notification-dropdown" class="dropdown-menu dropdown-menu-right" aria-labelledby="notification-link">
                 <div class="notification-dropdown-header text-center">
                     <h3><i class="fas fa-bell"></i> Notifications</h3>
+                    <button type="button" class="notification-sound-toggle" id="notification-sound-toggle"
+                            aria-pressed="false" title="Mute notification sound" aria-label="Mute notification sound">
+                        <i class="fas fa-volume-up" aria-hidden="true"></i>
+                    </button>
                 </div>
 
                 <!--
@@ -1191,13 +1342,15 @@ const notificationCsrfParam = $notificationCsrfParamJson;
 const notificationCsrfToken = $notificationCsrfTokenJson;
 
 /* Toutes les mutations utilisent POST et transportent déjà le jeton CSRF Yii. */
-function postNotification(url) {
+function postNotification(url, keepalive) {
     const body = new URLSearchParams();
     body.append(notificationCsrfParam, notificationCsrfToken);
 
     return fetch(url, {
         method: 'POST',
         credentials: 'same-origin',
+        /* keepalive : la requête aboutit même si la page change juste après. */
+        keepalive: keepalive === true,
         headers: {
             'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8',
             'X-Requested-With': 'XMLHttpRequest'
@@ -1225,18 +1378,267 @@ function safeNotificationAction(value) {
     }
 }
 
+/*
+ * SIGNAL VISUEL D'UNE NOUVELLE NOTIFICATION
+ * Le premier relevé sert de référence (aucun signal au chargement de la page) ;
+ * ensuite, toute hausse du compteur non lu fait sonner la cloche, pulser le
+ * badge, préfixe le titre de l'onglet et affiche un toast avec le dernier message.
+ */
+let lastNotificationCount = null;
+
+/*
+ * OUVRIR = LIRE : « View » (menu de la cloche) et le clic sur le toast marquent
+ * la notification comme lue avant d'ouvrir sa page. La navigation n'attend pas
+ * plus de 1,5 s : une erreur réseau ne bloque jamais l'utilisateur.
+ */
+function markNotificationReadThenOpen(notificationId, url) {
+    let navigated = false;
+    const go = function () {
+        if (navigated) return;
+        navigated = true;
+        window.location.href = url;
+    };
+    const fallback = window.setTimeout(go, 1500);
+
+    postNotification(notificationUrls.update + '?id=' + encodeURIComponent(notificationId), true)
+        .catch(error => console.error('Error marking as read:', error))
+        .finally(function () {
+            window.clearTimeout(fallback);
+            go();
+        });
+}
+
+/*
+ * ANTI-DOUBLON avec web/js/request-sync.js : le même événement peut produire un
+ * changement de statut (toast avec « View Request ») ET une notification.
+ * Le toast de statut est conservé ; celui de la cloche est retiré ou n'est pas
+ * affiché s'ils arrivent à moins de 15 s d'intervalle. La cloche vibre toujours.
+ */
+const NOTIFICATION_TOAST_DEDUP_MS = 15000;
+let lastStatusAlertAt = 0;
+let lastBellToast = null;
+let lastBellToastAt = 0;
+window.CANNotificationToasts = {
+    statusAlertShown: function () {
+        lastStatusAlertAt = Date.now();
+        if (lastBellToast && window.toastr && Date.now() - lastBellToastAt < NOTIFICATION_TOAST_DEDUP_MS) {
+            window.toastr.clear(lastBellToast);
+            lastBellToast = null;
+        }
+    }
+};
+const notificationBaseTitle = document.title.replace(/^\(\d+\+?\)\s*/, '');
+
+function updateNotificationTabTitle(count) {
+    document.title = count > 0
+        ? '(' + (count > 99 ? '99+' : count) + ') ' + notificationBaseTitle
+        : notificationBaseTitle;
+}
+
+/*
+ * SON DES NOTIFICATIONS (Web Audio, aucun fichier à héberger)
+ * - son court pour une notification ordinaire, trois bips plus aigus pour une AOG ;
+ * - préférence « muet » gardée dans le navigateur (localStorage) ;
+ * - un seul son quand plusieurs onglets CAN sont ouverts (verrou de 4 s partagé) ;
+ * - les navigateurs n'autorisent le son qu'après une première interaction
+ *   (clic ou touche) : le contexte audio est débloqué à ce moment-là.
+ */
+const NOTIFICATION_SOUND_MUTE_KEY = 'can.notifications.soundMuted';
+const NOTIFICATION_SOUND_LOCK_KEY = 'can.notifications.soundPlayedAt';
+let notificationAudioContext = null;
+
+function readNotificationStorage(key) {
+    try { return window.localStorage.getItem(key); } catch (error) { return null; }
+}
+
+function writeNotificationStorage(key, value) {
+    try { window.localStorage.setItem(key, value); } catch (error) { /* stockage indisponible */ }
+}
+
+function isNotificationSoundMuted() {
+    return readNotificationStorage(NOTIFICATION_SOUND_MUTE_KEY) === '1';
+}
+
+function getNotificationAudioContext() {
+    const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+    if (!AudioContextClass) return null;
+    if (!notificationAudioContext) {
+        try { notificationAudioContext = new AudioContextClass(); } catch (error) { return null; }
+    }
+    return notificationAudioContext;
+}
+
+function unlockNotificationAudio() {
+    const context = getNotificationAudioContext();
+    if (context && context.state === 'suspended') {
+        context.resume().catch(function () {});
+    }
+}
+
+['pointerdown', 'keydown'].forEach(function (eventName) {
+    document.addEventListener(eventName, unlockNotificationAudio, {once: true, capture: true});
+});
+
+function playNotificationTone(context, frequency, startAt, duration, type, volume) {
+    const oscillator = context.createOscillator();
+    const gain = context.createGain();
+    oscillator.type = type;
+    oscillator.frequency.setValueAtTime(frequency, startAt);
+    gain.gain.setValueAtTime(0.0001, startAt);
+    gain.gain.exponentialRampToValueAtTime(volume, startAt + 0.02);
+    gain.gain.exponentialRampToValueAtTime(0.0001, startAt + duration);
+    oscillator.connect(gain);
+    gain.connect(context.destination);
+    oscillator.start(startAt);
+    oscillator.stop(startAt + duration + 0.02);
+}
+
+function playNotificationSound(isAog) {
+    if (isNotificationSoundMuted()) return;
+
+    /* Verrou partagé entre onglets : le premier onglet qui détecte joue le son. */
+    const now = Date.now();
+    const lastPlayed = Number(readNotificationStorage(NOTIFICATION_SOUND_LOCK_KEY) || 0);
+    if (now - lastPlayed < 4000) return;
+    writeNotificationStorage(NOTIFICATION_SOUND_LOCK_KEY, String(now));
+
+    const context = getNotificationAudioContext();
+    if (!context || context.state !== 'running') return;
+
+    const start = context.currentTime + 0.01;
+    if (isAog) {
+        [0, 0.22, 0.44].forEach(function (offset) {
+            playNotificationTone(context, 1046, start + offset, 0.16, 'square', 0.08);
+        });
+    } else {
+        playNotificationTone(context, 880, start, 0.18, 'sine', 0.18);
+        playNotificationTone(context, 1318, start + 0.14, 0.26, 'sine', 0.14);
+    }
+}
+
+function syncNotificationSoundToggle() {
+    const button = document.getElementById('notification-sound-toggle');
+    if (!button) return;
+    const muted = isNotificationSoundMuted();
+    const label = muted ? 'Unmute notification sound' : 'Mute notification sound';
+    button.setAttribute('aria-pressed', muted ? 'true' : 'false');
+    button.setAttribute('title', label);
+    button.setAttribute('aria-label', label);
+    button.innerHTML = '<i class="fas ' + (muted ? 'fa-volume-mute' : 'fa-volume-up') + '" aria-hidden="true"></i>';
+}
+
+document.addEventListener('DOMContentLoaded', function () {
+    const button = document.getElementById('notification-sound-toggle');
+    if (!button) return;
+    syncNotificationSoundToggle();
+    button.addEventListener('click', function (event) {
+        event.preventDefault();
+        event.stopPropagation();
+        writeNotificationStorage(NOTIFICATION_SOUND_MUTE_KEY, isNotificationSoundMuted() ? '0' : '1');
+        syncNotificationSoundToggle();
+        /* Réactiver le son joue un court aperçu pour confirmer le réglage. */
+        if (!isNotificationSoundMuted()) {
+            unlockNotificationAudio();
+            writeNotificationStorage(NOTIFICATION_SOUND_LOCK_KEY, '0');
+            window.setTimeout(function () { playNotificationSound(false); }, 60);
+        }
+    });
+});
+
+/* Un autre onglet a changé le réglage : l'icône suit. */
+window.addEventListener('storage', function (event) {
+    if (event.key === NOTIFICATION_SOUND_MUTE_KEY) syncNotificationSoundToggle();
+});
+
+function ringNotificationBell() {
+    const bell = document.getElementById('notification-link');
+    const badge = document.getElementById('notification-count');
+    [[bell, 'is-ringing'], [badge, 'is-pulsing']].forEach(function (pair) {
+        const element = pair[0];
+        const className = pair[1];
+        if (!element) return;
+        /* Retirer puis remettre la classe relance l'animation à chaque arrivée. */
+        element.classList.remove(className);
+        void element.offsetWidth;
+        element.classList.add(className);
+    });
+    window.setTimeout(function () {
+        if (bell) bell.classList.remove('is-ringing');
+        if (badge) badge.classList.remove('is-pulsing');
+    }, 4500);
+}
+
+function showNewNotificationToast(newCount) {
+    fetch(notificationUrls.list + (notificationUrls.list.indexOf('?') === -1 ? '?' : '&') + 'filter=unread', {credentials: 'same-origin'})
+        .then(response => response.json())
+        .then(data => {
+            if (!data || !data.success || !Array.isArray(data.notifications) || data.notifications.length === 0) return;
+
+            const latest = data.notifications[0];
+            const message = String(latest.message || '');
+            /*
+             * PRIORITÉ : champ notifications.priority (priorité de la demande).
+             * Repli sur le mot « AOG » pour les anciennes lignes sans priorité.
+             */
+            const priority = latest.priority || (/\bAOG\b/i.test(message) ? 'aog' : null);
+            const isAog = priority === 'aog';
+            const isUrgent = priority === 'urgent';
+            const action = safeNotificationAction(latest.actions);
+            const extra = newCount > 1 ? '<div class="small mt-1 opacity-75">+' + (newCount - 1) + ' more</div>' : '';
+            const title = isAog ? 'AOG notification' : (isUrgent ? 'Urgent notification' : 'New notification');
+
+            /* Le son accompagne toujours une nouvelle notification ; seul le toast est dédoublonné. */
+            playNotificationSound(isAog);
+
+            if (typeof window.toastr === 'undefined') return;
+            if (Date.now() - lastStatusAlertAt < NOTIFICATION_TOAST_DEDUP_MS) return;
+
+            const toast = window.toastr[isAog ? 'error' : (isUrgent ? 'warning' : 'info')](
+                escapeNotificationHtml(message.length > 160 ? message.slice(0, 157) + '…' : message) + extra,
+                title,
+                {
+                    timeOut: isAog ? 0 : (isUrgent ? 15000 : 8000),
+                    extendedTimeOut: isAog ? 0 : 2000,
+                    closeButton: true,
+                    preventDuplicates: false,
+                    toastClass: 'toast can-live-notification',
+                    onclick: action
+                        ? function () { markNotificationReadThenOpen(latest.id, action); }
+                        : function () {
+                            postNotification(notificationUrls.update + '?id=' + encodeURIComponent(latest.id))
+                                .then(() => updateNotificationCount())
+                                .catch(error => console.error('Error marking as read:', error));
+                        }
+                }
+            );
+            if (toast && toast.attr) toast.attr('role', 'alert');
+            lastBellToast = toast || null;
+            lastBellToastAt = Date.now();
+        })
+        .catch(error => console.error('Error fetching latest notification:', error));
+}
+
 function updateNotificationCount() {
     fetch(notificationUrls.count, {credentials: 'same-origin'})
         .then(response => response.json())
         .then(data => {
             if (data.success) {
+                const count = Number(data.count) || 0;
                 let badge = document.getElementById('notification-count');
                 badge.textContent = data.count;
-                badge.style.display = data.count > 0 ? 'inline-flex' : 'none';
+                badge.style.display = count > 0 ? 'inline-flex' : 'none';
 
                 /* Le compteur Unread de l'onglet suit toujours le badge de la cloche. */
                 const unreadTabCount = document.getElementById('notification-tab-unread-count');
                 if (unreadTabCount) unreadTabCount.textContent = data.count;
+
+                updateNotificationTabTitle(count);
+
+                if (lastNotificationCount !== null && count > lastNotificationCount) {
+                    ringNotificationBell();
+                    showNewNotificationToast(count - lastNotificationCount);
+                }
+                lastNotificationCount = count;
             }
         })
         .catch(error => console.error('Error fetching count:', error));
@@ -1337,7 +1739,15 @@ function fetchNotifications(filter) {
                     let content = '<div class="notification-content">';
                     content += '<i class="fas ' + notificationIcon + ' notification-message-icon"></i>';
                     content += '<div class="notification-text">';
-                    content += '<div>' + escapeNotificationHtml(notification.message) + '</div>';
+                    const priorityBadge = notification.priority === 'aog'
+                        ? '<span class="notif-priority notif-priority-aog"><i class="fas fa-exclamation-circle" aria-hidden="true"></i> AOG</span>'
+                        : (notification.priority === 'urgent'
+                            ? '<span class="notif-priority notif-priority-urgent"><i class="fas fa-bolt" aria-hidden="true"></i> Urgent</span>'
+                            : '');
+                    if (notification.priority === 'aog' || notification.priority === 'urgent') {
+                        notificationItem.classList.add('notification-priority-' + notification.priority);
+                    }
+                    content += '<div>' + priorityBadge + escapeNotificationHtml(notification.message) + '</div>';
                     if (notification.created_at) {
                         content += '<div class="notification-created-at"><i class="far fa-clock"></i><span>' + escapeNotificationHtml(notification.created_at) + '</span></div>';
                     }
@@ -1347,7 +1757,7 @@ function fetchNotifications(filter) {
 
                     const notificationAction = safeNotificationAction(notification.actions);
                     if (notificationAction) {
-                        content += '<a href="' + escapeNotificationHtml(notificationAction) + '" class="btn-notif btn-notif-view"><i class="fas fa-eye"></i> View</a>';
+                        content += '<a href="' + escapeNotificationHtml(notificationAction) + '" class="btn-notif btn-notif-view" data-id="' + notification.id + '" data-unread="' + (notification.read !== "read" ? '1' : '0') + '"><i class="fas fa-eye"></i> View</a>';
                     }
                     if (notification.read !== "read") {
                         content += '<button class="btn-notif btn-notif-read mark-as-read-btn" data-id="' + notification.id + '"><i class="fas fa-check"></i> Mark as Read</button>';
@@ -1458,6 +1868,24 @@ document.getElementById('notification-dropdown').addEventListener('click', funct
         const filter = filterTab.getAttribute('data-filter');
         selectNotificationFilter(filter);
         fetchNotifications(filter);
+        return;
+    }
+
+    /*
+     * VIEW : une notification non lue est marquée lue avant l'ouverture.
+     * Ctrl/Cmd/Maj + clic ouvrent un nouvel onglet : on marque sans bloquer.
+     */
+    const viewLink = event.target.closest('.btn-notif-view');
+    if (viewLink && viewLink.getAttribute('data-unread') === '1') {
+        const viewId = viewLink.getAttribute('data-id');
+        if (event.ctrlKey || event.metaKey || event.shiftKey) {
+            postNotification(notificationUrls.update + '?id=' + encodeURIComponent(viewId), true)
+                .then(() => { updateNotificationCount(); fetchNotifications(activeNotificationFilter); })
+                .catch(error => console.error('Error marking as read:', error));
+            return;
+        }
+        event.preventDefault();
+        markNotificationReadThenOpen(viewId, viewLink.getAttribute('href'));
         return;
     }
 

@@ -66,4 +66,46 @@ class MroNotificationsPreferences extends ActiveRecord
     {
         return $this->hasOne(MroProfile::className(), ['mro_id' => 'mro_id']);
     }
+
+    /**
+     * Valeurs par défaut : toutes les notifications activées (2026-11-22).
+     * Utilisées à l'inscription (MroProfile::afterSave) et à la première ouverture
+     * de la page des préférences.
+     */
+    public const DEFAULTS = [
+        'notify_by_email' => 1,
+        'notify_by_platform' => 1,
+        'notify_by_both' => 1,
+        'notify_for_certified_aircraft' => 1,
+        'notify_for_non_certified_aircraft' => 1,
+        'notify_for_appointment_acceptance' => 1,
+        'notify_for_feedback' => 1,
+    ];
+
+    /**
+     * Retourne les préférences du MRO, en les créant avec les valeurs par défaut
+     * si elles n'existent pas encore. Ne modifie jamais des préférences existantes.
+     */
+    public static function ensureDefaultsFor(int $mroId): ?self
+    {
+        if ($mroId <= 0) {
+            return null;
+        }
+
+        $preferences = static::findOne(['mro_id' => $mroId]);
+        if ($preferences !== null) {
+            return $preferences;
+        }
+
+        $preferences = new static();
+        $preferences->mro_id = $mroId;
+        $preferences->setAttributes(self::DEFAULTS, false);
+
+        if (!$preferences->save()) {
+            Yii::error('Préférences MRO par défaut non créées : ' . json_encode($preferences->errors), __METHOD__);
+            return null;
+        }
+
+        return $preferences;
+    }
 }

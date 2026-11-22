@@ -28,12 +28,12 @@ $this->registerJsFile('@web/js/can.js', [
  * Toastr CSS and JS files.
  */
 $this->registerCssFile(
-    'https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.css',
+    'https://cdnjs.cloudflare.com/ajax/libs/toastr.js/2.1.4/toastr.min.css',
     ['position' => View::POS_HEAD]
 );
 
 $this->registerJsFile(
-    'https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.js',
+    'https://cdnjs.cloudflare.com/ajax/libs/toastr.js/2.1.4/toastr.min.js',
     [
         'depends' => [\yii\web\JqueryAsset::class],
         'position' => View::POS_END

@@ -1602,6 +1602,20 @@ CSS);
 
                         <!-- ETA -->
                         <div>
+                            <?php
+                            /*
+                             * AFFICHAGE SANS SECONDES : ETA/ETD se saisissent à la minute.
+                             * Une valeur déjà enregistrée (modification, ou formulaire
+                             * réaffiché après une erreur) est présentée au même format ;
+                             * le contrôleur la normalise ensuite en Y-m-d H:i:s.
+                             */
+                            foreach (['eta', 'etd'] as $scheduleAttribute) {
+                                $scheduleValue = trim((string) $request->$scheduleAttribute);
+                                if ($scheduleValue !== '' && ($scheduleTime = strtotime($scheduleValue)) !== false) {
+                                    $request->$scheduleAttribute = date('Y-m-d H:i', $scheduleTime);
+                                }
+                            }
+                            ?>
                             <?= $form->field($request, 'eta')->widget(DateTimePicker::class, [
                                 'options' => [
                                     'placeholder' => 'Select date and time...',
@@ -1609,7 +1623,7 @@ CSS);
                                     'class' => 'form-control',
                                 ],
                                 'pluginOptions' => [
-                                    'format' => 'yyyy-mm-dd hh:ii:ss',
+                                    'format' => 'yyyy-mm-dd hh:ii',
                                     'autoclose' => true,
                                     'todayHighlight' => true,
                                     'showRemove' => false,
@@ -1626,7 +1640,7 @@ CSS);
                                     'class' => 'form-control',
                                 ],
                                 'pluginOptions' => [
-                                    'format' => 'yyyy-mm-dd hh:ii:ss',
+                                    'format' => 'yyyy-mm-dd hh:ii',
                                     'autoclose' => true,
                                     'todayHighlight' => true,
                                     'showRemove' => false,

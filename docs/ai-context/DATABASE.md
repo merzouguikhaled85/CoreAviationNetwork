@@ -17,7 +17,7 @@
 | `chat` / `conversations` | `Chat` / `Conversations` | chat: chat_id, mro_id, ao_id, request_id · conversations: chat_id, timestamp, sender/receiver (see model) | |
 | `disputes` | `Dispute` | dispute_id, request_id, description, status(open/resolved), timestamp, ao_id, mro_id, po, created_by(ao/mro), admin_response | |
 | `feedback` | `Feedback` | feedback_id, request_id, ao_id, mro_id, rating, kept_to_agreed_schedule_rating, kept_to_agreed_cost_rating, overall_communication_rating, feedback_text, timestamp | |
-| `notifications` | `Notification` | id, content, recipient_id, recipient_type(ao/mro/admin), status(null/read), created_at, actions | |
+| `notifications` | `Notification` | id, content, recipient_id, recipient_type(ao/mro/admin), status(null/read), priority(aog/urgent/routine/null — m261122_160000), created_at, actions | |
 | `adverts` | `Advert` | advert_id, admin_id, advert_type(photo/video), content, timestamp, status(active/inactive), start_date, end_date, use_url, url | |
 | `aircrafts` | `Aircrafts` | aircraft_id, manufacturer, model, serial_number, registration_number, ao_id, aircraft_model_id, certificate_type_id | |
 | `aircraft_model` | `AircraftModel` | aircraft_model_id, manufacturer, model | |

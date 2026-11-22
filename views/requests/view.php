@@ -326,7 +326,7 @@ $backUrl = Yii::$app->request->referrer ?: ['index'];
 $this->registerCssFile(
     'https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css'
 );
-$this->registerCssFile(Url::to('@web/css/requests-view-refresh.css') . '?v=20260926-5');
+$this->registerCssFile(Url::to('@web/css/requests-view-refresh.css') . '?v=20261122-1');
 
 /**
  * Register SweetAlert2.
@@ -1438,16 +1438,16 @@ JS, \yii\web\View::POS_READY);
         <?php endif; ?>
 
         <nav class="request-detail-tabs" aria-label="Request detail sections" role="tablist">
-            <a class="is-active" href="#overview" role="tab" aria-selected="true" data-request-tab="overview">Overview</a>
+            <a class="is-active" href="#overview" role="tab" aria-selected="true" data-request-tab="overview"><i class="bi bi-grid-1x2" aria-hidden="true"></i>Overview</a>
             <?php if ($showMroQuotesTab): ?>
                 <a href="#quotes" role="tab" aria-selected="false" data-request-tab="quotes">
-                    MRO Quotes <span class="request-tab-count"><?= Html::encode((string) count($mroQuotes)) ?></span>
+                    <i class="bi bi-receipt" aria-hidden="true"></i>MRO Quotes <span class="request-tab-count"><?= Html::encode((string) count($mroQuotes)) ?></span>
                 </a>
             <?php endif; ?>
             <a href="#documents" role="tab" aria-selected="false" data-request-tab="documents">
-                Documents <span class="request-tab-count"><?= Html::encode((string) $documentCount) ?></span>
+                <i class="bi bi-folder2-open" aria-hidden="true"></i>Documents <span class="request-tab-count"><?= Html::encode((string) $documentCount) ?></span>
             </a>
-            <a href="#history" role="tab" aria-selected="false" data-request-tab="history">Priority History</a>
+            <a href="#history" role="tab" aria-selected="false" data-request-tab="history"><i class="bi bi-clock-history" aria-hidden="true"></i>Priority History</a>
         </nav>
 
         <div class="view-grid">

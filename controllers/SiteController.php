@@ -623,147 +623,222 @@ public function beforeAction($action)
             return $this->redirectToPrelaunchRegistration();
         }
 
+        // Écran d'inscription autonome : layout « auth », sans header ni footer du site.
+        $this->layout = 'auth';
+
         $model = new AoProfile();
-        $airplaneModel = new Aircrafts(); // Create an instance of the Airplane model
-        $manufacturers = AircraftModel::find()->select('manufacturer')->distinct()->orderBy(['manufacturer' => SORT_ASC])
-->all(); // Fetch all distinct manufacturers from the aircraft_model table
-        $models = AircraftModel::find()
-    ->orderBy([
-        'manufacturer' => SORT_ASC,
-        'model' => SORT_ASC
-    ])
-    ->all(); // Fetch all models from the aircraft_model table
-        // Fetch countries, cities, and terms from your database or any other source
-        $countries = Countries::find()->orderBy('country_name')->all(); // Assuming you have a Country model
-        $cities = Cities::find()->orderBy('city_name')->all(); // Assuming you have a City model
-        $termsContent = Terms::find()->one()->content; // Assuming you have a Terms model with a content field
-        $ao_notifications = new AoNotificationsPreferences();
+        $airplaneModel = new Aircrafts();
+        $manufacturers = AircraftModel::find()->select('manufacturer')->distinct()->orderBy(['manufacturer' => SORT_ASC])->all();
+        $models = AircraftModel::find()->orderBy(['manufacturer' => SORT_ASC, 'model' => SORT_ASC])->all();
+        $countries = Countries::find()->orderBy('country_name')->all();
+        $termsContent = Terms::find()->one()->content;
+        // Les villes sont chargées par AJAX (site/get-cities) : plus de chargement de toutes les villes ici.
 
-        // Prepare cities data in JSON format
-        $citiesByCountry = [];
-        foreach ($cities as $city) {
-            $citiesByCountry[$city->country_id][] = $city;
+        /*
+         * RETOUR D'ERREUR SANS PERTE DE SAISIE (2026-11-22), même logique que
+         * l'inscription MRO : erreurs collectées, formulaire réaffiché avec les
+         * valeurs, ouvert sur la première étape à corriger.
+         */
+        $formErrors = [];
+        $errorStep = null;
+        $addError = static function (int $step, string $message) use (&$formErrors, &$errorStep): void {
+            $formErrors[] = $message;
+            $errorStep = $errorStep === null ? $step : min($errorStep, $step);
+        };
+
+        // Photo de profil conservée côté serveur après une erreur (voir actionBecomeMro).
+        $session = Yii::$app->session;
+        $keptKey = 'aoSignupKeptFiles';
+        $kept = (array) $session->get($keptKey, []);
+        if (!Yii::$app->request->isPost) {
+            $this->discardMroSignupFiles($kept, 'ao');
+            $kept = [];
         }
-       // $citiesByCountryJson = Json::encode($citiesByCountry);
-    $citiesByCountryJson = Json::encode([]); // no more bulk cities
 
-        if ($model->load(Yii::$app->request->post())) {
-            // Check if the username is unique
-            if (AoProfile::find()->where(['username' => $model->username])->exists()) {
-                Yii::$app->session->setFlash('error', 'Username is already taken');
-                return $this->refresh(); // Refresh the page to display the flash message
-            }
-    
-            // Get the instance of the uploaded profile photo
-            $model->profile_photo = UploadedFile::getInstance($model, 'profile_photo');
-    
-            // Set the file path for the uploaded profile photo
-            if ($model->profile_photo) {
-                $uploadPath = 'uploads/' . Yii::$app->security->generateRandomString() . '.' . $model->profile_photo->extension;
-                $model->profile_photo->saveAs($uploadPath);
-                $model->profile_photo = $uploadPath;
-            }
-            $model->password = Yii::$app->request->post('AoProfile')['password'];
-            $model->confirm_password = Yii::$app->request->post('AoProfile')['confirm_password'];
+        if (Yii::$app->request->isPost && $model->load(Yii::$app->request->post())) {
+            $post = Yii::$app->request->post();
+            $aircraftPost = (array) ($post['Aircrafts'] ?? []);
+            $airplaneModel->manufacturer = trim((string) ($aircraftPost['manufacturer'] ?? ''));
+            $airplaneModel->model = trim((string) ($aircraftPost['model'] ?? ''));
+            $airplaneModel->serial_number = trim((string) ($aircraftPost['serial_number'] ?? ''));
+            $airplaneModel->registration_number = trim((string) ($aircraftPost['registration_number'] ?? ''));
+            $airplaneModel->certificate_type_id = $aircraftPost['certificate_type_id'] ?? null;
 
+            $model->password = trim((string) ($post['AoProfile']['password'] ?? ''));
+            $model->confirm_password = trim((string) ($post['AoProfile']['confirm_password'] ?? ''));
 
-            // Trim the passwords if they are not null to remove any whitespace
-            if ($model->password !== null) {
-                $model->password = trim($model->password);
+            /*
+             * 1. VALIDATION COMPLÈTE AVANT TOUT ENREGISTREMENT : avant, le profil
+             *    était créé puis l'avion pouvait être refusé, laissant un compte AO
+             *    sans avion (et sans message d'erreur).
+             */
+            if ($model->password === '') {
+                $addError(1, 'Password is required.');
+            } elseif (mb_strlen($model->password) < 6) {
+                $addError(1, 'Password must contain at least 6 characters.');
+            } elseif ($model->password !== $model->confirm_password) {
+                $addError(1, 'Passwords do not match.');
             }
-            if ($model->confirm_password !== null) {
-                $model->confirm_password = trim($model->confirm_password);
-            }
-    
-            // Check if password and confirm password match
-            if ($model->password !== $model->confirm_password) {
-                Yii::$app->session->setFlash('error', 'Passwords do not match');
-                return $this->refresh(); // Refresh the page to display the flash message
-            }
-    
-            // Validate the model before hashing the password
-            if ($model->validate()) {
-                // Hash the password before saving
-                if (!empty($model->password)) {
-                    $model->password = Yii::$app->security->generatePasswordHash($model->password);
-                } else {
-                    // Handle the case where the password is not provided
-                    // For example, you might want to throw an exception or set an error message
-                    throw new \InvalidArgumentException('Password cannot be empty.');
+
+            $accountFields = ['username', 'email'];
+            $profileFields = ['username', 'email', 'first_name', 'last_name', 'contact_number', 'company_name', 'country_id', 'city_id', 'address', 'zip_code'];
+            if (!$model->validate($profileFields)) {
+                foreach ($model->getFirstErrors() as $attribute => $message) {
+                    $addError(in_array($attribute, $accountFields, true) ? 1 : 2, $message);
                 }
-                    
-                // Generate and save verification token
-                $model->verification_token = Yii::$app->security->generateRandomString() . '_' . time();
-    
-                // Save the model
-                if ($model->save()) {
-                    $ao_notifications->ao_id= $model->ao_id;
-                    $ao_notifications->notify_by_email= 1;
-                    $ao_notifications->notify_by_platform= 1;
-                    $ao_notifications->notify_mro_replies= 1;
-                    $ao_notifications->notify_appointment_requests= 1;
-                    $ao_notifications->notify_po_acceptance= 1;
-                    $ao_notifications->notify_maintenance_proposals= 1;
-                    $ao_notifications->notify_mro_recommendations= '1';
-                    $ao_notifications->notify_work_start= 1;
-                    $ao_notifications->notify_report_submissions= 1;
-                    if (!$ao_notifications->validate()) {
-                        VarDumper::dump($ao_notifications->errors);die();
+            }
+
+            // Photo de profil (facultative) : image, 5 Mo au plus ; conservée si valide.
+            $photo = UploadedFile::getInstance($model, 'profile_photo');
+            $keptFlags = (array) ($post['kept_files'] ?? []);
+            if ($photo) {
+                $problem = $this->checkMroSignupFile($photo, 'image');
+                if ($problem !== null) {
+                    $addError(2, 'Profile photo ' . $problem);
+                } else {
+                    try {
+                        $kept['profile_photo'] = $this->keepMroSignupFile($photo, 'profile_photo', $kept['profile_photo'] ?? null, 'ao');
+                    } catch (\Throwable $e) {
+                        Yii::error('AO signup temporary upload failed: ' . $e->getMessage(), __METHOD__);
+                        $addError(2, 'Profile photo could not be uploaded. Please try again.');
+                    }
+                }
+            } elseif (isset($kept['profile_photo']) && empty($keptFlags['profile_photo'])) {
+                $this->deleteMroSignupFile($kept['profile_photo'], 'ao');
+                unset($kept['profile_photo']);
+            }
+            if (isset($kept['profile_photo']) && !is_file($kept['profile_photo']['path'])) {
+                unset($kept['profile_photo']);
+            }
+            $session->set($keptKey, $kept);
+
+            // Étape 3 : avion
+            if (!$airplaneModel->validate(['manufacturer', 'model', 'serial_number', 'registration_number', 'certificate_type_id'])) {
+                foreach ($airplaneModel->getFirstErrors() as $message) {
+                    $addError(3, $message);
+                }
+            }
+            $airplaneModel->aircraft_model_id = AircraftModel::find()
+                ->select('aircraft_model_id')
+                ->where(['model' => $airplaneModel->model, 'manufacturer' => $airplaneModel->manufacturer])
+                ->scalar() ?: null;
+            if ($airplaneModel->model !== '' && $airplaneModel->aircraft_model_id === null) {
+                $addError(3, 'Please select a valid aircraft model.');
+            }
+            if ((int) $airplaneModel->certificate_type_id > 0
+                && !\app\models\CertificateTypes::find()->where(['certificate_type_id' => (int) $airplaneModel->certificate_type_id])->exists()) {
+                $addError(3, 'Please select a valid certificate type.');
+            }
+
+            // Étape 4 : conditions
+            if (empty($post['terms'])) {
+                $addError(4, 'You must agree to the terms and conditions.');
+            }
+
+            /*
+             * 2. ENREGISTREMENT ATOMIQUE : profil et avion ensemble ; au moindre
+             *    échec, rien n'est gardé en base et la photo copiée est supprimée.
+             */
+            if ($formErrors === []) {
+                $storedPhoto = null;
+                $transaction = Yii::$app->db->beginTransaction();
+                try {
+                    if (isset($kept['profile_photo'])) {
+                        $storedPhoto = 'uploads/' . Yii::$app->security->generateRandomString() . '.' . $kept['profile_photo']['ext'];
+                        if (!copy($kept['profile_photo']['path'], $storedPhoto)) {
+                            throw new \RuntimeException('Profile photo copy failed.');
+                        }
+                    }
+                    $model->profile_photo = $storedPhoto;
+                    $model->password = Yii::$app->security->generatePasswordHash($model->password);
+                    $model->verification_token = Yii::$app->security->generateRandomString() . '_' . time();
+
+                    // Champs déjà validés ci-dessus (la règle « image » ne s'applique pas à un chemin).
+                    if (!$model->save(false)) {
+                        throw new \RuntimeException('AO profile could not be saved.');
                     }
 
-                    $ao_notifications->save();
+                    // Préférences « tout activé » : créées par AoProfile::afterSave (sans doublon).
+                    \app\models\AoNotificationsPreferences::ensureDefaultsFor((int) $model->ao_id);
 
-
-                    // Assign AO profile's id to aircraft's ao_id
                     $airplaneModel->ao_id = $model->ao_id;
-                    // Set other attributes of the airplane model
-                    $airplaneModel->manufacturer = Yii::$app->request->post('Aircrafts')['manufacturer'];
-                    $airplaneModel->model = Yii::$app->request->post('Aircrafts')['model'];
-                    $airplaneModel->serial_number = Yii::$app->request->post('Aircrafts')['serial_number'];
-                    $airplaneModel->registration_number = Yii::$app->request->post('Aircrafts')['registration_number'];
-                    $airplaneModel->aircraft_model_id = Yii::$app->request->post('Aircrafts')['aircraft_model_id'];
-                    $airplaneModel->certificate_type_id = Yii::$app->request->post('Aircrafts')['certificate_type_id'];
+                    if (!$airplaneModel->save()) {
+                        throw new \RuntimeException('Aircraft: ' . implode(' ', $airplaneModel->getFirstErrors()));
+                    }
 
-                    $airplaneModel->aircraft_model_id = AircraftModel::find()
-                    ->select('aircraft_model_id') // Select the aircraft_model_id
-                    ->where(['model' => $airplaneModel->model]) // Match on model
-                    ->andWhere(['manufacturer' => $airplaneModel->manufacturer]) // Match on manufacturer
-                    ->scalar(); // Get the scalar value (aircraft_model_id)
+                    $transaction->commit();
+                    $this->discardMroSignupFiles($kept, 'ao');
+                    $kept = [];
+                } catch (\Throwable $e) {
+                    $transaction->rollBack();
+                    if ($storedPhoto !== null && is_file($storedPhoto)) {
+                        @unlink($storedPhoto);
+                    }
+                    Yii::error('AO signup failed: ' . $e->getMessage(), __METHOD__);
 
-                  //  VarDumper::dump($airplaneModel);die();
-                    if ($airplaneModel->validate() && $airplaneModel->save()) {
-                        // Send verification email
-                        $verificationLink = Yii::$app->urlManager->createAbsoluteUrl(['site/verify-emailao', 'token' => $model->verification_token]);
-                        try {
-                         /*  $message = Yii::$app->mailer->compose()
-                                ->setTo($model->email)
-                                ->setSubject('Verify your email address')
-                                ->setTextBody("Follow the link below to verify your email address:\n\n$verificationLink")
-                                ->send();
-    */
-                        // $message = Yii::$app->mailer->compose()
-                        //     ->setTo($model->email)
-                        //     ->setSubject('Verify your email_address')
-                        //     ->setTextBody("Follow the link below to verify your email address:\n\n$verificationLink")
-                        //     ->send();
+                    $model->isNewRecord = true;
+                    $model->ao_id = null;
+                    $model->password = $model->confirm_password;
+                    $model->profile_photo = null;
+                    $airplaneModel->isNewRecord = true;
+                    $airplaneModel->ao_id = null;
+                    $addError(4, 'Your application could not be saved. Please check your information and try again.');
+                }
 
+                if ($formErrors === []) {
+                    try {
+                        $isSent = $this->sendAoVerificationEmail($model);
+                    } catch (InvalidConfigException $e) {
+                        Yii::error($e, 'mail.configuration');
+                        $isSent = false;
+                    }
 
-                        // Résolution du nom affiché
-if (!empty($model->first_name) || !empty($model->last_name)) {
-    $fullName = trim(($model->first_name ?? '') . ' ' . ($model->last_name ?? ''));
-} elseif (!empty($model->name)) {
-    $fullName = $model->name;
-} elseif (!empty($model->username)) {
-    $fullName = $model->username;
-} elseif (!empty($model->email)) {
-    $fullName = $model->email;
-} else {
-    $fullName = 'User';
-}
+                    if ($isSent) {
+                        Yii::$app->session->setFlash('success', 'Aircraft operator profile created successfully. A verification email has been sent.');
+                    } else {
+                        Yii::$app->session->setFlash(
+                            'warning',
+                            'Aircraft operator profile created successfully, but the verification email could not be sent. Please try again later or contact support.'
+                        );
+                    }
 
-$appName  = htmlspecialchars(Yii::$app->name, ENT_QUOTES, 'UTF-8');
-$safeName = htmlspecialchars($fullName, ENT_QUOTES, 'UTF-8');
-$safeLink = htmlspecialchars($verificationLink, ENT_QUOTES, 'UTF-8');
+                    return $this->redirect(Yii::$app->request->baseUrl . '/'); // racine du site
+                }
+            }
+        }
+
+        return $this->render('become-ao', [
+            'model' => $model,
+            'countries' => $countries,
+            'airplaneModel' => $airplaneModel,
+            'terms' => $termsContent,
+            'manufacturers' => $manufacturers,
+            'models' => $models,
+            'formErrors' => $formErrors,
+            'errorStep' => $errorStep,
+            'keptFiles' => array_map(static function (array $meta): array {
+                return ['name' => $meta['name'], 'size' => $meta['size']];
+            }, $kept),
+        ]);
+    }
+
+    /**
+     * E-mail de vérification envoyé après l'inscription AO (contenu inchangé).
+     *
+     * @throws InvalidConfigException si le mailer est mal configuré
+     */
+    private function sendAoVerificationEmail(AoProfile $model): bool
+    {
+        $verificationLink = Yii::$app->urlManager->createAbsoluteUrl(['site/verify-emailao', 'token' => $model->verification_token]);
+
+        $fullName = trim(($model->first_name ?? '') . ' ' . ($model->last_name ?? ''));
+        if ($fullName === '') {
+            $fullName = $model->username ?: ($model->email ?: 'User');
+        }
+
+        $appName  = htmlspecialchars(Yii::$app->name, ENT_QUOTES, 'UTF-8');
+        $safeName = htmlspecialchars($fullName, ENT_QUOTES, 'UTF-8');
+        $safeLink = htmlspecialchars($verificationLink, ENT_QUOTES, 'UTF-8');
 
 $htmlBody = "
 <div style='margin:0; padding:0; background:#f4f6f8;'>
@@ -843,230 +918,419 @@ $htmlBody = "
 </div>
 ";
 
-$message = Yii::$app->mailer->compose()
-    ->setTo($model->email)
-    ->setFrom([
-        Yii::$app->params['supportEmail'] ?? 'no-reply@coreaviationnetwork.com' => Yii::$app->name,
-    ])
-    ->setSubject('Verify your email address - ' . Yii::$app->name)
-    ->setHtmlBody($htmlBody)
-    ->send();
-
-                            if ($message) {
-                             
-                                Yii::$app->session->setFlash('success', 'Verification email sent successfully.');
-                            } else {
-                                Yii::$app->session->setFlash('error', 'Failed to send verification email.');
-                            }
-                        } catch (InvalidConfigException $e) {
-                            Yii::$app->session->setFlash('error', 'Error configuring mailer: ' . $e->getMessage());
-                        }
-    
-                        // Save the aircraft model
-                        Yii::$app->getSession()->setFlash('message', 'AO Profile and Airplane Added Successfully!');
-                        return $this->redirect(['site/landing']);
-                    }
-                } else {
-                    // Handle save errors
-                    Yii::$app->session->setFlash('error', 'Failed to save AO Profile: ');
-                }
-            } else {
-                // Handle validation errors
-                Yii::$app->session->setFlash('error', 'Validation failed. Check your inputs ' );
-            }
-        }
-    
-        return $this->render('become-ao', [
-            'model' => $model,
-                        'countries' => $countries,
-
-            'airplaneModel' => $airplaneModel, // Pass the airplane model to the view
-            'terms' => $termsContent,
-                        'citiesByCountryJson' => $citiesByCountryJson,
-            'manufacturers' => $manufacturers, // Pass the manufacturers to the view
-            'models' => $models, // Pass the models to the view
-        ]);
+        // send() renvoie déjà true/false.
+        return (bool) Yii::$app->mailer->compose()
+            ->setTo($model->email)
+            ->setFrom([
+                Yii::$app->params['supportEmail'] ?? 'no-reply@coreaviationnetwork.com' => Yii::$app->name,
+            ])
+            ->setSubject('Verify your email address - ' . Yii::$app->name)
+            ->setHtmlBody($htmlBody)
+            ->send();
     }
-    
-    
+
     public function actionBecomeMro()
     {
         if (PrelaunchMode::isEnabled()) {
             return $this->redirectToPrelaunchRegistration();
         }
 
+        // Écran d'inscription autonome : layout « auth », sans header ni footer du site.
+        $this->layout = 'auth';
+
         $model = new MroProfile();
-        $termsContent = Terms::find()->one()->content; // Assuming you have a Terms model with a content field
+        $termsContent = Terms::find()->one()->content;
         $certificate = new Certificates();
         $mroairport = new MroprofileAirport();
+        $mroaircraftcertificate = new MroAircraftCertificate();
 
         /*
          * PERFORMANCE DU FORMULAIRE : seule la liste des pays est nécessaire au
          * premier affichage. Les villes sont ensuite demandées par AJAX lorsque
-         * l'utilisateur choisit un pays. On évite ainsi de charger et d'instancier
-         * toutes les villes (ainsi que tous les MRO) pendant chaque GET ou POST.
+         * l'utilisateur choisit un pays.
          */
-        $countries = Countries::find()->orderBy('country_name')->all(); // Assuming you have a Country model
-        $mro_notifications = new MroNotificationsPreferences();
-        $mroaircraftcertificate = new MroAircraftCertificate();
-
-                                // Set the file path for the uploaded certificate file
-
-
-
-        if ($model->load(Yii::$app->request->post())) {
-           // VarDumper::dump( $model);die();
-
-
-            if (MroProfile::find()->where(['username' => $model->username])->exists()) {
-                Yii::$app->session->setFlash('error', 'Username is already taken');
-                return $this->refresh();
-            }
-            
-            $model->profile_photo = UploadedFile::getInstance($model, 'profile_photo');
-            if ($model->profile_photo) {
-                $uploadPath = 'uploads/' . Yii::$app->security->generateRandomString() . '.' . $model->profile_photo->extension;
-                if ($model->profile_photo->saveAs($uploadPath)) {
-                    $model->profile_photo = $uploadPath;
-                } else {
-                    Yii::$app->session->setFlash('error', 'Failed to upload profile photo');
-                    return $this->refresh();
-                }
-            }
-            $model->company_photo = UploadedFile::getInstance($model, 'company_photo');
-            if ($model->company_photo) {
-                $uploadPath = 'uploads/' . Yii::$app->security->generateRandomString() . '.' . $model->company_photo->extension;
-                if ($model->company_photo->saveAs($uploadPath)) {
-                    $model->company_photo = $uploadPath;
-                } else {
-                    Yii::$app->session->setFlash('error', 'Failed to upload company_photo photo');
-                    return $this->refresh();
-                }
-            }
-            
-            if ($model->password !== null) {
-                $model->password = trim($model->password);
-            }
-            if ($model->confirm_password !== null) {
-                $model->confirm_password = trim($model->confirm_password);
-            }
-            if ($model->password !== $model->confirm_password) {
-                // Un mot de passe en clair ne doit jamais être recopié dans la session ou la réponse HTML.
-                Yii::$app->session->setFlash('error', 'Passwords do not match.');
-                return $this->refresh();
-            }
-            
-
-            if ($model->validate()) {
-
-                // Hash the password before saving
-                if (!empty($model->password)) {
-                    $model->password = Yii::$app->security->generatePasswordHash($model->password);
-                } else {
-                    // Handle the case where the password is not provided
-                    // For example, you might want to throw an exception or set an error message
-                    throw new \InvalidArgumentException('Password cannot be empty.');
-                }
-                    
-                // Generate and save verification token
-                $model->verification_token = Yii::$app->security->generateRandomString() . '_' . time();
-            
-            if ($model->save()) {
-                if ($mroaircraftcertificate->load(Yii::$app->request->post())) {
-  $mroId = $model->mro_id; // ✅ NOW IT EXISTS
+        $countries = Countries::find()->orderBy('country_name')->all();
 
         /*
-        * =========================
-        * INSURANCE DOCUMENT FIX
-        * =========================
-        */
-        $insuranceFile = UploadedFile::getInstance($model, 'insurance_document');
+         * RETOUR D'ERREUR SANS PERTE DE SAISIE (2026-11-22) : avant, chaque erreur
+         * faisait un refresh() et l'utilisateur perdait tout le formulaire. Les
+         * erreurs sont maintenant collectées puis le formulaire est réaffiché avec
+         * les valeurs saisies, ouvert sur la première étape à corriger.
+         */
+        $formErrors = [];
+        $errorStep = null;
+        $addError = static function (int $step, string $message) use (&$formErrors, &$errorStep): void {
+            $formErrors[] = $message;
+            $errorStep = $errorStep === null ? $step : min($errorStep, $step);
+        };
 
-        if ($insuranceFile) {
+        /*
+         * PIÈCES JOINTES CONSERVÉES APRÈS ERREUR (2026-11-22) : un navigateur ne peut
+         * pas re-remplir un champ fichier. Chaque fichier valide reçu est donc gardé
+         * temporairement dans @runtime/mro-signup/<jeton> (hors du dossier web), lié à
+         * la session. Le formulaire réaffiché le propose comme « conservé » : il peut
+         * être gardé, remplacé ou retiré. Une nouvelle visite (GET) repart de zéro.
+         */
+        $session = Yii::$app->session;
+        $kept = (array) $session->get(self::MRO_SIGNUP_KEPT_FILES, []);
+        if (!Yii::$app->request->isPost) {
+            $this->discardMroSignupFiles($kept);
+            $kept = [];
+        }
 
-            $uploadPath = 'uploads/' . Yii::$app->security->generateRandomString() . '.' . $insuranceFile->extension;
+        if (Yii::$app->request->isPost && $model->load(Yii::$app->request->post())) {
+            $post = Yii::$app->request->post();
+            $certificate->load($post);
+            $mroaircraftcertificate->load($post);
+            $mroairport->load($post);
+            $mroaircraftcertificate->manufacturer = $post['MroAircraftCertificate']['manufacturer'] ?? null;
+            $certificate->type = $post['Certificates']['type'] ?? $certificate->type;
+            $certificate->certificate_type_id = $post['Certificates']['certificate_type_id'] ?? $certificate->certificate_type_id;
 
-            if ($insuranceFile->saveAs($uploadPath)) {
+            $model->password = trim((string) $model->password);
+            $model->confirm_password = trim((string) $model->confirm_password);
 
-                $insuranceDoc = new MroInsuranceDocuments();
-                $insuranceDoc->mro_id = $mroId;
-                $insuranceDoc->file_path = $uploadPath;
-                $insuranceDoc->file_name = $insuranceFile->name;
-                $insuranceDoc->file_type = $insuranceFile->type;
-                $insuranceDoc->file_size = $insuranceFile->size;
+            $files = [
+                'profile_photo' => UploadedFile::getInstance($model, 'profile_photo'),
+                'company_photo' => UploadedFile::getInstance($model, 'company_photo'),
+                'insurance' => UploadedFile::getInstance($model, 'insurance_document'),
+                'naa' => UploadedFile::getInstance($certificate, 'certificate'),
+                'capability' => UploadedFile::getInstance($mroaircraftcertificate, 'certificate'),
+            ];
 
-                if (!$insuranceDoc->save()) {
-                    Yii::error($insuranceDoc->errors);
+            /*
+             * 1. VALIDATION COMPLÈTE AVANT TOUT ENREGISTREMENT : avant, le profil
+             *    était créé puis les certificats ou l'aéroport pouvaient échouer,
+             *    laissant un compte MRO incomplet en base.
+             */
+            // Étape 1 : compte
+            if ($model->password === '') {
+                $addError(1, 'Password is required.');
+            } elseif (mb_strlen($model->password) < 6) {
+                $addError(1, 'Password must contain at least 6 characters.');
+            } elseif ($model->password !== $model->confirm_password) {
+                $addError(1, 'Passwords do not match.');
+            }
+            if ($model->username !== null && MroProfile::find()->where(['username' => $model->username])->exists()) {
+                $addError(1, 'Username is already taken.');
+            }
+
+            // Étapes 1 et 2 : profil (les fichiers sont contrôlés à part)
+            $accountFields = ['username', 'email'];
+            $profileFields = ['username', 'email', 'first_name', 'last_name', 'contact_number', 'company_name', 'country_id', 'city_id', 'address', 'zip_code'];
+            if (!$model->validate($profileFields)) {
+                foreach ($model->getFirstErrors() as $attribute => $message) {
+                    if ($attribute === 'username' && strpos($message, 'taken') !== false) {
+                        continue; // déjà signalé ci-dessus
+                    }
+                    $addError(in_array($attribute, $accountFields, true) ? 1 : 2, $message);
+                }
+            }
+
+            // Fichiers : nouveau fichier valide => conservé ; sinon fichier déjà conservé, sauf s'il a été retiré.
+            $fileRules = [
+                'profile_photo' => ['label' => 'Profile photo', 'step' => 2, 'type' => 'image', 'required' => false],
+                'company_photo' => ['label' => 'Company / hangar photo', 'step' => 2, 'type' => 'image', 'required' => false],
+                'naa' => ['label' => 'NAA approval certificate', 'step' => 3, 'type' => 'pdf', 'required' => true],
+                'capability' => ['label' => 'Aircraft capability certificate', 'step' => 3, 'type' => 'pdf', 'required' => true],
+                'insurance' => ['label' => 'Insurance document', 'step' => 3, 'type' => 'pdf', 'required' => true],
+            ];
+            $keptFlags = (array) ($post['kept_files'] ?? []);
+            foreach ($fileRules as $slot => $rule) {
+                $file = $files[$slot];
+                if ($file) {
+                    $problem = $this->checkMroSignupFile($file, $rule['type']);
+                    if ($problem !== null) {
+                        $addError($rule['step'], $rule['label'] . ' ' . $problem);
+                        continue;
+                    }
+                    try {
+                        $kept[$slot] = $this->keepMroSignupFile($file, $slot, $kept[$slot] ?? null);
+                    } catch (\Throwable $e) {
+                        Yii::error('MRO signup temporary upload failed: ' . $e->getMessage(), __METHOD__);
+                        $addError($rule['step'], $rule['label'] . ' could not be uploaded. Please try again.');
+                        continue;
+                    }
+                } elseif (isset($kept[$slot]) && empty($keptFlags[$slot])) {
+                    // Retiré par l'utilisateur.
+                    $this->deleteMroSignupFile($kept[$slot]);
+                    unset($kept[$slot]);
+                }
+
+                if (isset($kept[$slot]) && !is_file($kept[$slot]['path'])) {
+                    unset($kept[$slot]);
+                }
+                if ($rule['required'] && !isset($kept[$slot])) {
+                    $addError($rule['step'], $rule['label'] . ' is required.');
+                }
+            }
+            $session->set(self::MRO_SIGNUP_KEPT_FILES, $kept);
+
+            // Étape 3 : agrément NAA et capacité avion
+            if (trim((string) $certificate->type) === '' || (int) $certificate->certificate_type_id <= 0) {
+                $addError(3, 'NAA authority is required.');
+            }
+            if ((int) $mroaircraftcertificate->aircraft_model_id <= 0) {
+                $addError(3, 'Aircraft model is required.');
+            } elseif (!$mroaircraftcertificate->validate(['aircraft_model_id'])) {
+                $addError(3, 'Please select a valid aircraft model.');
+            }
+
+            // Étape 4 : aéroport et conditions
+            if ((int) $mroairport->airport_id <= 0) {
+                $addError(4, 'Airport / ICAO base is required.');
+            } elseif (!$mroairport->validate(['airport_id'])) {
+                $addError(4, 'Please select a valid airport.');
+            }
+            if (empty($post['terms'])) {
+                $addError(4, 'You must agree to the partnership terms.');
+            }
+
+            /*
+             * 2. ENREGISTREMENT ATOMIQUE : profil, documents, capacité et aéroport
+             *    sont enregistrés ensemble. Au moindre échec, la base est remise en
+             *    l'état et les fichiers déjà copiés sont supprimés.
+             */
+            if ($formErrors === []) {
+                $storedFiles = [];
+                // Copie (et non déplacement) : en cas d'échec, les pièces restent disponibles pour un nouvel essai.
+                $storeFile = static function (string $slot) use (&$storedFiles, $kept): string {
+                    $path = 'uploads/' . Yii::$app->security->generateRandomString() . '.' . $kept[$slot]['ext'];
+                    if (!copy($kept[$slot]['path'], $path)) {
+                        throw new \RuntimeException('File copy failed.');
+                    }
+                    $storedFiles[] = $path;
+                    return $path;
+                };
+
+                $transaction = Yii::$app->db->beginTransaction();
+                try {
+                    $model->profile_photo = isset($kept['profile_photo']) ? $storeFile('profile_photo') : null;
+                    $model->company_photo = isset($kept['company_photo']) ? $storeFile('company_photo') : null;
+                    $model->password = Yii::$app->security->generatePasswordHash($model->password);
+                    $model->verification_token = Yii::$app->security->generateRandomString() . '_' . time();
+
+                    if (!$model->save()) {
+                        throw new \RuntimeException('MRO profile: ' . implode(' ', $model->getFirstErrors()));
+                    }
+                    $mroId = (int) $model->mro_id;
+
+                    // Préférences « tout activé » : créées par MroProfile::afterSave (sans doublon).
+                    MroNotificationsPreferences::ensureDefaultsFor($mroId);
+
+                    $insuranceDoc = new MroInsuranceDocuments();
+                    $insuranceDoc->mro_id = $mroId;
+                    $insuranceDoc->file_path = $storeFile('insurance');
+                    $insuranceDoc->file_name = $kept['insurance']['name'];
+                    $insuranceDoc->file_type = $kept['insurance']['type'];
+                    $insuranceDoc->file_size = $kept['insurance']['size'];
+                    if (!$insuranceDoc->save()) {
+                        throw new \RuntimeException('Insurance document: ' . implode(' ', $insuranceDoc->getFirstErrors()));
+                    }
+
+                    $mroaircraftcertificate->mro_id = $mroId;
+                    $mroaircraftcertificate->certificate = $storeFile('capability');
+                    if (!$mroaircraftcertificate->save()) {
+                        throw new \RuntimeException('Aircraft capability: ' . implode(' ', $mroaircraftcertificate->getFirstErrors()));
+                    }
+
+                    $certificate->mro_id = $mroId;
+                    $certificate->certificate = $storeFile('naa');
+                    if (!$certificate->save(false)) {
+                        throw new \RuntimeException('NAA certificate could not be saved.');
+                    }
+
+                    $mroairport->mro_id = $mroId;
+                    if (!$mroairport->save()) {
+                        throw new \RuntimeException('Working airport: ' . implode(' ', $mroairport->getFirstErrors()));
+                    }
+
+                    $transaction->commit();
+
+                    // Inscription enregistrée : les copies temporaires ne servent plus.
+                    $this->discardMroSignupFiles($kept);
+                    $kept = [];
+                } catch (\Throwable $e) {
+                    $transaction->rollBack();
+                    foreach ($storedFiles as $path) {
+                        if (is_file($path)) {
+                            @unlink($path);
+                        }
+                    }
+                    Yii::error('MRO signup failed: ' . $e->getMessage(), __METHOD__);
+
+                    $model->isNewRecord = true;
+                    $model->mro_id = null;
+                    $model->password = $model->confirm_password;
+                    $model->profile_photo = null;
+                    $model->company_photo = null;
+                    $addError(4, 'Your application could not be saved. Please check your information and try again.');
+                }
+
+                if ($formErrors === []) {
+                    $isSent = false;
+                    try {
+                        $isSent = $this->sendMroVerificationEmail($model);
+                    } catch (InvalidConfigException $e) {
+                        /*
+                         * Une erreur de configuration du mailer ne remet pas en cause
+                         * les données déjà sauvegardées. Le détail technique reste hors
+                         * de l'interface publique et l'utilisateur reçoit un avertissement.
+                         */
+                        Yii::error($e, 'mail.configuration');
+                        Yii::$app->session->setFlash(
+                            'warning',
+                            'MRO profile created successfully, but the verification email service is currently unavailable. Please contact support.'
+                        );
+                        return $this->redirect(Yii::$app->request->baseUrl . '/'); // racine du site (http://localhost:8080/)
+                    }
+
+                    /*
+                     * RETOUR UTILISATEUR COHÉRENT : le profil MRO et ses documents sont
+                     * enregistrés ; un échec SMTP n'est pas un échec d'inscription.
+                     */
+                    if ($isSent) {
+                        Yii::$app->session->setFlash('success', 'MRO profile created successfully. A verification email has been sent.');
+                    } else {
+                        Yii::$app->session->setFlash(
+                            'warning',
+                            'MRO profile created successfully, but the verification email could not be sent. Please try again later or contact support.'
+                        );
+                    }
+
+                    return $this->redirect(Yii::$app->request->baseUrl . '/'); // racine du site (http://localhost:8080/)
                 }
             }
         }
-                $mroaircraftcertificate->mro_id = $model->mro_id;
-                $certificateFilex = UploadedFile::getInstance($mroaircraftcertificate, 'certificate');
-                if ($certificateFilex) {
-                    $uploadPath = 'uploads/' . Yii::$app->security->generateRandomString() . '.' . $certificateFilex->extension;
-                    $certificateFilex->saveAs($uploadPath);
-                    $mroaircraftcertificate->certificate = $uploadPath;
-                
-                }
-            } if (!$mroaircraftcertificate->validate() ) {
-              VarDumper::dump(print_r($mroaircraftcertificate->errors, true));die();;
 
+        return $this->render('become-mro', [
+            'mroairport' => $mroairport,
+            'countries' => $countries,
+            'certificate' => $certificate,
+            'model' => $model,
+            'terms' => $termsContent,
+            'mroaircraftcertificate' => $mroaircraftcertificate,
+            'formErrors' => $formErrors,
+            'errorStep' => $errorStep,
+            'keptFiles' => array_map(static function (array $meta): array {
+                return ['name' => $meta['name'], 'size' => $meta['size']];
+            }, $kept),
+        ]);
+    }
+
+    /** Clé de session des pièces jointes conservées pendant l'inscription MRO. */
+    private const MRO_SIGNUP_KEPT_FILES = 'mroSignupKeptFiles';
+
+    /**
+     * Contrôle d'une pièce jointe d'inscription MRO : PDF (documents) ou image
+     * (photos), 5 Mo au plus. Retourne le message d'erreur, ou null si valide.
+     */
+    private function checkMroSignupFile(UploadedFile $file, string $type): ?string
+    {
+        if ($file->hasError) {
+            return 'could not be uploaded.';
+        }
+        $extension = strtolower((string) $file->extension);
+        if ($type === 'pdf' && $extension !== 'pdf') {
+            return 'must be a PDF file.';
+        }
+        if ($type === 'image' && !in_array($extension, ['jpg', 'jpeg', 'png', 'gif', 'webp'], true)) {
+            return 'must be a JPG, PNG, GIF or WEBP image.';
+        }
+        if ($file->size > 5 * 1024 * 1024) {
+            return 'exceeds the 5 MB limit.';
+        }
+
+        return null;
+    }
+
+    /**
+     * Garde une copie temporaire d'une pièce jointe dans @runtime (non public),
+     * dans un dossier propre à la session. Remplace la copie précédente du même champ.
+     */
+    private function keepMroSignupFile(UploadedFile $file, string $slot, ?array $previous, string $scope = 'mro'): array
+    {
+        $session = Yii::$app->session;
+        $tokenKey = $scope . 'SignupKeptToken';
+        $token = $session->get($tokenKey);
+        if (!is_string($token) || !preg_match('/^[A-Za-z0-9_-]{32}$/', $token)) {
+            $token = Yii::$app->security->generateRandomString(32);
+            $session->set($tokenKey, $token);
+        }
+
+        $directory = Yii::getAlias('@runtime/' . $scope . '-signup/' . $token);
+        \yii\helpers\FileHelper::createDirectory($directory, 0700);
+
+        if ($previous !== null) {
+            $this->deleteMroSignupFile($previous, $scope);
+        }
+
+        $extension = strtolower((string) $file->extension);
+        $path = $directory . '/' . $slot . '-' . Yii::$app->security->generateRandomString(12) . '.' . $extension;
+        if (!$file->saveAs($path)) {
+            throw new \RuntimeException('Temporary copy failed for ' . $slot . '.');
+        }
+
+        return [
+            'path' => $path,
+            'name' => (string) $file->name,
+            'size' => (int) $file->size,
+            'type' => (string) $file->type,
+            'ext' => $extension,
+        ];
+    }
+
+    /** Supprime une copie temporaire (uniquement sous @runtime/<scope>-signup). */
+    private function deleteMroSignupFile(array $meta, string $scope = 'mro'): void
+    {
+        $root = realpath(Yii::getAlias('@runtime/' . $scope . '-signup'));
+        $path = isset($meta['path']) ? realpath((string) $meta['path']) : false;
+        if ($root !== false && $path !== false && strpos($path, $root . DIRECTORY_SEPARATOR) === 0 && is_file($path)) {
+            @unlink($path);
+        }
+    }
+
+    /**
+     * Supprime les copies temporaires de la session et nettoie les dossiers
+     * d'inscriptions abandonnées depuis plus de 24 h.
+     */
+    private function discardMroSignupFiles(array $kept, string $scope = 'mro'): void
+    {
+        foreach ($kept as $meta) {
+            $this->deleteMroSignupFile((array) $meta, $scope);
+        }
+        Yii::$app->session->remove($scope . 'SignupKeptFiles');
+
+        $root = Yii::getAlias('@runtime/' . $scope . '-signup');
+        if (!is_dir($root)) {
+            return;
+        }
+        foreach (glob($root . '/*', GLOB_ONLYDIR) ?: [] as $directory) {
+            $files = glob($directory . '/*') ?: [];
+            $abandoned = filemtime($directory) < time() - 86400;
+            if ($files === [] || $abandoned) {
+                \yii\helpers\FileHelper::removeDirectory($directory);
             }
-            
-                $mroaircraftcertificate->save();
-                $mro_notifications->mro_id= $model->mro_id;
-                $mro_notifications->notify_by_email= 1;
-                $mro_notifications->notify_by_platform= 1;
-                $mro_notifications->notify_by_both= 1;
-                $mro_notifications->notify_for_non_certified_aircraft= 0;
-                $mro_notifications->notify_for_certified_aircraft= 1;
-                $mro_notifications->notify_for_appointment_acceptance= 1;
-                $mro_notifications->notify_for_feedback= 1;
-                $mro_notifications->save();
-                $certificate->mro_id = $model->mro_id;
-                $certificate->type = Yii::$app->request->post('Certificates')['type'];
-                $certificate->certificate_type_id = Yii::$app->request->post('Certificates')['certificate_type_id'];
-                // Handle file upload
-                $certificateFile = UploadedFile::getInstance($certificate, 'certificate');
-                // Set the file path for the uploaded certificate file
-                if ($certificateFile) {
-                    $uploadPath = 'uploads/' . Yii::$app->security->generateRandomString() . '.' . $certificateFile->extension;
-                    $certificateFile->saveAs($uploadPath);
-                    $certificate->certificate = $uploadPath;
-                
-                }                
-                if ($certificate->validate() && $certificate->save()) {
-                    $mroairport->load(Yii::$app->request->post());
-                    $mroairport->mro_id = $model->mro_id;
-                    if($mroairport->validate() && $mroairport->save()){
-                        // Generate and save verification token
+        }
+    }
 
-                        $verificationLink = Yii::$app->urlManager->createAbsoluteUrl(['site/verify-email', 'token' => $model->verification_token]);
+    /**
+     * E-mail de vérification envoyé après l'inscription MRO (contenu inchangé).
+     *
+     * @throws InvalidConfigException si le mailer est mal configuré
+     */
+    private function sendMroVerificationEmail(MroProfile $model): bool
+    {
+        $verificationLink = Yii::$app->urlManager->createAbsoluteUrl(['site/verify-email', 'token' => $model->verification_token]);
 
-                        try {
-                            // $mailer = Yii::$app->mailer;
-                            // $message = $mailer->compose()
-                            //     ->setTo($model->email)
-                            //     ->setSubject('Verify your email address')
-                            //     ->setTextBody("Follow the link below to verify your email address:\n\n$verificationLink");
+        $fullName = trim(($model->first_name ?? '') . ' ' . ($model->last_name ?? ''));
+        if ($fullName === '') {
+            $fullName = $model->username ?: ($model->email ?: 'User');
+        }
 
-
-// Résolution du nom affiché
-if (!empty($model->first_name) || !empty($model->last_name)) {
-    $fullName = trim(($model->first_name ?? '') . ' ' . ($model->last_name ?? ''));
-} elseif (!empty($model->name)) {
-    $fullName = $model->name;
-} elseif (!empty($model->username)) {
-    $fullName = $model->username;
-} elseif (!empty($model->email)) {
-    $fullName = $model->email;
-} else {
-    $fullName = 'User';
-}
-
-$appName  = htmlspecialchars(Yii::$app->name, ENT_QUOTES, 'UTF-8');
-$safeName = htmlspecialchars($fullName, ENT_QUOTES, 'UTF-8');
-$safeLink = htmlspecialchars($verificationLink, ENT_QUOTES, 'UTF-8');
+        $appName  = htmlspecialchars(Yii::$app->name, ENT_QUOTES, 'UTF-8');
+        $safeName = htmlspecialchars($fullName, ENT_QUOTES, 'UTF-8');
+        $safeLink = htmlspecialchars($verificationLink, ENT_QUOTES, 'UTF-8');
 
 $htmlBody = "
 <div style='margin:0; padding:0; background:#f4f6f8;'>
@@ -1146,74 +1410,17 @@ $htmlBody = "
 </div>
 ";
 
-// Send the verification email.
-// Important: send() already returns true/false, so do not call ->send() again.
-$isSent = Yii::$app->mailer->compose()
-    ->setTo($model->email)
-    ->setFrom([
-        Yii::$app->params['supportEmail'] ?? 'no-reply@coreaviationnetwork.com' => Yii::$app->name,
-    ])
-    ->setSubject('Verify your email address - ' . Yii::$app->name)
-    ->setHtmlBody($htmlBody)
-    ->send();
-
-                            /*
-                             * RETOUR UTILISATEUR COHÉRENT : à ce stade le profil MRO et
-                             * ses documents sont déjà enregistrés. Un échec SMTP ne doit
-                             * donc pas être présenté comme un échec d'inscription. Une
-                             * seule notification indique le résultat complet de l'action.
-                             */
-                            if ($isSent) {
-                                Yii::$app->session->setFlash(
-                                    'success',
-                                    'MRO profile created successfully. A verification email has been sent.'
-                                );
-                            } else {
-                                Yii::$app->session->setFlash(
-                                    'warning',
-                                    'MRO profile created successfully, but the verification email could not be sent. Please try again later or contact support.'
-                                );
-                            }
-                        } catch (InvalidConfigException $e) {
-                            /*
-                             * Une erreur de configuration du mailer ne remet pas en cause
-                             * les données déjà sauvegardées. Le détail technique reste hors
-                             * de l'interface publique et l'utilisateur reçoit un avertissement.
-                             */
-                            Yii::error($e, 'mail.configuration');
-                            Yii::$app->session->setFlash(
-                                'warning',
-                                'MRO profile created successfully, but the verification email service is currently unavailable. Please contact support.'
-                            );
-                        }
-
-                            return $this->redirect(['site/landing']);
-
-                    }else{
-                        Yii::$app->session->setFlash('error', 'Failed to save MRO Working Airport: ');
-
-                    }
-
-                } else {
-                    Yii::$app->session->setFlash('error', 'Failed to save certificate: ' );
-                }
-            } else {
-                Yii::$app->session->setFlash('error', 'Failed to save MRO Profile: ' );
-            }
-        }
-        }
-        
-        return $this->render('become-mro', [
-            'mroairport' => $mroairport, // Pass the airplane model to the view
-            'countries' => $countries,
-            'certificate' => $certificate, // Pass the airplane model to the view
-            'model' => $model,
-            'terms' => $termsContent,
-            'mroaircraftcertificate'=>$mroaircraftcertificate,
-        ]);
+        // send() renvoie déjà true/false.
+        return (bool) Yii::$app->mailer->compose()
+            ->setTo($model->email)
+            ->setFrom([
+                Yii::$app->params['supportEmail'] ?? 'no-reply@coreaviationnetwork.com' => Yii::$app->name,
+            ])
+            ->setSubject('Verify your email address - ' . Yii::$app->name)
+            ->setHtmlBody($htmlBody)
+            ->send();
     }
-    
-    
+
     public function actionCitiesByCountry($country_id)
 {
     $cities = cities::find()->where(['country_id' => $country_id])->all();
